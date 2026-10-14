@@ -1,0 +1,3 @@
+# Catatan DevOps
+
+- Inisialisasi awal.
