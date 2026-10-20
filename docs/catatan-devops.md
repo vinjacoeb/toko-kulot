@@ -67,3 +67,33 @@ $ git ls-files | grep .env     -> hanya .env.example (aman)
 
 `docs/lingkungan.md` bagian 5-6 dan `docs/langkah-pemilik.md` bagian 6 sudah
 diperbarui dengan hasil ini.
+
+## Kebersihan repo — folder agent/skill dihapus dari git (t_e0ab9215, 20 Okt 2026)
+
+Masalah: HEAD `cfdaedd` masih memuat 3397 berkas di dalam 20 folder agent/skill
+(`.agent/`, `.agents/`, `.augment/`, `.claude/`, `.codebuddy/`, `.codewhale/`,
+`.continue/`, `.cursor/`, `.factory/`, `.gemini/`, `.github/prompts/`, `.hermes/`,
+`.kilocode/`, `.kiro/`, `.opencode/`, `.qoder/`, `.roo/`, `.trae/`, `.warp/`,
+`.windsurf/`). Berkas sudah hilang dari working tree tetapi penghapusannya belum
+di-commit → melanggar R4 dan DoD global §15 poin 5.
+
+Tindakan: hanya penghapusan yang di-stage (`git add -u` pada 20 folder itu), tidak ada
+berkas aplikasi yang ikut. Perubahan working tree milik agent lain (12 berkas `M` di
+`docs/` + `resources/`, 4 dokumen baru, `token-check.mjs`) sengaja TIDAK di-commit
+(R8: satu kartu satu commit).
+
+Bukti sebelum commit:
+
+```
+$ git diff --cached --name-only | wc -l                       -> 3397
+$ git diff --cached --name-status | cut -f1 | sort | uniq -c  -> 3397 D (tidak ada A/M)
+$ git diff --cached --name-only | grep -v '^\.(agent|agents|...)/'  -> kosong
+$ git check-ignore -v app/... resources/js/app.jsx routes/web.php database/migrations -> exit 1 (tidak diabaikan)
+$ git ls-files | grep -i '\.env'                              -> hanya .env.example
+```
+
+Risiko: `.github/` ikut terhapus (isinya hanya `prompts/` hasil salinan skill, tanpa
+workflow CI). Bila kartu rilis (K16) butuh GitHub Actions, folder dibuat ulang dari nol.
+
+Pemulihan bila diperlukan: `git checkout <commit-sebelumnya> -- .agent/` (salinan skill
+tetap tersedia di folder profil agent di luar project, sesuai R4).
