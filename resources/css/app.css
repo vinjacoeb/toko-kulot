@@ -33,34 +33,34 @@
 @layer components {
     .btn {
         @apply inline-flex items-center justify-center gap-2 h-btn px-[30px] rounded-lg
-               text-[15px] font-semibold leading-none transition-colors duration-200
+               text-label font-semibold leading-none transition-colors duration-hover
                disabled:opacity-45 disabled:cursor-not-allowed;
     }
     .btn-primary {
         @apply btn bg-accent-500 text-ink hover:bg-accent-600 active:translate-y-px;
     }
     .btn-secondary {
-        @apply btn bg-transparent text-ink border border-slate-200 hover:bg-surface active:translate-y-px;
+        @apply btn bg-transparent text-ink border border-line hover:bg-surface active:translate-y-px;
     }
     .btn-ghost {
         @apply inline-flex items-center justify-center h-10 px-3 rounded-sm
-               text-brand hover:bg-surface transition-colors duration-200;
+               text-brand hover:bg-surface transition-colors duration-hover;
     }
     .field {
-        @apply w-full h-11 px-3.5 rounded-md border border-slate-200 text-[15px]
+        @apply w-full h-field px-3.5 rounded-md border border-line text-body
                placeholder:text-slate-400 focus:border-brand focus:ring-[3px]
                focus:ring-brand/15 transition-colors duration-150;
     }
     .field-error {
-        @apply border-red-600 focus:border-red-600 focus:ring-red-600/15;
+        @apply border-danger focus:border-danger focus:ring-danger/15;
     }
     .label {
-        @apply block text-[13px] font-semibold mb-1.5;
+        @apply block text-meta font-semibold mb-1.5;
     }
     .card {
-        @apply bg-white rounded-xl border border-slate-200;
+        @apply bg-white rounded-xl border border-line;
     }
     .skeleton {
-        @apply bg-slate-200 rounded-md animate-pulse;
+        @apply bg-slate-200 rounded-md animate-pulse-slow;
     }
 }
