@@ -213,6 +213,86 @@ export const ScissorsIcon = (props) => (
     </Svg>
 );
 
+export const GridIcon = (props) => (
+    <Svg {...props}>
+        <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
+        <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" />
+        <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" />
+        <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" />
+    </Svg>
+);
+
+export const BoxIcon = (props) => (
+    <Svg {...props}>
+        <path d="M20.5 7.8v8.4a1.5 1.5 0 0 1-.8 1.3l-7 3.7a1.5 1.5 0 0 1-1.4 0l-7-3.7a1.5 1.5 0 0 1-.8-1.3V7.8" />
+        <path d="m3.9 7.1 7.4-3.8a1.5 1.5 0 0 1 1.4 0l7.4 3.8-8.1 4.2Z" />
+        <path d="M12 11.3V20" />
+    </Svg>
+);
+
+export const LayersIcon = (props) => (
+    <Svg {...props}>
+        <path d="m12 3.5 8 4-8 4-8-4Z" />
+        <path d="m4 12 8 4 8-4" />
+        <path d="m4 16.5 8 4 8-4" />
+    </Svg>
+);
+
+export const ArchiveIcon = (props) => (
+    <Svg {...props}>
+        <rect x="3.5" y="4" width="17" height="4" rx="1" />
+        <path d="M5 8v10.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V8" />
+        <path d="M10 12h4" />
+    </Svg>
+);
+
+export const GearIcon = (props) => (
+    <Svg {...props}>
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
+    </Svg>
+);
+
+export const LogOutIcon = (props) => (
+    <Svg {...props}>
+        <path d="M15 4.5h3A1.5 1.5 0 0 1 19.5 6v12a1.5 1.5 0 0 1-1.5 1.5h-3" />
+        <path d="M10 8 6 12l4 4" />
+        <path d="M6 12h9" />
+    </Svg>
+);
+
+export const WalletIcon = (props) => (
+    <Svg {...props}>
+        <rect x="3" y="6" width="18" height="13" rx="2.5" />
+        <path d="M3 10.5h18" />
+        <path d="M16.5 15h2" />
+    </Svg>
+);
+
+export const TrendUpIcon = (props) => (
+    <Svg {...props}>
+        <path d="m3.5 16.5 5.5-5.5 3.5 3.5 7.5-7.5" />
+        <path d="M15 7h5v5" />
+    </Svg>
+);
+
+export const TrendDownIcon = (props) => (
+    <Svg {...props}>
+        <path d="m3.5 7.5 5.5 5.5 3.5-3.5 7.5 7.5" />
+        <path d="M15 17h5v-5" />
+    </Svg>
+);
+
+export const ChartIcon = (props) => (
+    <Svg {...props}>
+        <path d="M4 20V4" />
+        <path d="M4 20h16" />
+        <path d="M8 16v-4" />
+        <path d="M12.5 16V8" />
+        <path d="M17 16v-6" />
+    </Svg>
+);
+
 /** Pemetaan nama ikon dari pengaturan admin ke komponen (kontrak: truck|refresh|qris|chat|leaf|scissors). */
 export const TRUST_ICONS = {
     truck: TruckIcon,

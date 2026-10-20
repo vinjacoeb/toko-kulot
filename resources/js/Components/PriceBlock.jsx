@@ -1,0 +1,30 @@
+import React from 'react';
+import { cn, rupiah } from '../lib/format';
+
+/**
+ * PriceBlock - docs/design.md 4.2 / 4.21.
+ * Harga jual 24px bold (size="lg"), harga coret + badge diskon hanya bila
+ * server mengirim `comparePrice` yang lebih besar.
+ */
+export default function PriceBlock({ price, comparePrice = null, size = 'lg', className = '' }) {
+    const value = Number(price ?? 0);
+    const compare = comparePrice === null || comparePrice === undefined ? null : Number(comparePrice);
+    const hasCompare = compare !== null && Number.isFinite(compare) && compare > value && value > 0;
+    const discount = hasCompare ? Math.round(((compare - value) / compare) * 100) : 0;
+
+    return (
+        <div className={cn('flex flex-wrap items-baseline gap-2', className)}>
+            <span className={cn('font-bold text-ink', size === 'lg' ? 'text-[24px] leading-8' : 'text-[15px]')}>
+                {rupiah(value)}
+            </span>
+            {hasCompare && (
+                <>
+                    <span className="text-meta text-slate-400 line-through">{rupiah(compare)}</span>
+                    <span className="rounded-sm bg-sale-500/10 px-1.5 py-0.5 text-badge font-semibold text-sale-500">
+                        {'-' + discount + '%'}
+                    </span>
+                </>
+            )}
+        </div>
+    );
+}

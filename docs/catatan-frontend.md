@@ -56,3 +56,68 @@ Berkas kerja agent frontend. Diperbarui per kartu. Kartu aktif: **K10 — Layout
 3. `loading=true` → skeleton, bukan spinner penuh halaman; `error` → `ErrorState` + "Coba lagi"; produk kosong → `EmptyState`.
 4. Data produk dengan `stock = 0` → tombol "Tambah" `disabled` + label "Habis".
 5. Prasyarat: `settings`, `carousels`, `faqs` tersedia dari server (seeder). Bila props belum dikirim, halaman tetap render (fallback aman) — ini bukan bukti integrasi.
+
+## K13 — Panel admin: layout + dashboard (t_bae93e32)
+
+Berkas baru: `resources/js/Layouts/AdminLayout.jsx`, `resources/js/Pages/Admin/Dashboard.jsx`,
+`resources/js/Components/{PageHeader,KpiCard,ChartCard,DataTable,StatusBadge}.jsx`.
+`Breadcrumb.jsx` sudah ada (dibuat worker lain) — dipakai ulang, tidak ditimpa.
+`resources/js/lib/format.js` ditambah `formatDate` dan `formatDateTime`; `icons.jsx` ditambah
+`GridIcon, BoxIcon, LayersIcon, ArchiveIcon, GearIcon, LogOutIcon, WalletIcon, TrendUpIcon,
+TrendDownIcon, ChartIcon`.
+
+Kontrak yang belum tersedia di backend (`DashboardController@index` hanya mengirim `stats`):
+`stats.revenue_total|orders_pending|orders_total|products_active` dipakai apa adanya. Prop
+tambahan yang halaman ini sudah baca bila nanti dikirim: `sales_14d [{date,total}]`,
+`low_stock [{id,product_name,size,color,stock}]`, `recent_orders` (5),
+`recent_reviews [{id,user_name,product_name,rating,comment,created_at}]`, `updated_at`, `loading`, `error`.
+Tanpa prop itu blok terkait tampil sebagai empty state, bukan galat.
+
+Deviasi/penundaan yang disengaja:
+- Item sidebar selain Dashboard ditandai `disabled` karena `routes/admin.php` baru punya `/admin`,
+  `/admin/login`, `/admin/logout`. Tautan 404 sengaja tidak dirender.
+- Pencarian global di topbar (design §5.10) belum dirender: belum ada rute pencarian admin.
+- CTA "Tambah produk" pada empty state dashboard belum dirender (rute `/admin/produk` belum ada).
+- Flash sukses/galat belum ditampilkan di AdminLayout (belum ada alur form admin).
+
+Belum diuji di browser (pemilik yang menyalakan server): responsif 360/768/1024/1280, keyboard,
+zoom 200%, dan tampilan grafik dengan data nyata. Build produksi lulus (`npm run build`, 686 modul).
+
+---
+
+## K11 — Halaman publik `/produk`, `/produk/{slug}`, `/kontak-kami`
+
+Rencana: `Pages/Public/Products/Index.jsx` (filter+sort+paginasi lewat query string),
+`Pages/Public/Products/Show.jsx` (galeri, varian, stok, harga grosir, ulasan, produk serupa),
+`Pages/Public/Contact.jsx` (form + info toko + jam operasional). Komponen baru:
+`ProductGallery`, `PriceBlock`, `VariantChip`, `QtyStepper`, `Pagination`, `SortSelect`,
+`FilterPanel`, `Breadcrumb`, `RatingSummary`, `ReviewCard`, `Field`, `Input`, `Textarea`,
+`Select`, `ColorSwatch`, `BottomSheet`. State UI: loading (skeleton), empty, error + "Coba lagi",
+stok 0 → tombol nonaktif.
+
+### Validasi tiga arah (temuan)
+
+1. **PRD/desain vs kontrak.** Kontrak §8 (`ProductListResource`, key `products`, `filters`,
+   `meta`) sudah dipakai persis: filter `search/category/size/color/min_price/max_price/sort/page`,
+   `sort` = `terbaru|termurah|termahal|populer`. Halaman detail membaca key `product`
+   (§8.3) dan memakai key tambahan `description`, `variants`, `wholesale_tiers`, `reviews`,
+   `rating_summary`, `related`. Key-key tersebut belum terdaftar di kontrak → dicatat ke
+   kartu backend (lihat komentar di kartu ini).
+2. **Kontrak §8.3 tidak punya `compare_price`.** Desain §5.3 menyebut harga coret + badge
+   potongan; tanpa key tersebut harga coret tidak dirender (tidak dikarang).
+3. **Rute GET belum ada.** `routes/web.php` (perubahan backend K9) baru punya
+   `POST /kontak-kami`; `GET /produk`, `GET /produk/{slug}`, `GET /kontak-kami` belum
+   terdaftar sehingga halaman belum bisa dirender server. Tidak dibuat sendiri (aturan 5) →
+   kartu backend.
+4. **Form kontak cocok dengan backend.** `ContactMessageRequest`: `name`≤100, `email`≤150,
+   `phone` nullable ≤30, `subject`≤150, `message`≤2000, honeypot `website` — maxLength klien
+   disamakan. Flash sukses dari `MessageController` ditampilkan lewat `InlineNotice`.
+5. **Tambah keranjang.** `POST /keranjang` dengan `product_id`, `variant_id`, `qty`
+   (produk bervarian wajib mengirim `variant_id`; kartu "Produk Serupa" membuka halaman detail
+   untuk produk bervarian).
+
+### Verifikasi
+
+- `npm run build` → exit 0, ketiga bundel halaman ter-emit (Index/Show/Contact).
+- Belum diuji di browser (pemilik yang menyalakan server): responsif 360/768/1024/1280,
+  keyboard, zoom 200%, kontras, dan interaksi filter/paginasi dengan data nyata.
