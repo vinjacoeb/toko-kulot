@@ -19,8 +19,8 @@ export default function PriceBlock({ price, comparePrice = null, size = 'lg', cl
             </span>
             {hasCompare && (
                 <>
-                    <span className="text-meta text-slate-400 line-through">{rupiah(compare)}</span>
-                    <span className="rounded-sm bg-sale-500/10 px-1.5 py-0.5 text-badge font-semibold text-sale-500">
+                    <span className="text-meta text-slate-500 line-through">{rupiah(compare)}</span>
+                    <span className="rounded-sm bg-sale-500 px-1.5 py-0.5 text-badge font-semibold text-white">
                         {'-' + discount + '%'}
                     </span>
                 </>

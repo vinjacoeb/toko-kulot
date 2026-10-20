@@ -2,22 +2,37 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Database\Seeders\Concerns\VerifiesSeedData;
 use Illuminate\Database\Seeder;
 
+/**
+ * Urutan seed mengikuti ketergantungan foreign key (PRD §6, docs/db.md §5):
+ * admin & pembeli → settings → kategori → produk (gambar, varian, stok awal) →
+ * konten landing (carousel, FAQ) → order (item, payment, movement `sale`) →
+ * ulasan → keranjang → pesan kontak. Ditutup pemeriksaan yang gagal keras.
+ *
+ * Semua seeder idempoten: `php artisan db:seed` boleh dijalankan berulang (R13).
+ */
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Seed the application's database.
-     */
+    use VerifiesSeedData;
+
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $this->call([
+            AdminSeeder::class,
+            UserSeeder::class,
+            SettingSeeder::class,
+            CategorySeeder::class,
+            ProductSeeder::class,
+            CarouselSeeder::class,
+            FaqSeeder::class,
+            OrderSeeder::class,
+            ReviewSeeder::class,
+            CartSeeder::class,
+            ContactMessageSeeder::class,
         ]);
+
+        $this->verifySeedData();
     }
 }

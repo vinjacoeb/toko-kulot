@@ -22,7 +22,7 @@ export default function EmptyState({
                 {icon ?? <ImageOffIcon size={96} />}
             </span>
             <p className="text-h3 text-ink">{title}</p>
-            {description && <p className="max-w-sm text-meta text-slate-400">{description}</p>}
+            {description && <p className="max-w-sm text-meta text-slate-600">{description}</p>}
             {actionLabel && onAction && (
                 <Button variant="secondary" onClick={onAction} className="mt-2">
                     {actionLabel}

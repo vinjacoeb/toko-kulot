@@ -1,0 +1,67 @@
+=== A. Categories ConfirmDialog ===
+126:function ConfirmDialog({ open, title, description, loading = false, error = null, onConfirm, onClose }) {
+127-    return (
+128-        <Modal
+129-            open={open}
+130-            onClose={onClose}
+131-            title={title}
+132-            description={description}
+133-            footer={
+134-                <>
+135-                    <Button variant="secondary" onClick={onClose} disabled={loading}>
+136-                        Batal
+137-                    </Button>
+138-                    <Button variant="danger" onClick={onConfirm} loading={loading}>
+139-                        Hapus
+140-                    </Button>
+141-                </>
+142-            }
+143-        >
+144-            {error ? (
+145-                <InlineNotice tone="error" title="Kategori tidak dihapus">
+146-                    <p>{error}</p>
+147-                </InlineNotice>
+148-            ) : (
+149-                <p className="text-body text-ink-soft">
+150-                    Kategori dihapus permanen. Tindakan ini tidak bisa dibatalkan.
+151-                </p>
+152-            )}
+153-        </Modal>
+154-    );
+155-}
+156-
+157-export default function CategoriesIndex({ kategori = null, filter = null, ringkasan = null, flash = null }) {
+158-    const [query, setQuery] = useState(() => normalizeFilter(filter));
+159-    const [navLoading, setNavLoading] = useState(false);
+160-    const [navError, setNavError] = useState(null);
+=== B. Categories imports ===
+import React, { useEffect, useMemo, useState } from 'react';
+import { router, useForm } from '@inertiajs/react';
+import AdminLayout from '../../../Layouts/AdminLayout';
+import PageHeader from '../../../Components/PageHeader';
+import DataTable from '../../../Components/DataTable';
+import SearchInput from '../../../Components/SearchInput';
+import Select from '../../../Components/Select';
+import Field from '../../../Components/Field';
+import Input from '../../../Components/Input';
+import Textarea from '../../../Components/Textarea';
+import Button from '../../../Components/Button';
+import Modal from '../../../Components/Modal';
+import Pagination from '../../../Components/Pagination';
+import StatusBadge from '../../../Components/StatusBadge';
+import InlineNotice from '../../../Components/InlineNotice';
+import Toast from '../../../Components/Toast';
+=== C. Categories badge lines ===
+        },
+        {
+            key: 'is_active',
+            header: 'Status',
+            render: (row) =>
+                asBool(row.is_active) ? (
+                    <StatusBadge status="aktif" label="Aktif" className="bg-success/10 text-success-strong" />
+                ) : (
+                    <StatusBadge status="nonaktif" label="Nonaktif" className="bg-slate-200 text-ink-soft" />
+                ),
+        },
+        {
+            key: 'aksi',

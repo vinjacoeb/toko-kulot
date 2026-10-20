@@ -1,0 +1,11 @@
+BUKTI JAWABAN SERVER UNTUK PUT /admin/akun/1 SEBAGAI TAMU (DoD PRD §15.3) - kartu devops t_5a330224
+Waktu  : 2026-10-20 15:27:28 +0700
+Server : http://127.0.0.1:8000 (server pemilik; devops tidak menyalakan server)
+Tujuan : memastikan tamu yang mengirim PUT /admin/akun/1 ditolak oleh gerbang admin
+         (redirect ke /admin/login), bukan langsung 405 Method Not Allowed.
+Catatan: body sengaja tidak valid (email salah) supaya tidak ada data yang berubah.
+
+token CSRF ditemukan di halaman: ya
+PUT redirect=manual : {"type": "opaqueredirect", "status": 0, "redirected": false}
+PUT redirect=follow : {"status": 405, "akhir": "/admin/login", "panjang": 11859, "judul": null}
+GET redirect=follow : {"status": 405, "akhir": "/admin/akun/1", "panjang": 11856}

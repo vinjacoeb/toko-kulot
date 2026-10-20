@@ -1,0 +1,217 @@
+BUKTI FRONTEND — kartu t_954abfe8
+Judul  : Terapkan 29 titik teks meta -> text-slate-600 (docs/design.md v2.2 §2.1 / §11.4 T7)
+Tanggal: 20 Okt 2026
+Rujukan: docs/design.md v2.2 §2.1 tabel "Teks meta non-badge (v2.2)", §11.4 T7 (29 titik / 13 berkas),
+         §9 baris 11 & 20; kartu induk t_14cad9e2 (keputusan B); gate docs/qa/sweep-meta-surface.py
+Lingkup: 29 titik di 13 berkas, satu pemetaan text-slate-500 -> text-slate-600. Tidak ada perubahan lain.
+
+== 1. DRY RUN (sebelum terapan) ==
+$ python docs/qa/terapkan-meta-v22.py --cek
+DRY RUN: 29/29 titik siap diubah (text-slate-500 -> text-slate-600). Tidak ada berkas ditulis.
+EXIT=0
+dijalankan sebelum applier; exit 0; wajib 29/29 siap tanpa menulis — terpenuhi.
+
+== 2. TERAPAN ==
+$ python docs/qa/terapkan-meta-v22.py
+OK: 29/29 titik diterapkan di 13 berkas (line ending dipertahankan).
+Langkah berikutnya: python docs/qa/sweep-meta-surface.py .  (harus exit 0, Check A 29/29, Check B kandidat 0)
+EXIT=0
+dijalankan sekali; exit 0
+
+== 3. VERIFIKASI BYTE-LEVEL 13 BERKAS ==
+Metode: isi berkas sesudah dinormalisasi (text-slate-600 -> text-slate-500) dibandingkan byte-per-byte
+dengan salinan sebelum applier. Sama = tidak ada baris, spasi, atau line ending lain yang tersentuh.
+  OK   resources/js/Components/Breadcrumb.jsx               500 1->0  600 ->1  CRLF 0->0
+  OK   resources/js/Components/DataTable.jsx                500 1->0  600 ->1  CRLF 0->0
+  OK   resources/js/Components/EmptyState.jsx               500 1->0  600 ->1  CRLF 0->0
+  OK   resources/js/Components/ErrorState.jsx               500 1->0  600 ->1  CRLF 0->0
+  OK   resources/js/Components/PageHeader.jsx               500 1->0  600 ->1  CRLF 0->0
+  OK   resources/js/Components/QrisPanel.jsx                500 7->5  600 ->2  CRLF 0->0
+  OK   resources/js/Components/StarRating.jsx               500 1->0  600 ->1  CRLF 0->0
+  OK   resources/js/Pages/Admin/Accounts/Index.jsx          500 5->3  600 ->2  CRLF 0->0
+  OK   resources/js/Pages/Admin/Categories/Index.jsx        500 6->3  600 ->3  CRLF 0->0
+  OK   resources/js/Pages/Admin/Messages/Index.jsx          500 10->2  600 ->8  CRLF 0->0
+  OK   resources/js/Pages/Admin/Reviews/Index.jsx           500 5->1  600 ->4  CRLF 0->0
+  OK   resources/js/Pages/Admin/Settings/Index.jsx          500 7->4  600 ->3  CRLF 0->0
+  OK   resources/js/Pages/Public/Contact.jsx                500 1->0  600 ->1  CRLF 0->0
+  hasil: SEMUA BERTAHAN (hanya 500->600)
+  total kemunculan text-slate-500 di resources/js: 95 -> 66 (29 berkurang)
+
+== 4. GATE KONTRAS META ==
+$ python docs/qa/sweep-meta-surface.py .
+gate kontras meta §2.1 v2.2 — akar: C:\Users\LENOVO\Downloads\toko-kulot
+=== A. DAFTAR_KEPUTUSAN (29 titik v2.2 -> text-slate-600) ===
+  selesai  : 29
+  belum    : 0
+=== B. Penyapu latar non-putih ===
+  kandidat : 0
+  aman     : 11 (penanda terdekat = putih/kartu)
+  TINJAU   : resources/js/Components/CartLine.jsx:76 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/CartLine.jsx:78 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/CartLine.jsx:79 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/CartLine.jsx:114 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/CartLine.jsx:117 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/ChartCard.jsx:267 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/FaqAccordion.jsx:48 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/Field.jsx:34 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/FilterPanel.jsx:17 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/FilterPanel.jsx:58 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/FilterPanel.jsx:91 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/KpiCard.jsx:32 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/KpiCard.jsx:67 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/OrderSummary.jsx:71 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/PriceBlock.jsx:22 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/ProductCard.jsx:93 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/ProductCard.jsx:112 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/QrisPanel.jsx:143 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/QrisPanel.jsx:150 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/QrisPanel.jsx:151 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/RatingSummary.jsx:37 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/RatingSummary.jsx:47 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/RatingSummary.jsx:54 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/ReviewCard.jsx:45 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/ReviewForm.jsx:148 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Layouts/AdminLayout.jsx:210 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Accounts/Index.jsx:372 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Accounts/Index.jsx:425 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Accounts/Index.jsx:654 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Categories/Index.jsx:348 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Categories/Index.jsx:626 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Dashboard.jsx:204 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Dashboard.jsx:271 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Login.jsx:116 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Messages/Index.jsx:265 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Messages/Index.jsx:286 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Settings/Index.jsx:293 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Settings/Index.jsx:1626 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Public/Cart.jsx:112 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Public/Checkout.jsx:275 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Public/Checkout.jsx:281 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Public/CheckoutSuccess.jsx:92 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Public/CheckoutSuccess.jsx:147 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Public/CheckoutSuccess.jsx:149 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Public/Products/Index.jsx:245 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Public/Products/Show.jsx:234 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Public/Products/Show.jsx:242 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Public/Products/Show.jsx:380 (tidak ada penanda kontainer <= 12 baris di atas)
+  ditinjau : 48
+=== C. Sisa text-slate-500 (tidak menggagalkan) ===
+  total kemunculan text-slate-500 di resources/js: 66
+=== HASIL ===
+status: LOLOS (keluar 0)
+EXIT=0
+Check A 29/29 selesai, Check B kandidat 0, 48 TINJAU konservatif (semuanya di luar 29 titik; alasan
+per baris sudah diaudit manual di docs/bukti-uiux-t_14cad9e2.txt bagian audit 95 kemunculan —
+baris-baris itu sengaja tidak diubah sesuai larangan kartu).
+
+== 5. IDEMPOTENSI (dry run sesudah terapan) ==
+$ python docs/qa/terapkan-meta-v22.py --cek
+BATAL — tidak ada berkas yang ditulis. Temuan:
+  - resources/js/Components/PageHeader.jsx:18: anchor/`text-slate-500` tidak ditemukan (mungkin sudah diterapkan?)
+  - resources/js/Components/Breadcrumb.jsx:31: anchor/`text-slate-500` tidak ditemukan (mungkin sudah diterapkan?)
+  - resources/js/Components/EmptyState.jsx:25: anchor/`text-slate-500` tidak ditemukan (mungkin sudah diterapkan?)
+  ... (29 baris temuan yang sama)
+EXIT=1
+Sesudah terapan skrip tidak menemukan satu pun anchor lama dan TIDAK menulis berkas — bukti seluruh
+29 titik sudah memakai text-slate-600 dan applier aman dijalankan ulang.
+
+== 6. BUILD ==
+$ npm run build
+[2mpublic/build/[22m[36massets/Index-BdYawz88.js            [39m[1m[2m  9.64 kB[22m[1m[22m[2m │ gzip:   3.47 kB[22m
+[2mpublic/build/[22m[36massets/Index-DdGrwQlE.js            [39m[1m[2m  9.70 kB[22m[1m[22m[2m │ gzip:   3.56 kB[22m
+[2mpublic/build/[22m[36massets/Index-CXWZXEKb.js            [39m[1m[2m 11.33 kB[22m[1m[22m[2m │ gzip:   4.07 kB[22m
+[2mpublic/build/[22m[36massets/Index-DH0WIETA.js            [39m[1m[2m 11.78 kB[22m[1m[22m[2m │ gzip:   4.09 kB[22m
+[2mpublic/build/[22m[36massets/Index-Be1lzWmg.js            [39m[1m[2m 11.81 kB[22m[1m[22m[2m │ gzip:   4.28 kB[22m
+[2mpublic/build/[22m[36massets/Dashboard-wtRri09b.js        [39m[1m[2m 12.01 kB[22m[1m[22m[2m │ gzip:   4.21 kB[22m
+[2mpublic/build/[22m[36massets/Home-CJ76EhFh.js             [39m[1m[2m 13.44 kB[22m[1m[22m[2m │ gzip:   4.35 kB[22m
+[2mpublic/build/[22m[36massets/Show-DDcDEgmE.js             [39m[1m[2m 13.97 kB[22m[1m[22m[2m │ gzip:   4.81 kB[22m
+[2mpublic/build/[22m[36massets/CheckoutPay-FL0drDvW.js      [39m[1m[2m 16.94 kB[22m[1m[22m[2m │ gzip:   6.29 kB[22m
+[2mpublic/build/[22m[36massets/Index-BoDsgwmC.js            [39m[1m[2m 49.73 kB[22m[1m[22m[2m │ gzip:  11.76 kB[22m
+[2mpublic/build/[22m[36massets/app-C4HDW06B.js              [39m[1m[2m361.82 kB[22m[1m[22m[2m │ gzip: 113.40 kB[22m
+[32m✓ built in 2.52s[39m
+EXIT=0
+Bundel CSS terbaru: app-C4SfSLQH.css [2mpublic/build/[22m[35massets/app-C4SfSLQH.css             [39m[1m[2m 57.45 kB[22m[1m[22m[2m │ gzip:  10.22 kB[22m
+
+== 7. GREP CSS BUNDEL ==
+$ grep -o '\.text-slate-600[^}]*}' public/build/assets/app-C4SfSLQH.css
+  .text-slate-600{--tw-text-opacity: 1;color:rgb(71 85 105 / var(--tw-text-opacity, 1))
+$ grep -o '\.text-slate-500[^}]*}' public/build/assets/app-C4SfSLQH.css
+  .text-slate-500{--tw-text-opacity: 1;color:rgb(100 116 139 / var(--tw-text-opacity, 1))
+  -> .text-slate-600 = rgb(71 85 105) = #475569 sesuai §2.1 v2.2; .text-slate-500 tetap ada (rgb(100 116 139)).
+
+== 8. GATE LAIN TETAP HIJAU — token ==
+$ node token-check.mjs
+OK: semua 55 token ter-resolve
+fontSize.display = clamp(40px, 2.55vw + 30.8px, 64px)
+fontSize.h1 = clamp(32px, 1.28vw + 27.4px, 44px)
+container padding = {"DEFAULT":"16px","lg":"50px"} | screens.xl = 1300px
+EXIT=0
+
+== 9. GATE LAIN TETAP HIJAU — kontras badge §4.21 ==
+$ python docs/qa/kontras-badge.py
+
+== Token -strong ==
+  success-strong   #166534 OK
+  warning-strong   #92400E OK
+  danger-strong    #991B1B OK
+
+== HASIL ==
+  SEMUA angka tabel §4.21 cocok dengan hitungan WCAG 2.1 (toleransi 0,006) — 7 tone + 7 tone solid.
+EXIT=0
+(skrip tidak diubah)
+
+== 10. SAPU KOMPONEN TANPA IMPORT ==
+$ python tmp/cek-komponen-tanpa-import.py .
+file diperiksa: 81
+resources\js\app.jsx: App
+EXIT=0
+Temuan tunggal `app.jsx: App` adalah false positive yang sudah dikenal (parameter `setup({el, App, props})`).
+
+== 11. SAPU IDENTIFIER BUNDEL ==
+$ python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build
+chunk .js diperiksa: 49
+OK: tidak ada identifier komponen JSX tanpa import/definisi di bundel.
+EXIT=0
+
+== 12. DAFTAR 29 TITIK (nomor baris sesudah terapan; isi baris = kelas lama) ==
+  resources/js/Components/PageHeader.jsx:18  (awal baris 18)  {description && <p className="mt-1 text-meta text-slate-500">{description}</p>}
+  resources/js/Components/Breadcrumb.jsx:31  (awal baris 31)  <ol className="flex h-full items-center gap-2 text-meta text-slate-500">
+  resources/js/Components/EmptyState.jsx:25  (awal baris 25)  {description && <p className="max-w-sm text-meta text-slate-500">{description}</p>}
+  resources/js/Components/ErrorState.jsx:28  (awal baris 28)  {description && <p className="max-w-sm text-meta text-slate-500">{description}</p>}
+  resources/js/Components/StarRating.jsx:48  (awal baris 48)  <span className="text-meta text-slate-500">({formatNumber(count)})</span>
+  resources/js/Components/DataTable.jsx:81  (awal baris 81)  'h-tableHead whitespace-nowrap border-b border-line px-4 text-label uppercase text-slate-500',
+  resources/js/Components/QrisPanel.jsx:99  (awal baris 99)  <p className="mt-4 text-meta text-slate-500">
+  resources/js/Components/QrisPanel.jsx:100  (awal baris 100)  Kode pesanan <span className="font-mono text-slate-500">{code}</span> · {amount}
+  resources/js/Pages/Public/Contact.jsx:248  (awal baris 248)  <div className="flex h-map w-full items-center justify-center rounded-md border border-line bg-surfa
+  resources/js/Pages/Admin/Accounts/Index.jsx:455  (awal baris 455)  <p className="text-meta text-slate-500">
+  resources/js/Pages/Admin/Accounts/Index.jsx:525  (awal baris 525)  <p className="text-meta text-slate-500">
+  resources/js/Pages/Admin/Categories/Index.jsx:414  (awal baris 414)  <p className="text-meta text-slate-500">
+  resources/js/Pages/Admin/Categories/Index.jsx:469  (awal baris 469)  <p className="text-meta text-slate-500">
+  resources/js/Pages/Admin/Categories/Index.jsx:605  (awal baris 605)  <p className="text-meta text-slate-500">
+  resources/js/Pages/Admin/Messages/Index.jsx:341  (awal baris 341)  <p className="text-meta text-slate-500">
+  resources/js/Pages/Admin/Messages/Index.jsx:406  (awal baris 406)  <p className="text-meta text-slate-500">
+  resources/js/Pages/Admin/Messages/Index.jsx:479  (awal baris 479)  <p className="text-badge uppercase text-slate-500">Isi pesan</p>
+  resources/js/Pages/Admin/Messages/Index.jsx:484  (awal baris 484)  <dt className="shrink-0 text-slate-500">Email</dt>
+  resources/js/Pages/Admin/Messages/Index.jsx:488  (awal baris 488)  <dt className="shrink-0 text-slate-500">Telepon</dt>
+  resources/js/Pages/Admin/Messages/Index.jsx:492  (awal baris 492)  <dt className="shrink-0 text-slate-500">Diterima</dt>
+  resources/js/Pages/Admin/Messages/Index.jsx:504  (awal baris 504)  <p className="text-badge uppercase text-slate-500">Balasan toko</p>
+  resources/js/Pages/Admin/Messages/Index.jsx:506  (awal baris 506)  <p className="mt-1 text-meta text-slate-500">
+  resources/js/Pages/Admin/Reviews/Index.jsx:263  (awal baris 263)  <p className="text-badge uppercase text-slate-500">Balasan toko</p>
+  resources/js/Pages/Admin/Reviews/Index.jsx:265  (awal baris 265)  <p className="mt-1 text-meta text-slate-500">{formatDateTime(row.replied_at)}</p>
+  resources/js/Pages/Admin/Reviews/Index.jsx:397  (awal baris 397)  <p className="text-meta text-slate-500">
+  resources/js/Pages/Admin/Reviews/Index.jsx:459  (awal baris 459)  <span className="text-meta text-slate-500">
+  resources/js/Pages/Admin/Settings/Index.jsx:163  (awal baris 163)  isActive ? 'border-b-2 border-brand text-brand' : 'text-slate-500 hover:text-ink'
+  resources/js/Pages/Admin/Settings/Index.jsx:1551  (awal baris 1551)  <p className="text-meta text-slate-500">Carousel tampil di bagian atas beranda, urut dari angka terk
+  resources/js/Pages/Admin/Settings/Index.jsx:1573  (awal baris 1573)  <p className="text-meta text-slate-500">FAQ tampil di bagian FAQ beranda, urut dari angka terkecil.<
+
+== 13. YANG TIDAK DISENTUH ==
+  - 66 sisa kemunculan text-slate-500 di resources/js: 25 yang bersandar pada putih/kartu,
+    12 kandidat false positive, dan sisanya tanpa penanda latar — sesuai larangan kartu.
+  - .env, tailwind.config.js, docs/design.md, docs/PRD.md, komponen dan teks lain.
+  - Tidak ada commit (R8), tidak ada server dijalankan, tidak ada migrasi/seeder.
+
+== 14. BELUM DIUJI ==
+  - Tampilan nyata di browser (kontras terukur di layar, responsif 360/768/1024/1280, keyboard, zoom 200%):
+    butuh browser milik pemilik. Angka kontras di sini berasal dari token repo + skrip WCAG
+    (docs/qa/kontras-meta.py): slate-600 di atas surface 7,00:1; brand-100 6,26:1; chip slate-200/60 6,50:1;
+    slate-200 6,15:1 — semuanya lolos ambang 4,5:1.

@@ -1,0 +1,649 @@
+
+===== A. DataTable signature + EmptyState pakai =====
+export default function DataTable({
+    columns = [],
+    rows = [],
+    rowKey = (row, index) => row?.id ?? index,
+    loading = false,
+    error = null,
+    emptyTitle = 'Belum ada data',
+    emptyDescription = null,
+    emptyActionLabel = null,
+    emptyActionHref = null,
+    onRetry = null,
+    onRowClick = null,
+    sort = null,
+    onSort = null,
+    caption = null,
+    className = '',
+}) {
+    const list = Array.isArray(rows) ? rows : [];
+    const hasRows = list.length > 0;
+
+    const cellAlign = (column) =>
+        column.align === 'right' ? 'text-right' : column.align === 'center' ? 'text-center' : 'text-left';
+
+    const sortState = (column) => {
+        if (!sort || sort.key !== column.key) return 'none';
+        return sort.dir === 'desc' ? 'descending' : 'ascending';
+    };
+
+    return (
+        <div className={cn('overflow-hidden rounded-lg border border-line bg-white', className)}>
+            {error ? (
+                <ErrorState
+                    title="Gagal memuat data"
+                    description={typeof error === 'string' ? error : 'Periksa koneksi Anda lalu coba lagi.'}
+                    onRetry={onRetry}
+                    supportHref={null}
+                />
+            ) : loading ? (
+                <div className="flex flex-col" aria-busy="true">
+                    <div className="h-tableHead w-full border-b border-line bg-surface" aria-hidden="true" />
+                    {Array.from({ length: 8 }).map((_, index) => (
+                        <div key={index} className="flex items-center gap-4 border-b border-line px-4 last:border-b-0">
+                            <Skeleton variant="row" />
+                        </div>
+                    ))}
+                </div>
+            ) : !hasRows ? (
+                <EmptyState
+                    title={emptyTitle}
+                    description={emptyDescription}
+                    actionLabel={emptyActionLabel}
+                    actionHref={emptyActionHref}
+                />
+            ) : (
+                <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-meta">
+                        {caption && <caption className="sr-only">{caption}</caption>}
+                        <thead>
+                            <tr className="bg-surface">
+                                {columns.map((column) => {
+                                    const isSorted = sort && sort.key === column.key;
+                                    const sortable = Boolean(onSort && column.sortable !== false);
+
+                                    return (
+                                        <th
+                                            key={column.key}
+                                            scope="col"
+                                            aria-sort={isSorted ? sortState(column) : undefined}
+                                            className={cn(
+                                                'h-tableHead whitespace-nowrap border-b border-line px-4 text-label uppercase text-slate-500',
+                                                cellAlign(column)
+                                            )}
+                                        >
+                                            {sortable ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onSort(column.key)}
+                                                    className={cn(
+                                                        'inline-flex items-center gap-1 rounded-sm transition-colors duration-hover hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
+                                                        isSorted && 'text-ink'
+                                                    )}
+                                                >
+                                                    {column.header}
+                                                    <span aria-hidden="true">
+                                                        {isSorted ? (sort.dir === 'desc' ? '↓' : '↑') : '↕'}
+                                                    </span>
+                                                </button>
+                                            ) : (
+                                                column.header
+                                            )}
+                                        </th>
+                                    );
+                                })}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {list.map((row, index) => {
+                                const clickable = typeof onRowClick === 'function';
+
+                                return (
+                                    <tr
+                                        key={rowKey(row, index)}
+                                        className={cn(
+                                            'h-tableRow border-b border-line last:border-b-0',
+                                            clickable &&
+                                                'cursor-pointer transition-colors duration-hover hover:bg-surface focus-within:bg-surface'
+                                        )}
+                                        onClick={clickable ? () => onRowClick(row, index) : undefined}
+                                    >
+                                        {columns.map((column) => (
+                                            <td
+                                                key={column.key}
+                                                className={cn('px-4 align-middle text-ink', cellAlign(column))}
+                                            >
+                                                {column.render ? column.render(row, index) : (row?.[column.key] ?? '-')}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </div>
+    );
+}
+3:import EmptyState from './EmptyState';
+17:    error = null,
+20:    emptyActionLabel = null,
+21:    emptyActionHref = null,
+22:    onRetry = null,
+42:            {error ? (
+45:                    description={typeof error === 'string' ? error : 'Periksa koneksi Anda lalu coba lagi.'}
+46:                    onRetry={onRetry}
+50:                <div className="flex flex-col" aria-busy="true">
+59:                <EmptyState
+62:                    actionLabel={emptyActionLabel}
+63:                    actionHref={emptyActionHref}
+67:                    <table className="w-full border-collapse text-meta">
+
+===== B. Modal signature =====
+export default function Modal({
+    open = false,
+    title = null,
+    description = null,
+    children = null,
+    footer = null,
+    onClose,
+    size = 'md',
+    closeLabel = 'Tutup',
+}) {
+    const panelRef = useRef(null);
+
+    useBodyScrollLock(open);
+    useFocusTrap(panelRef, open);
+
+    useEffect(() => {
+        if (!open) return undefined;
+
+        const onKeyDown = (event) => {
+            if (event.key === 'Escape') onClose?.();
+        };
+
+        document.addEventListener('keydown', onKeyDown);
+
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, [open, onClose]);
+
+    if (!open) return null;
+
+    return (
+        <div
+            className="fixed inset-0 z-modal flex items-center justify-center bg-black/50 p-4"
+            onMouseDown={(event) => {
+                if (event.target === event.currentTarget) onClose?.();
+            }}
+        >
+            <div
+                ref={panelRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={title ? 'modal-title' : undefined}
+                tabIndex={-1}
+                className={cn(
+                    'w-full rounded-xl bg-white p-6 shadow-raised animate-modal-in',
+                    SIZES[size] ?? SIZES.md
+                )}
+            >
+                <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                        {title && (
+                            <h2 id="modal-title" className="text-h3 text-ink">
+                                {title}
+                            </h2>
+                        )}
+                        {description && <p className="mt-1 text-meta text-ink-soft">{description}</p>}
+                    </div>
+                    {onClose && (
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            aria-label={closeLabel}
+                            className="-mr-2 -mt-1 inline-flex h-touch w-touch items-center justify-center rounded-md text-ink-soft transition-colors duration-hover hover:bg-surface"
+                        >
+                            <CloseIcon size={20} />
+                        </button>
+                    )}
+                </div>
+
+                {children && <div className="mt-4 text-body text-ink">{children}</div>}
+                {footer && <div className="mt-6 flex flex-wrap justify-end gap-3">{footer}</div>}
+            </div>
+        </div>
+    );
+}
+6:const SIZES = {
+7:    md: 'max-w-modal',
+8:    lg: 'max-w-modalLg',
+60:                    SIZES[size] ?? SIZES.md
+
+===== C. Pagination signature =====
+export default function Pagination({ currentPage = 1, lastPage = 1, onPageChange = null, className = '' }) {
+    const current = Math.max(1, Number(currentPage) || 1);
+    const last = Math.max(1, Number(lastPage) || 1);
+    if (last <= 1 || typeof onPageChange !== 'function') return null;
+
+    const go = (page) => {
+        if (page < 1 || page > last || page === current) return;
+        onPageChange(page);
+    };
+
+    const base =
+        'inline-flex h-9 w-9 items-center justify-center rounded-sm text-meta transition-colors duration-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2';
+    const pages = buildPages(current, last);
+
+    return (
+        <nav aria-label="Navigasi halaman" className={cn('flex items-center justify-center gap-1', className)}>
+            <button
+                type="button"
+                onClick={() => go(current - 1)}
+                disabled={current <= 1}
+                aria-label="Halaman sebelumnya"
+                className={cn(base, 'text-slate-400 hover:bg-surface disabled:cursor-not-allowed disabled:opacity-45')}
+            >
+                <Chevron direction="left" />
+            </button>
+
+            <span className="px-2 text-meta text-ink-soft sm:hidden" aria-live="polite">
+                {current} / {last}
+            </span>
+
+            <div className="hidden items-center gap-1 sm:flex">
+                {pages.map((page, index) => {
+                    const previous = pages[index - 1];
+                    const gap = previous && page - previous > 1;
+                    return (
+                        <React.Fragment key={page}>
+                            {gap && (
+                                <span className="px-1 text-meta text-slate-400" aria-hidden="true">
+                                    ...
+                                </span>
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => go(page)}
+                                aria-current={page === current ? 'page' : undefined}
+                                aria-label={'Halaman ' + page}
+                                className={cn(
+                                    base,
+                                    page === current ? 'bg-brand-700 text-white' : 'text-ink hover:bg-surface'
+                                )}
+                            >
+                                {page}
+                            </button>
+                        </React.Fragment>
+                    );
+                })}
+            </div>
+
+            <button
+                type="button"
+                onClick={() => go(current + 1)}
+                disabled={current >= last}
+                aria-label="Halaman berikutnya"
+                className={cn(base, 'text-slate-400 hover:bg-surface disabled:cursor-not-allowed disabled:opacity-45')}
+            >
+                <Chevron direction="right" />
+            </button>
+        </nav>
+    );
+}
+
+===== D. Toast signature =====
+export default function Toast({
+    tone = 'info',
+    title = null,
+    message = null,
+    duration = 4000,
+    onClose = null,
+}) {
+    const config = TONES[tone] ?? TONES.info;
+    const Icon = config.icon;
+
+    useEffect(() => {
+        if (!duration || !onClose) return undefined;
+
+        const id = window.setTimeout(onClose, duration);
+
+        return () => window.clearTimeout(id);
+    }, [duration, onClose]);
+
+    return (
+        <div
+            role={tone === 'error' ? 'alert' : 'status'}
+            className={cn(
+                'pointer-events-auto flex w-full max-w-[360px] items-start gap-3 rounded-md border border-line border-l-[3px] bg-white p-4 shadow-raised animate-fade-up',
+                config.bar
+            )}
+        >
+            <span className={cn('mt-0.5 shrink-0', config.color)} aria-hidden="true">
+                <Icon size={20} />
+            </span>
+            <div className="min-w-0 flex-1">
+                {title && <p className="text-label text-ink">{title}</p>}
+                {message && <p className="text-meta text-ink-soft">{message}</p>}
+            </div>
+            {onClose && (
+                <button
+                    type="button"
+                    onClick={onClose}
+                    aria-label="Tutup notifikasi"
+                    className="shrink-0 rounded-sm p-1 text-ink-soft transition-colors duration-hover hover:bg-surface"
+                >
+                    <CloseIcon size={16} />
+                </button>
+            )}
+        </div>
+    );
+}
+
+===== E. InlineNotice signature =====
+export default function InlineNotice({
+    tone = 'info',
+    title = null,
+    children = null,
+    onDismiss = null,
+    className = '',
+}) {
+    const Icon = ICONS[tone] ?? ICONS.info;
+
+    return (
+        <div
+            role={tone === 'error' ? 'alert' : 'status'}
+            className={cn('flex items-start gap-3 rounded-md p-4', TONES[tone] ?? TONES.info, className)}
+        >
+            <span className={cn('mt-0.5 shrink-0', ICON_TONES[tone] ?? ICON_TONES.info)} aria-hidden="true">
+                <Icon size={20} />
+            </span>
+            <div className="min-w-0 flex-1">
+                {title && <p className="text-label">{title}</p>}
+                {children && <div className="text-meta text-ink-soft">{children}</div>}
+            </div>
+            {onDismiss && (
+                <button
+                    type="button"
+                    onClick={onDismiss}
+                    aria-label="Tutup pesan"
+                    className="shrink-0 rounded-sm p-1 text-ink-soft transition-colors duration-hover hover:bg-white/60"
+                >
+                    <CloseIcon size={16} />
+                </button>
+            )}
+        </div>
+    );
+}
+
+===== F. inertia-stub-messages.jsx =====
+// Stub @inertiajs/react yang mencatat panggilan router/useForm, khusus harness
+// verifikasi halaman Admin/Messages/Index (tmp/admin-messages-harness.jsx).
+// Bukan bagian aplikasi: dipakai supaya aksi UI bisa diperiksa (URL, verb, payload).
+import React from 'react';
+
+let pageProps = {
+    errors: {},
+    auth: { user: null, admin: null },
+    flash: { success: null, error: null },
+};
+
+let formErrors = {};
+
+export const __calls = [];
+window.__calls = __calls;
+
+export function __reset() {
+    pageProps = { errors: {}, auth: { user: null, admin: null }, flash: { success: null, error: null } };
+    formErrors = {};
+    __calls.length = 0;
+}
+
+export function __setPageProps(next) {
+    pageProps = { ...pageProps, ...next };
+}
+
+export function __setFormErrors(next) {
+    formErrors = next;
+}
+
+export function usePage() {
+    return { props: pageProps, url: '/admin/pesan-masuk', component: 'Admin/Messages/Index', version: null };
+}
+
+export function Head() {
+    return null;
+}
+
+export function Link({ href, children, ...rest }) {
+    return (
+        <a href={typeof href === 'string' ? href : '#'} {...rest}>
+            {children}
+        </a>
+    );
+}
+
+/** useForm tiruan yang stateful: cukup untuk memeriksa alur kirim balasan. */
+export function useForm(initial = {}) {
+    const [data, setDataState] = React.useState(initial);
+
+    const setData = (key, value) => {
+        if (typeof key === 'object' && key !== null) {
+            setDataState((prev) => ({ ...prev, ...key }));
+
+            return;
+        }
+
+        setDataState((prev) => ({ ...prev, [key]: value }));
+    };
+
+    return {
+        data,
+        setData,
+        post: (url, options = {}) => {
+            __calls.push({ kind: 'form.post', url, data: { ...data } });
+            options.onSuccess?.();
+        },
+        put: (url) => __calls.push({ kind: 'form.put', url }),
+        patch: (url) => __calls.push({ kind: 'form.patch', url }),
+        delete: (url) => __calls.push({ kind: 'form.delete', url }),
+        processing: false,
+        errors: formErrors,
+        hasErrors: Object.keys(formErrors).length > 0,
+        reset: () => setDataState(initial),
+        clearErrors: () => {},
+        setError: () => {},
+        transform: () => {},
+    };
+}
+
+export const router = {
+    get: (url, params, options = {}) => {
+        __calls.push({ kind: 'router.get', url, params });
+        options.onStart?.();
+
+        if (window.__failNextGet) {
+            window.__failNextGet = false;
+            options.onError?.({ status: 500, data: {} });
+        }
+
+        if (!window.__holdGet) options.onFinish?.();
+    },
+    post: (url, data, options = {}) => {
+        __calls.push({ kind: 'router.post', url, data });
+        options.onStart?.();
+        options.onFinish?.();
+    },
+    patch: (url, data, options = {}) => {
+        __calls.push({ kind: 'router.patch', url, data });
+        options.onStart?.();
+
+        if (window.__failNextPatch) {
+            const status = window.__failNextPatch;
+            window.__failNextPatch = null;
+
+            // Inertia memanggil onHttpException; false = sudah ditangani halaman.
+            const handled = options.onHttpException?.({ status, data: {} });
+
+            if (handled === undefined) options.onError?.({ status, data: {} });
+        }
+
+        options.onFinish?.();
+    },
+    put: (url) => __calls.push({ kind: 'router.put', url }),
+    delete: (url) => __calls.push({ kind: 'router.delete', url }),
+    visit: (url) => __calls.push({ kind: 'router.visit', url }),
+    reload: () => __calls.push({ kind: 'router.reload' }),
+};
+
+===== G. admin-messages-harness.jsx =====
+// Entry harness verifikasi render halaman Admin/Messages/Index di browser nyata
+// (docs/kontrak-props.md §10.1-§10.3, docs/design.md §5.12). Hanya alat verifikasi,
+// bukan bagian aplikasi. Jalankan: node tmp/build-admin-messages-check.mjs lalu buka
+// tmp/admin-messages-harness.html.
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { __reset, __setPageProps } from './inertia-stub-messages.jsx';
+import Index from '../resources/js/Pages/Admin/Messages/Index.jsx';
+
+const PAG = (rows, extra = {}) => ({
+    current_page: 1,
+    last_page: 3,
+    per_page: 10,
+    total: rows.length,
+    data: rows,
+    links: [],
+    ...extra,
+});
+
+const ROW_UNREAD = {
+    id: 11,
+    name: 'Rina',
+    email: 'rina@contoh.test',
+    phone: '081200000011',
+    subject: 'Stok daster jumbo',
+    message: 'Apakah daster jumbo ready?',
+    admin_reply: null,
+    replied_at: null,
+    is_read: false,
+    created_at: '2026-10-18T09:30:00+07:00',
+};
+
+const ROW_READ_REPLIED = {
+    id: 12,
+    name: 'Budi',
+    email: 'budi@contoh.test',
+    phone: null,
+    subject: 'Pesanan belum sampai',
+    message: 'Pesanan INV-0021 belum sampai.',
+    admin_reply: 'Mohon maaf, kami cek dulu ya.',
+    replied_at: '2026-10-19T11:05:00+07:00',
+    is_read: true,
+    created_at: '2026-10-17T08:00:00+07:00',
+};
+
+const ROW_KOSONG = {
+    id: 13,
+    name: null,
+    email: null,
+    phone: null,
+    subject: null,
+    message: null,
+    admin_reply: '',
+    replied_at: null,
+    is_read: null,
+    created_at: null,
+};
+
+const FIXTURES = [
+    {
+        label: 'daftar normal',
+        props: {
+            pesan: PAG([ROW_UNREAD, ROW_READ_REPLIED, ROW_KOSONG]),
+            filter: { q: null, status: null },
+            ringkasan: { total: 3, belum_dibaca: 1 },
+            auth: { admin: { name: 'Admin Uji', email: 'admin@contoh.test' } },
+            flash: { success: null, error: null },
+        },
+    },
+    {
+        label: 'angka berbentuk string',
+        props: {
+            pesan: PAG([ROW_UNREAD], { total: '7', last_page: '2' }),
+            filter: { q: 'daster', status: 'belum' },
+            ringkasan: { total: '7', belum_dibaca: '2' },
+            auth: null,
+            flash: { success: 'Balasan tersimpan.' },
+        },
+    },
+    {
+        label: 'kosong tanpa filter',
+        props: {
+            pesan: PAG([], { total: 0, last_page: 1 }),
+            filter: { q: null, status: 'semua' },
+            ringkasan: { total: 0, belum_dibaca: 0 },
+            auth: null,
+            flash: null,
+        },
+    },
+    {
+        label: 'kosong karena filter',
+        props: {
+            pesan: PAG([], { total: 0, last_page: 1 }),
+            filter: { q: 'sepatu', status: 'sudah' },
+            ringkasan: { total: 0, belum_dibaca: 0 },
+            auth: null,
+            flash: null,
+        },
+    },
+    {
+        label: 'props null semua',
+        props: { pesan: null, filter: null, ringkasan: null, auth: null, flash: null },
+    },
+];
+
+let root = null;
+
+window.__fixtures = FIXTURES.map((f) => f.label);
+
+window.__render = (index) => {
+    const fixture = FIXTURES[index] ?? FIXTURES[0];
+    const host = document.getElementById('app');
+
+    if (root) root.unmount();
+    host.replaceChildren();
+    __reset();
+    __setPageProps(fixture.props);
+    root = createRoot(host);
+    root.render(React.createElement(Index, fixture.props));
+
+    return fixture.label;
+};
+
+window.__render(0);
+
+===== H. git status dua berkas + log =====
+?? resources/js/Pages/Admin/Accounts/Index.jsx
+?? resources/js/Pages/Admin/Categories/Index.jsx
+ M .env.example
+ M app/Http/Middleware/EnsureAdmin.php
+ M app/Http/Middleware/HandleInertiaRequests.php
+ M app/Models/Admin.php
+ M app/Models/User.php
+ M app/Providers/AppServiceProvider.php
+ M database/migrations/2026_10_20_000001_create_admins_table.php
+ M database/seeders/DatabaseSeeder.php
+ M docs/PRD.md
+ M docs/asumsi.md
+ M docs/brief-backend.md
+ M docs/brief-devops.md
+ M docs/brief-frontend.md
+ M docs/brief-qa.md
+ M docs/brief-uiux.md
+ M docs/catatan-devops.md
+ M docs/catatan-frontend.md
+ M docs/design.md
+ M docs/langkah-pemilik.md
+ M docs/lingkungan.md
+  648 23418 tmp/bundel-konteks9-t_e5149746.txt

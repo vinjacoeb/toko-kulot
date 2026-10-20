@@ -242,7 +242,7 @@ export default function ProductsIndex({
                                 />
 
                                 {!isLoading && total > 0 && (
-                                    <p className="mt-4 text-meta text-slate-400" aria-live="polite">
+                                    <p className="mt-4 text-meta text-slate-500" aria-live="polite">
                                         Menampilkan {formatNumber(list.length)} dari {formatNumber(total)} produk
                                     </p>
                                 )}

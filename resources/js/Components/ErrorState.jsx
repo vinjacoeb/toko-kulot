@@ -25,7 +25,7 @@ export default function ErrorState({
                 <AlertIcon size={48} />
             </span>
             <p className="text-h3 text-ink">{title}</p>
-            {description && <p className="max-w-sm text-meta text-slate-400">{description}</p>}
+            {description && <p className="max-w-sm text-meta text-slate-600">{description}</p>}
             <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
                 {onRetry && (
                     <Button variant="primary" onClick={onRetry}>

@@ -1,0 +1,14 @@
+=== GET halaman ===
+/login                           200
+/register                        200
+/forgot-password                 200
+/reset-password/token-dummy      200
+xsrf terbaca: ya
+=== POST /login (kredensial palsu) ===
+status=302 redirect=
+=== props /login setelah POST gagal ===
+data-page="app" type="application/json">{"component":"Public\/Auth\/Login","props":{"errors":{"email":"Email atau kata sandi salah."},"auth":{"user":null,"admin":null},"cart":{"count":0},"flash":{"success":null,"error":null},"meta":{"description":nul
+=== POST /reset-password (token palsu) ===
+status=302 redirect=
+=== props /reset-password/token-dummy setelah POST gagal ===
+data-page="app" type="application/json">{"component":"Public\/Auth\/ResetPassword","props":{"errors":{"email":"Email tidak terdaftar."},"auth":{"user":null,"admin":null},"cart":{"count":0},"flash":{"success":null,"error":null},"meta":{"description":null},"settings":{"store_name":"Toko Kulot","store_logo":"\/i

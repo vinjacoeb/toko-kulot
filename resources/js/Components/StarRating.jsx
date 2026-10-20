@@ -45,7 +45,7 @@ export default function StarRating({
                     </span>
                 </span>
                 {count !== null && count !== undefined && (
-                    <span className="text-meta text-slate-400">({formatNumber(count)})</span>
+                    <span className="text-meta text-slate-600">({formatNumber(count)})</span>
                 )}
             </span>
         );

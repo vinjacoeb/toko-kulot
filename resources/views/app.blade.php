@@ -9,8 +9,12 @@
 
     <meta name="description" content="{{ $page['props']['meta']['description'] ?? 'Toko Kulot — daster dan kulot kualitas premium, harga eceran dan grosir.' }}">
 
-    {{-- Font self-host: taruh woff2 di public/fonts --}}
+    {{-- Font: Bunny Fonts (mirror Google Fonts, tanpa tracking). Self-host woff2 di public/fonts bila sudah tersedia. --}}
     <link rel="preconnect" href="https://fonts.bunny.net">
+    <link
+        rel="stylesheet"
+        href="https://fonts.bunny.net/css?family=bebas-neue:400|inter:400,500,600,700&display=swap"
+    >
 
     @viteReactRefresh
     @vite(['resources/css/app.css', 'resources/js/app.jsx'])

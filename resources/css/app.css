@@ -48,7 +48,7 @@
     }
     .field {
         @apply w-full h-field px-3.5 rounded-md border border-line text-body
-               placeholder:text-slate-400 focus:border-brand focus:ring-[3px]
+               placeholder:text-slate-500 focus:border-brand focus:ring-[3px]
                focus:ring-brand/15 transition-colors duration-150;
     }
     .field-error {

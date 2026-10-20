@@ -1,0 +1,197 @@
+=== DB: C:\Users\LENOVO\AppData\Local\hermes\kanban\boards\toko-kulot\kanban.db
+tables: ['kanban_notify_subs', 'sqlite_sequence', 'task_attachments', 'task_comments', 'task_events', 'task_links', 'task_runs', 'tasks']
+  - kanban_notify_subs ['task_id', 'platform', 'chat_id', 'thread_id', 'user_id', 'user_id_alt', 'chat_type', 'notifier_profile', 'delivery_mode', 'delivery_metadata', 'created_at', 'last_event_id', 'last_ping_event_id']
+  - sqlite_sequence ['name', 'seq']
+  - task_attachments ['id', 'task_id', 'filename', 'stored_path', 'content_type', 'size', 'uploaded_by', 'created_at']
+  - task_comments ['id', 'task_id', 'author', 'body', 'created_at']
+  - task_events ['id', 'task_id', 'run_id', 'kind', 'payload', 'created_at']
+  - task_links ['parent_id', 'child_id']
+  - task_runs ['id', 'task_id', 'profile', 'step_key', 'status', 'claim_lock', 'claim_expires', 'worker_pid', 'worker_started_at', 'max_runtime_seconds', 'last_heartbeat_at', 'started_at', 'ended_at', 'outcome', 'summary', 'metadata', 'error']
+  - tasks ['id', 'title', 'body', 'assignee', 'status', 'priority', 'created_by', 'created_at', 'started_at', 'completed_at', 'workspace_kind', 'workspace_path', 'branch_name', 'project_id', 'claim_lock', 'claim_expires', 'tenant', 'result', 'idempotency_key', 'consecutive_failures', 'worker_pid', 'worker_started_at', 'last_failure_error', 'max_runtime_seconds', 'last_heartbeat_at', 'current_run_id', 'workflow_template_id', 'current_step_key', 'skills', 'model_override', 'provider_override', 'reasoning_effort', 'max_retries', 'goal_mode', 'goal_max_turns', 'session_id', 'block_kind', 'block_recurrences', 'completion_contract']
+
+--- TASK ROW ---
+id: t_e5149746
+title: Frontend: halaman Admin/Kategori + Admin/Akun masih placeholder — tautan /admin/kategori/tambah & /admin/akun/tambah tanpa rute (404) dan belum ada Modal tambah/ubah
+body: Konteks: temuan sampingan kartu QA-007 `t_6ee422f2`. `resources/js/Pages/Admin/Categories/Index.jsx:17` (`href="/admin/kategori/tambah"`) dan `resources/js/Pages/Admin/Accounts/Index.jsx:18` (`href="/admin/akun/tambah"`) menunjuk rute GET yang TIDAK ada di `routes/admin.php` → 404 saat diklik. Kontrak `docs/kontrak-props.md` §12.8 sudah menyatakan: form tambah/ubah kategori dikerjakan inline; tombol `/admin/kategori/tambah` pada placeholder harus diganti.
+Wajib (design `docs/design.md` §5.12): pola baku PageHeader → toolbar (search + filter) → Table → Pagination; form tambah/edit dalam Modal besar (`max-w-modalLg` 720px); hapus via ConfirmDialog dengan nama entitas; untuk Akun "hapus diri sendiri `disabled` dengan alasan (PRD §9)".
+Rute yang sudah ada (jangan tambah rute baru): POST `/admin/kategori` (§12.9), PUT/DELETE `/admin/kategori/{category}` (§12.10–12.11), POST `/admin/akun` (§12.20), PUT/DELETE `/admin/akun/{admin}` (§12.21–12.22); pesan `flash.success` dan `errors.*` persis dari kontrak.
+Langkah: (1) ganti kedua tombol placeholder dengan Modal tambah/ubah, (2) tampilkan galat validasi per field di dalam modal, (3) ConfirmDialog untuk hapus + penolakan "kategori masih dipakai" (§12.11), (4) state loading/empty/error/saving/deleting terpisah.
+Bukti audit: `docs/bukti-frontend-t_6ee422f2.txt` bagian 9; ulangi dengan `python tmp/cek-tautan-admin-vs-rute.py` (harus LULUS tanpa temuan).
+Pendekatan acuan: kartu `t_fc49ee38` (Reviews + Settings) sudah mengganti placeholder dengan pola kontrak yang sama.
+DoD: tidak ada tautan mati di kedua halaman, alur tambah/ubah/hapus berfungsi lewat modal+ConfirmDialog, `npm run build` sukses, hasil dan sisa keterbatasan dicatat di `docs/catatan-frontend.md` + berkas bukti.
+Keterbatasan: server pengembangan + kredensial admin milik pemilik manusia; jangan menyalakan server, jangan menyentuh `.env`, dan jangan mengubah berkas di luar `resources/js/` kecuali catatan/bukti di `docs/`.
+assignee: frontenddeveloper
+status: running
+priority: 0
+created_by: frontenddeveloper
+created_at: 1792483923
+started_at: 1792484231
+completed_at: None
+workspace_kind: dir
+workspace_path: C:\Users\LENOVO\Downloads\toko-kulot
+branch_name: None
+project_id: None
+claim_lock: DESKTOP-5MKFQIA:16704
+claim_expires: 1792486032
+tenant: None
+result: None
+idempotency_key: None
+consecutive_failures: 0
+worker_pid: 18972
+worker_started_at: |179248423195
+last_failure_error: None
+max_runtime_seconds: None
+last_heartbeat_at: 1792485132
+current_run_id: 53
+workflow_template_id: None
+current_step_key: None
+skills: None
+model_override: None
+provider_override: None
+reasoning_effort: None
+max_retries: None
+goal_mode: 0
+goal_max_turns: None
+session_id: 20261020_135849_ac279c
+block_kind: None
+block_recurrences: 0
+completion_contract: local-only
+
+--- task_comments rows: 0 ---
+
+--- task_events rows: 19 ---
+---
+id: 916
+task_id: t_e5149746
+run_id: None
+kind: created
+payload: {"assignee": "frontenddeveloper", "status": "todo", "parents": ["t_6ee422f2"], "creator_task_id": "t_6ee422f2", "tenant": null, "workspace_kind": "dir", "workspace_path": "C:\\Users\\LENOVO\\Downloads\\toko-kulot", "branch_name": null, "project_id": null, "skills": null, "goal_mode": null, "model_override": null, "provider_override": null}
+created_at: 1792483923
+---
+id: 917
+task_id: t_e5149746
+run_id: None
+kind: dependency_wait
+payload: {"reason": "parent_not_done", "parent": "t_6ee422f2"}
+created_at: 1792483923
+---
+id: 946
+task_id: t_e5149746
+run_id: None
+kind: promoted
+payload: None
+created_at: 1792484204
+---
+id: 950
+task_id: t_e5149746
+run_id: 53
+kind: claimed
+payload: {"lock": "DESKTOP-5MKFQIA:16704", "expires": 1792485131, "run_id": 53}
+created_at: 1792484231
+---
+id: 951
+task_id: t_e5149746
+run_id: 53
+kind: spawned
+payload: {"pid": 18972, "started_at": "|179248423195"}
+created_at: 1792484231
+---
+id: 956
+task_id: t_e5149746
+run_id: 53
+kind: heartbeat
+payload: None
+created_at: 1792484250
+---
+id: 961
+task_id: t_e5149746
+run_id: 53
+kind: heartbeat
+payload: None
+created_at: 1792484310
+---
+id: 966
+task_id: t_e5149746
+run_id: 53
+kind: heartbeat
+payload: None
+created_at: 1792484370
+---
+id: 971
+task_id: t_e5149746
+run_id: 53
+kind: heartbeat
+payload: None
+created_at: 1792484430
+---
+id: 982
+task_id: t_e5149746
+run_id: 53
+kind: heartbeat
+payload: None
+created_at: 1792484515
+---
+id: 986
+task_id: t_e5149746
+run_id: 53
+kind: heartbeat
+payload: None
+created_at: 1792484575
+---
+id: 993
+task_id: t_e5149746
+run_id: 53
+kind: heartbeat
+payload: None
+created_at: 1792484636
+---
+id: 1002
+task_id: t_e5149746
+run_id: 53
+kind: heartbeat
+payload: None
+created_at: 1792484698
+---
+id: 1007
+task_id: t_e5149746
+run_id: 53
+kind: heartbeat
+payload: None
+created_at: 1792484767
+---
+id: 1017
+task_id: t_e5149746
+run_id: 53
+kind: heartbeat
+payload: None
+created_at: 1792484877
+---
+id: 1023
+task_id: t_e5149746
+run_id: 53
+kind: heartbeat
+payload: None
+created_at: 1792484938
+---
+id: 1027
+task_id: t_e5149746
+run_id: 53
+kind: heartbeat
+payload: None
+created_at: 1792485011
+---
+id: 1031
+task_id: t_e5149746
+run_id: 53
+kind: heartbeat
+payload: None
+created_at: 1792485071
+---
+id: 1035
+task_id: t_e5149746
+run_id: 53
+kind: heartbeat
+payload: None
+created_at: 1792485132
+=== DB: C:\Users\LENOVO\.hermes\kanban.db
+tables: []

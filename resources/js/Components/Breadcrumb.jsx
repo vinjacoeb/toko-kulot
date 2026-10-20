@@ -28,7 +28,7 @@ export default function Breadcrumb({ items = [], className = '' }) {
 
     return (
         <nav aria-label="Breadcrumb" className={cn('h-12', className)}>
-            <ol className="flex h-full items-center gap-2 text-meta text-slate-400">
+            <ol className="flex h-full items-center gap-2 text-meta text-slate-600">
                 <li className="flex items-center gap-2">{renderItem(first, list.length === 1)}</li>
                 {list.length > 1 && (
                     <li className="flex items-center gap-2" aria-hidden="true">

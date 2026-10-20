@@ -1,0 +1,287 @@
+BUKTI KERJA UIUX — KARTU t_14cad9e2
+Aturan & kelas pengganti kontras teks meta di atas latar non-putih (keputusan B) → design.md v2.2
+Peran: uiux · Tanggal: 20 Okt 2026 · Repo: C:\Users\LENOVO\Downloads\toko-kulot
+Rujukan: docs/design.md (kini v2.2) §2.1, §2.5, §2.6, §9 baris 11 & 20, §11.4 T7
+Temuan asal: docs/bukti-frontend-t_90759be9.txt (kontras badge/meta), temuan §11.4 T7
+
+====================================================================
+0. RINGKASAN KEPUTUSAN (keputusan B)
+====================================================================
+- Teks meta informatif < 24px (kelas `text-meta` / `text-label` / `text-badge`) boleh
+  memakai `text-slate-500` (#64748B) HANYA di atas putih (#FFFFFF, 4,76:1 ✅).
+- Di atas latar non-putih (`surface` #F6F6F4, `brand-100` #E7E9F2, chip `slate-200/60`
+  di atas surface, `slate-200` #E2E8F0) wajib `text-slate-600` (#475569) → 6,15–7,00:1 ✅.
+- Pengecualian sah (tetap `slate-400`/`slate-500`):
+  1) elemen non-teks / `aria-hidden` (ambang 3:1), 2) teks `disabled`,
+  3) `placeholder:` di dalam field putih, 4) baris komentar kode.
+- Aturan sudah ditulis ke dokumen desain:
+  * §2.1 tabel token: baris `neutral.metaOnTint` (v2.2) `#475569` → `text-slate-600`.
+  * §2.1 tabel "Teks meta non-badge (v2.2)" (latar → slate-500 / slate-600 → kelas baku).
+  * §2.5/§2.6 poin 6: teks meta informatif < 24px di atas non-putih → `text-slate-600`.
+  * §9 baris 11 & 20 (checklist) + §11.4 T7 (temuan + 29 titik + pemetaan per konteks).
+  * Riwayat revisi v2.2 (baris 16 dokumen) mencatat kartu `t_14cad9e2`.
+- PENERAPAN KODE DILIMPASKAN ke kartu frontend **t_954abfe8** (gated_by kartu ini), memakai
+  applier `docs/qa/terapkan-meta-v22.py`. Kartu UIUX ini TIDAK mengubah kode produk:
+  29 baris pernah diubah hanya sebagai validasi end-to-end, lalu dikembalikan (diff 0).
+
+====================================================================
+1. RASIO KONTRAS (WCAG 2.1 §1.4.3 teks normal 4,5:1; §1.4.11 non-teks 3:1)
+====================================================================
+Skrip hitung: docs/qa/kontras-meta.py (jalur kode WCAG resmi: (L1+0.05)/(L2+0.05))
+
+| Latar                          | slate-500 #64748B | slate-600 #475569 | Kelas baku    |
+|--------------------------------|-------------------|-------------------|---------------|
+| putih #FFFFFF                  | 4,76:1  lolos     | 7,58:1  lolos     | slate-500     |
+| surface #F6F6F4                | 4,40:1  GAGAL     | 7,00:1  lolos     | slate-600     |
+| brand-100 #E7E9F2              | 3,93:1  GAGAL     | 6,26:1  lolos     | slate-600     |
+| chip slate-200/60 @ surface    | 4,08:1  GAGAL     | 6,50:1  lolos     | slate-600     |
+| slate-200 #E2E8F0              | 3,86:1  GAGAL     | 6,15:1  lolos     | slate-600     |
+
+Catatan: seluruh kemunculan `text-slate-400` yang tersisa di resources/js sudah diaudit
+sebelumnya dan bersifat ikon/dekoratif (ambang 3:1) → tidak diubah.
+
+====================================================================
+2. 29 TITIK KEPUTUSAN (13 berkas) — semua → text-slate-600
+====================================================================
+Daftar identik dengan Gate Check A (§11.4 T7). "Latar" = dasar keputusan:
+[L] = permukaan `bg-surface` dari layout (admin `<main class="bg-surface">` AdminLayout);
+[S] = penanda `bg-surface` di dalam berkas (jarak baris = hasil audit-penanda-meta.py);
+[K] = komponen bersama yang dirender baik di permukaan admin maupun putih.
+
+ no | berkas:baris                                    | konteks                                            | latar
+----|-------------------------------------------------|----------------------------------------------------|------
+  1 | Components/PageHeader.jsx:18                    | deskripsi halaman di bawah judul admin             | [L]
+  2 | Components/Breadcrumb.jsx:31                    | jejak breadcrumb admin                             | [L]
+  3 | Components/EmptyState.jsx:25                    | deskripsi empty state (dipakai admin)              | [L][K]
+  4 | Components/ErrorState.jsx:28                    | pesan blok error (dipakai admin)                   | [L][K]
+  5 | Components/StarRating.jsx:48                    | penghitung "(N)" ulasan (dipakai admin)            | [L][K]
+  6 | Components/DataTable.jsx:81                     | kelas `h-tableHead` (thead tabel admin)            | [S] bg-surface @11
+  7 | Components/QrisPanel.jsx:99                     | "Kode pesanan …" panel state `expired`             | [S] bg-surface @11
+  8 | Components/QrisPanel.jsx:100                    | `<span class="font-mono">` kode pesanan            | [S] bg-surface @12
+  9 | Pages/Public/Contact.jsx:248                    | fallback peta (blok `bg-surface` di baris sendiri) | [S] baris itu
+ 10 | Pages/Admin/Accounts/Index.jsx:455              | ringkasan total akun                               | [L]
+ 11 | Pages/Admin/Accounts/Index.jsx:525              | "Menampilkan X dari Y"                             | [L]
+ 12 | Pages/Admin/Categories/Index.jsx:414            | ringkasan total kategori                           | [L]
+ 13 | Pages/Admin/Categories/Index.jsx:469            | "Menampilkan X dari Y"                             | [L]
+ 14 | Pages/Admin/Categories/Index.jsx:605            | panel detail kategori (blok surface)               | [S] bg-surface @2
+ 15 | Pages/Admin/Messages/Index.jsx:341              | ringkasan total pesan                              | [L]
+ 16 | Pages/Admin/Messages/Index.jsx:406              | "Menampilkan X dari Y"                             | [L]
+ 17 | Pages/Admin/Messages/Index.jsx:479              | label "Isi pesan" pada kotak detail                | [S] bg-surface @1
+ 18 | Pages/Admin/Messages/Index.jsx:484              | `<dt>` Email                                       | [S] bg-surface @6
+ 19 | Pages/Admin/Messages/Index.jsx:488              | `<dt>` Telepon                                     | [S] bg-surface @10
+ 20 | Pages/Admin/Messages/Index.jsx:492              | `<dt>` Diterima                                    | [S] bg-surface @14
+ 21 | Pages/Admin/Messages/Index.jsx:504              | label "Balasan toko"                               | [S] bg-surface @1
+ 22 | Pages/Admin/Messages/Index.jsx:506              | waktu balasan                                      | [S] bg-surface @3
+ 23 | Pages/Admin/Reviews/Index.jsx:263               | label "Balasan toko" (kotak surface)               | [S] bg-surface @1
+ 24 | Pages/Admin/Reviews/Index.jsx:265               | tanggal balasan                                    | [S] bg-surface @3
+ 25 | Pages/Admin/Reviews/Index.jsx:397               | "Menampilkan X dari Y"                             | [L]
+ 26 | Pages/Admin/Reviews/Index.jsx:459               | meta pada panel balasan                            | [S] bg-surface @3
+ 27 | Pages/Admin/Settings/Index.jsx:163              | tab nonaktif pada tablist pengaturan               | [L]
+ 28 | Pages/Admin/Settings/Index.jsx:1551             | deskripsi tab Carousel (`renderCarousel`)          | [L]
+ 29 | Pages/Admin/Settings/Index.jsx:1573             | deskripsi tab FAQ (`renderFaq`)                    | [L]
+
+Bukti [L] (permukaan admin): AdminLayout.jsx — `<main>` berada di dalam
+`<div class="min-h-screen bg-surface ...">`; jadi PageHeader/Breadcrumb/tab-nav/ringkasan
+"Menampilkan X dari Y" dirender langsung di atas #F6F6F4 (slate-500 = 4,40:1 → gagal).
+Bukti [L] tab: `renderCarousel()`/`renderFaq()` mengembalikan `<div class="flex flex-col gap-4">`
+tanpa pembungkus `SectionCard`; sebaliknya `renderHeader()` memakai `SectionCard`
+(= `<section class="card p-6">`, putih) sehingga deskripsi kartu itu aman.
+Bukti baris 20: jarak 14 baris > jendela fatal gate (12) sehingga gate melaporkannya
+sebagai TINJAU, tetapi tetap salah satu dari 29 titik §11.4 T7 (terverifikasi manual).
+
+Pemetaan kelas (dokumen, §11.4 T7 "Pemetaan kelas pengganti per konteks (v2.2)"):
+satu pemetaan `text-slate-500` → `text-slate-600`, termasuk varian ber-prefix
+(`hover:`, `group-hover:`, `dark:` tidak dipakai proyek ini). Isi §11.4 T7 poin 1–6:
+1) header tabel admin di atas surface; 2) PageHeader+Breadcrumb admin di `<main bg-surface>`;
+3) meta di panel `bg-surface` (QrisPanel expired, kotak detail pesan, kotak unggah);
+4) tab nav nonaktif di atas surface; 5) meta di kartu/modal PUTIH tetap `text-slate-500`;
+6) non-teks/`aria-hidden`/`disabled`/`placeholder:`/komentar → tetap sesuai §2.1.
+
+====================================================================
+3. AUDIT SELURUH 95 KEMUNCULAN `text-slate-500` DI resources/js
+====================================================================
+Skrip: `python docs/qa/audit-penanda-meta.py` (menyalin ulang aturan gate:
+lewati baris komentar, cari penanda `bg-white`/`card`/`bg-surface`/`bg-brand-100`/
+`bg-slate-200` ke atas maksimum 80 baris, catat jarak + sifat kontainer/daun).
+Hasil ringkas (20 Okt 2026):
+
+  kemunculan di baris komentar              :  1
+  kemunculan dengan penanda putih/kartu     : 25
+  kemunculan tanpa penanda <= 80 baris      : 46
+  KANDIDAT (penanda non-putih terdekat)     : 23
+  TOTAL                                     : 95
+
+3a. 29 titik ⊂ audit → WAJIB text-slate-600 (dilimpaskan ke t_954abfe8)
+  Dari 23 kandidat : DataTable:81, QrisPanel:99, QrisPanel:100, Categories/Index:605,
+                     Messages/Index:479, 484, 488, 492, 504, 506,
+                     Reviews/Index:263, 265, 459            (13)
+  Dari 46 tanpa penanda : PageHeader:18, Breadcrumb:31, EmptyState:25, ErrorState:28,
+                     StarRating:48, Accounts/Index:455, 525, Categories/Index:414, 469,
+                     Messages/Index:341, 406, Reviews/Index:397,
+                     Settings/Index:163, 1551, 1573          (15)
+  Dari 25 penanda putih : Contact.jsx:248 (penanda putih 55 baris di atas tidak relevan;
+                     baris itu sendiri ber-`bg-surface` → titik #9)  (1)
+  → 13 + 15 + 1 = 29 ✅ cocok dengan Gate Check A & §11.4 T7.
+
+3b. 24 kemunculan lain dengan penanda putih/kartu → AMAN (tetap slate-500)
+  ChartCard:126 (@bg-white 7), ChartCard:254 (@6), NavDrawer:51 (@4), OrderSummary:71 (card @41),
+  QrisPanel:121 (card @9), QrisPanel:143 (bg-white 15), QrisPanel:150 (card @38),
+  QrisPanel:151 (card @39), ReviewForm:148 (card @66), AdminLayout:210 (bg-white 5),
+  Admin/Dashboard:204 (bg-white 25), Admin/Dashboard:271 (14), Admin/Login:116 (bg-white 68),
+  Admin/Reviews/Index:319 (card @3), Settings/Index:181 (card @4), Settings/Index:193 (bg-white 2),
+  Public/Checkout:275 (card @20), Checkout:281 (card @26), CheckoutPay:165 (card @10),
+  CheckoutPay:201 (card @5), CheckoutPay:208 (card @12), CheckoutSuccess:118 (card @10),
+  CheckoutSuccess:147 (card @39), CheckoutSuccess:149 (card @41).
+  → semuanya berada di dalam kartu/modal putih → 4,76:1 ✅ per §11.4 T7 poin 5.
+
+3c. 31 kemunculan "tanpa penanda" lainnya → AMAN, dengan dasar pembacaan baris
+  a) Komponen bersama yang dirender di permukaan/kartu putih:
+     FaqAccordion:48 (pesan "FAQ gagal dimuat" — seksi FAQ publik, latar putih),
+     PriceBlock:22 (harga coret di kartu produk putih),
+     ReviewCard:45 (kartu ulasan putih),
+     RatingSummary:37, 47 (root tanpa latar; dipakai di kartu putih),
+     KpiCard:32, 67 (kartu putih; penanda `card`/`bg-white` di bawah dalam berkas),
+     ChartCard:260 (label sumbu `aria-hidden` → ambang non-teks 3:1 ✅),
+     ChartCard:267 (caption "Tertinggi …" di kartu putih ChartCard).
+  b) Halaman publik berlatar putih:
+     Cart:112 (strip kepala tabel keranjang), CheckoutSuccess:92 (ringkasan pesanan),
+     Products/Index:245 (toolbar daftar produk),
+     Products/Show:234 ("Tipe: …"), :242 (baris rating), :380 (`<thead>` tabel harga grosir).
+  c) Panel/field putih:
+     FilterPanel:17, 58, 91 (panel filter `aside > div bg-white` — 3 judul grup/count/rentang),
+     Settings/Index:1626 ("Belum ada menu." di dalam `SectionCard` = `card p-6` putih),
+     Input:5, Textarea:5, Field:34, SearchInput:44 (`placeholder:text-slate-500` di field putih)
+     — 8 baris.
+  d) Sel tabel DataTable (root kartu putih) — 5 baris: Messages/Index:265, 286,
+     Categories/Index:348, Accounts/Index:372 (meta di dalam sel),
+     Accounts/Index:425 (teks hint `aria-describedby`).
+  e) Form modal putih — 2 baris: Accounts/Index:654 (hint field), Categories/Index:626 (modal).
+  f) Non-teks — 1 baris: Categories/Index:107 (`aria-hidden`, ikon di atas chip permukaan → 3:1 ✅).
+  Jumlah: (a) 9 + (b) 6 + (c) 8 + (d) 5 + (e) 2 + (f) 1 = 31 ✅
+  → 15 ⊂ 29 titik + 31 aman = 46 baris tanpa penanda.
+
+3d. 10 kandidat lainnya → AMAN (penanda terdekat bukan latar teks itu)
+  CartLine:76, 78, 79, 114, 117 — halaman keranjang berlatar putih; penanda `bg-surface`
+     adalah kotak thumbnail (`h-cartThumb`) yang merupakan elemen DAUN di sebelah teks.
+  ProductCard:93, 112 — root `<article class="… bg-white …">` (§3b ProductCard = kartu putih);
+     penanda `bg-surface` @45/@64 = blok gambar (daun).
+  QrisPanel:92 — ikon non-teks di dalam bulatan `bg-surface` → slate-500 = 4,40:1 ≥ 3:1 ✅.
+  RatingSummary:54 — label persen; penanda `bg-surface` @6 = track bar (daun).
+  Settings/Index:293 — hint unggah di dalam `SectionCard title="Logo dan favicon"` (putih);
+     penanda `bg-surface` @4 = lingkaran ikon unggah (daun).
+  → 10 baris; 13 + 10 = 23 kandidat ✅.
+
+3e. 1 kemunculan di baris komentar: KpiCard.jsx:9 (`// … text-slate-500 …`) → bukan teks
+    dirender; sesuai §11.4 T7 poin 6 tetap dibiarkan.
+
+Rekonsiliasi total: 29 (3a) + 24 (3b) + 31 (3c) + 10 (3d) + 1 komentar (3e) = 95 ✅
+
+====================================================================
+4. GATE OTOMATIS
+====================================================================
+`docs/qa/sweep-meta-surface.py` (361 baris) — import-able, keluar 0/1:
+  Check A : 29 titik §11.4 T7 harus ber-`text-slate-600` (keluar 0 bila 29/29).
+  Check B : `text-slate-500` BARU di atas latar non-putih (≠ 29 titik) → kandidat.
+  Check C : ringkasan + daftar TINJAU (baris `text-slate-500` yang latarnya TIDAK
+            terdeteksi) — konservatif, bukan kewajiban (lihat 4b).
+Cara pakai: `python docs/qa/sweep-meta-surface.py .` (arg = root repo; dipakai juga oleh
+applier & skrip audit).
+
+4a. Hasil eksekusi (20 Okt 2026, setelah 29 titik diterapkan — sebelum revert):
+  SEBELUM: keluar 1 — Check A 0/29; 12 "fatal" ⊂ 29 titik (penanda pasti non-putih).
+  SESUDAH: keluar 0 — Check A 29/29; Check B 0 kandidat; 48 baris TINJAU.
+  Catatan: TINJAU = 48 baris `text-slate-500` yang tidak dapat dipastikan latarnya oleh
+  gate (tanpa penanda dalam jendela 60 baris / penanda daun). Audit manual 3b–3d
+  memastikan ke-48 baris itu aman (putih/daun/non-teks), dan 29 di antaranya justru
+  titik keputusan. Jadi TINJAU bukan daftar utang.
+
+4b. Batas gate (jujur): gate memakai heuristik kedekatan + verifikasi silsilah JSX
+  (TAG_RE/delta_tag/masih_terbuka) dengan jendela fatal 12 baris. Latar yang berasal dari
+  layout (AdminLayout `<main>` = #F6F6F4) TIDAK terlihat per-berkas → 16 dari 29 titik
+  dilaporkan tanpa penanda (termasuk di konteks-29.txt). Karena itu daftar 29 titik
+  ditulis eksplisit di Check A, bukan disimpulkan gate.
+
+====================================================================
+5. APLIKATOR HANDOFF (untuk t_954abfe8)
+====================================================================
+`docs/qa/terapkan-meta-v22.py` (107 baris) — penerap 29 titik berbasis ANCHOR (teks baris
+byte-eksak), bukan nomor baris, sehingga tahan terhadap pergeseran baris:
+  1) `python docs/qa/terapkan-meta-v22.py --cek` → dry run; wajib "29/29 siap", TIDAK menulis.
+     Bila anchor tidak unik/tidak ketemu, skrip MENYEBUT berkas:baris dan berhenti (exit 1).
+  2) `python docs/qa/terapkan-meta-v22.py` → menerapkan dengan `newline=''`
+     (CRLF/LF dipertahankan apa adanya; berkas 100% UTF-8).
+  3) `python docs/qa/sweep-meta-surface.py .` → wajib keluar 0, Check A 29/29, Check B 0.
+  4) `npm run build` → verifikasi CSS bundel memuat `.text-slate-600{…rgb(71 85 105)…}`.
+Status: `--cek` = exit 0 (29/29 siap). Penerapan nyata sudah diuji end-to-end
+(gate hijau + build sukses), lalu seluruh 29 baris dikembalikan → pohon kode bersih.
+
+====================================================================
+6. BUKTI EKSEKUSI (semua dijalankan 20 Okt 2026 pada repo ini)
+====================================================================
+- Gate SEBELUM (pohon bersih)      : `python docs/qa/sweep-meta-surface.py .` → exit 1,
+                                      Check A 0/29, 12 fatal ⊂ 29 titik.
+                                      Simpanan: sweep-sebelum.txt (workspace kartu).
+- Terap 29 titik (validasi)         : gate exit 0, Check A 29/29, Check B 0 kandidat,
+                                      48 TINJAU. Simpanan: sweep-sesudah.txt.
+- Build produksi                   : `npm run build` sukses; bundel terbaru
+                                      public/build/assets/*.css memuat
+                                      `.text-slate-600{…color:rgb(71 85 105)…}` dan
+                                      `.text-slate-500{…}` tetap ada (dipakai konteks putih).
+- Skrip QA lama tetap hijau         : `python docs/qa/kontras-badge.py` → exit 0
+                                      (mem-parse docs/design.md; patch v2.2 tidak memutus).
+- token-check.mjs                   : TIDAK membaca docs/design.md (diverifikasi lebih dulu)
+                                      → patch dokumen aman.
+- Kontras terhitung                : `python docs/qa/kontras-meta.py` → tabel §1 cocok.
+- Pemulihan                        : `diff -rq js-backup-sebelum resources/js` → 0 baris;
+                                      `grep -rno "text-slate-500" resources/js | wc -l` = 95;
+                                      gate kembali 0/29 (pohon uji bersih).
+- Integritas dokumen               : CRLF/LF per baris dipertahankan (`newline=''`),
+                                      urutan riwayat revisi 2.1 → 2.2 benar, dan atribusi
+                                      kartu pada baris 437 diperbaiki dari id kartu badge
+                                      (`t_67576fb2`) → kartu lanjutan (`t_954abfe8`);
+                                      satu rujukan `t_67576fb2` yang sah tetap ada di
+                                      §11.4 T5 (baris 883) dan tidak diubah.
+
+====================================================================
+7. STATUS BERKAS SAAT KARTU INI DITUTUP
+====================================================================
+Diubah/ditambah oleh kartu ini:
+  M  docs/design.md                       (v2.2: §2.1, §2.5, §2.6, §9, §11.4 T7, riwayat)
+  +  docs/qa/kontras-meta.py               (78 baris — kalkulator kontras WCAG)
+  +  docs/qa/sweep-meta-surface.py         (361 baris — gate Check A/B/C)
+  +  docs/qa/terapkan-meta-v22.py          (107 baris — applier 29 titik, anchor-based)
+  +  docs/qa/audit-penanda-meta.py         (74 baris — audit 95 kemunculan, sejalan gate)
+  +  docs/bukti-uiux-t_14cad9e2.txt        (berkas ini)
+Tidak diubah: seluruh `resources/js/**` (0 diff terhadap snapshot), `tailwind.config.js`,
+  `resources/css/app.css`, `.env*` (tidak dibaca/ditulis).
+
+Kartu terkait:
+  t_90759be9 (frontend, temuan asal §11.4 T7) · t_67576fb2 (badge diskon — T5)
+  t_954abfe8 (frontend, PENERAP kode 29 titik, gated_by kartu ini)
+  t_5f75f779 (devops, menunggu t_954abfe8 selesai — kini anak dari t_954abfe8)
+  t_944aea1e (frontend, hanya AdminLayout.jsx + docs → tidak bertabrakan)
+
+====================================================================
+8. PERINTAH REPRODUKSI
+====================================================================
+  cd C:\Users\LENOVO\Downloads\toko-kulot
+  python docs\qa\kontras-meta.py                  # tabel rasio §1
+  python docs\qa\audit-penanda-meta.py            # klasifikasi 95 kemunculan (3a–3e)
+  python docs\qa\sweep-meta-surface.py .          # gate: SEBELUM = exit 1 (0/29)
+  python docs\qa\terapkan-meta-v22.py --cek       # 29/29 siap (tanpa menulis)
+  python docs\qa\terapkan-meta-v22.py             # terap 29 titik (untuk t_954abfe8)
+  python docs\qa\sweep-meta-surface.py .          # SESUDAH = exit 0 (29/29, B 0)
+  npm run build                                   # bundel .text-slate-600 rgb(71 85 105)
+  python docs\qa\kontras-badge.py                 # skrip kontras badge tetap hijau
+
+====================================================================
+9. BATASAN / BELUM DIUJI
+====================================================================
+- Kartu ini TIDAK melakukan uji visual (screenshot/pixel) maupun uji kontras alat
+  otomatis pihak ketiga; dasar keputusan = nilai token + perhitungan WCAG + pembacaan
+  struktur JSX.
+- Gate bersifat heuristik (lihat 4b); permukaan dari layout tidak terdeteksi per-berkas
+  sehingga 15 titik andalkan pembacaan manual — sudah didokumentasikan per baris (§2, §3).
+- Dark mode tidak berlaku (proyek tanpa varian `dark:`); tidak diuji.
+- 29 baris wajib diterapkan oleh t_954abfe8; sampai itu, temuan §11.4 T7 BELUM tertutup di
+  kode produk (hanya aturannya yang baku di dokumen v2.2).

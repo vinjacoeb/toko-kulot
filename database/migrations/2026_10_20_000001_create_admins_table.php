@@ -14,7 +14,8 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->enum('role', ['owner', 'staff'])->default('staff');
+            // PRD §6: role owner|admin|staff (sebelumnya hanya owner|staff).
+            $table->enum('role', ['owner', 'admin', 'staff'])->default('staff');
             $table->boolean('is_active')->default(true);
             $table->rememberToken();
             $table->timestamps();

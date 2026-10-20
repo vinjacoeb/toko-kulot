@@ -1,0 +1,437 @@
+=== A. kontrak 1310-1360 (akun) ===
+bila menjadi `dibayar` dan `paid_at` masih kosong, `paid_at` diisi sekarang. Sukses: kembali ke
+halaman asal + `flash.success` = `Status pesanan diperbarui.`
+
+### 12.19 GET `/admin/akun` — `admin.accounts.index` — `Admin/Accounts/Index`
+
+Query: `q` (nama/email), `role` ∈ `semua`(bawaan)|`owner`|`admin`|`staff`, `status` ∈
+`semua`(bawaan)|`aktif`|`nonaktif`, `page`. Urut `owner`, `admin`, `staff`, lalu `name`.
+
+```json
+{
+  "akun": {"data": [{"id": 1, "name": "Owner Toko", "email": "owner@tokokulot.test",
+    "role": "owner", "is_active": true, "is_self": true, "created_at": "…"}],
+    "links": ["…"], "meta": {"current_page": 1, "last_page": 1, "per_page": 15, "total": 3}},
+  "filter": {"q": null, "role": "semua", "status": "semua"},
+  "ringkasan": {"total": 3, "owner": 1, "admin": 1, "staff": 1, "aktif": 3}
+}
+```
+
+### 12.20 POST `/admin/akun` — `admin.accounts.store`
+
+Field: `name` (wajib, maks 120), `email` (wajib, email, unik, maks 190), `password` (wajib,
+min 8), `role` ∈ `owner|admin|staff`, `is_active` (boolean, bawaan `true`).
+Galat: `errors.name`, `errors.email`, `errors.password`, `errors.role`.
+Redirect: `admin.accounts.index` + `flash.success` = `Akun admin disimpan.`
+
+### 12.21 PUT `/admin/akun/{admin}` — `admin.accounts.update`
+
+Sama dengan §12.20, kecuali `password` opsional (diganti bila diisi) dan `email` unik kecuali
+milik akun itu. Penolakan (lewat `errors.role` / `errors.is_active`):
+`Tidak bisa menonaktifkan akun sendiri.`, `Tidak bisa mengubah role akun sendiri.`,
+`Minimal satu owner aktif harus ada.` Sukses: `flash.success` = `Akun admin diperbarui.`
+
+### 12.22 DELETE `/admin/akun/{admin}` — `admin.accounts.destroy`
+
+Penolakan: `errors.akun` = `Tidak bisa menghapus akun sendiri.` /
+`Minimal satu owner aktif harus ada.` Sukses: `flash.success` = `Akun admin dihapus.`
+(`stock_movements.admin_id` menjadi `null` — riwayat stok tetap utuh.)
+
+### 12.23 Status
+| Bagian | Status |
+|---|---|
+| 12.1–12.7 Produk | DRAFT |
+| 12.8–12.11 Kategori | DRAFT |
+| 12.12–12.15 Stok | DRAFT |
+| 12.16–12.18 Pesanan | DRAFT |
+| 12.19–12.22 Akun | DRAFT |
+=== B. kontrak 1180-1215 (kategori) ===
+  "filter": {"q": null, "status": "semua"},
+  "ringkasan": {"total": 5, "aktif": 5, "nonaktif": 0}
+}
+```
+
+Catatan frontend: **tidak ada** rute GET `admin/kategori/tambah` maupun `.../ubah` (PRD §5.2
+tidak memintanya). Form tambah/ubah kategori dikerjakan inline di halaman ini; tombol
+`/admin/kategori/tambah` pada placeholder harus diganti.
+
+### 12.9 POST `/admin/kategori` — `admin.categories.store`
+### 12.10 PUT `/admin/kategori/{category}` — `admin.categories.update`
+
+Field: `name` (wajib, maks 120), `slug` (opsional, unik; dibuat dari nama bila kosong),
+`description` (opsional, maks 1000), `image` (opsional, jpg/jpeg/png/webp maks 2 MB),
+`sort_order` (integer 0–999, bawaan 0), `is_active` (boolean, bawaan `true`).
+Galat: `errors.name`, `errors.slug`, `errors.image`, `errors.sort_order`.
+Redirect: `admin.categories.index`; `flash.success` = `Kategori disimpan.` /
+`Kategori diperbarui.`
+
+### 12.11 DELETE `/admin/kategori/{category}` — `admin.categories.destroy`
+
+Menolak bila masih dipakai produk: `errors.kategori` = `Kategori masih dipakai 3 produk —
+pindahkan atau hapus produknya dulu.` Sukses: redirect `admin.categories.index` +
+`flash.success` = `Kategori dihapus.`
+
+### 12.12 GET `/admin/stok` — `admin.stocks.index` — `Admin/Stocks/Index`
+
+Query: `q` (nama produk/SKU varian), `status` ∈ `semua`(bawaan)|`habis`|`kritis` (`kritis`
+berarti stok < 5, termasuk habis), `kategori` (id), `urut` ∈ `nama`(bawaan)|`stok_terkecil`|
+`stok_terbesar`, `page`. Baris = **varian**.
+
+```json
+{
+  "stok": {"data": [{
+    "id": 12, "product": {"id": 3, "name": "…", "slug": "…"},
+    "size": "L", "color": "Hitam", "label": "L / Hitam", "sku": "DSR-BTK-01-L-HITAM",
+=== C. AccountController ===
+     1	<?php
+     2	
+     3	namespace App\Http\Controllers\Admin;
+     4	
+     5	use App\Http\Controllers\Admin\Concerns\ListProps;
+     6	use App\Http\Controllers\Controller;
+     7	use App\Http\Requests\Admin\StoreAccountRequest;
+     8	use App\Http\Requests\Admin\UpdateAccountRequest;
+     9	use App\Models\Admin;
+    10	use Illuminate\Http\RedirectResponse;
+    11	use Illuminate\Http\Request;
+    12	use Illuminate\Validation\ValidationException;
+    13	use Inertia\Inertia;
+    14	use Inertia\Response;
+    15	
+    16	/**
+    17	 * Akun admin (PRD §5.2, kontrak props §12.19–§12.22).
+    18	 *
+    19	 * Penjaga terakhir: tidak boleh menghapus/menonaktifkan akun sendiri, dan harus
+    20	 * selalu tersisa minimal satu owner aktif.
+    21	 */
+    22	class AccountController extends Controller
+    23	{
+    24	    use ListProps;
+    25	
+    26	    /** @var list<string> */
+    27	    private const ROLES = ['owner', 'admin', 'staff'];
+    28	
+    29	    public function index(Request $request): Response
+    30	    {
+    31	        $filter = [
+    32	            'q' => $this->teks($request->query('q')),
+    33	            'role' => $this->pilihan($request->query('role'), self::ROLES, 'semua'),
+    34	            'status' => $this->pilihan($request->query('status'), ['aktif', 'nonaktif'], 'semua'),
+    35	        ];
+    36	
+    37	        $query = Admin::query();
+    38	
+    39	        if ($filter['q'] !== null) {
+    40	            $like = '%'.$filter['q'].'%';
+    41	            $query->where(fn ($where) => $where
+    42	                ->where('name', 'like', $like)
+    43	                ->orWhere('email', 'like', $like));
+    44	        }
+    45	
+    46	        if ($filter['role'] !== 'semua') {
+    47	            $query->where('role', $filter['role']);
+    48	        }
+    49	
+    50	        if ($filter['status'] === 'aktif') {
+    51	            $query->where('is_active', true);
+    52	        } elseif ($filter['status'] === 'nonaktif') {
+    53	            $query->where('is_active', false);
+    54	        }
+    55	
+    56	        $akun = $query
+    57	            ->orderByRaw("case role when 'owner' then 0 when 'admin' then 1 else 2 end")
+    58	            ->orderBy('name')
+    59	            ->paginate(15)
+    60	            ->withQueryString();
+    61	
+    62	        $me = $request->user('admin');
+    63	
+    64	        return Inertia::render('Admin/Accounts/Index', [
+    65	            'akun' => [
+    66	                'data' => collect($akun->items())
+    67	                    ->map(fn (Admin $row) => $this->row($row, $me?->id))
+    68	                    ->all(),
+    69	                'links' => $akun->linkCollection()->all(),
+    70	                'meta' => $this->meta($akun),
+    71	            ],
+    72	            'filter' => $filter,
+    73	            'ringkasan' => [
+    74	                'total' => Admin::query()->count(),
+    75	                'owner' => Admin::query()->where('role', 'owner')->count(),
+    76	                'admin' => Admin::query()->where('role', 'admin')->count(),
+    77	                'staff' => Admin::query()->where('role', 'staff')->count(),
+    78	                'aktif' => Admin::query()->where('is_active', true)->count(),
+    79	            ],
+    80	        ]);
+    81	    }
+    82	
+    83	    public function store(StoreAccountRequest $request): RedirectResponse
+    84	    {
+    85	        $data = $request->validated();
+    86	
+    87	        Admin::query()->create([
+    88	            'name' => trim((string) $data['name']),
+    89	            'email' => strtolower(trim((string) $data['email'])),
+    90	            'password' => (string) $data['password'],
+    91	            'role' => (string) $data['role'],
+    92	            'is_active' => $this->flag($data['is_active'] ?? null, true),
+    93	        ]);
+    94	
+    95	        return redirect()
+    96	            ->route('admin.accounts.index')
+    97	            ->with('success', 'Akun admin disimpan.');
+    98	    }
+    99	
+   100	    public function update(UpdateAccountRequest $request, Admin $admin): RedirectResponse
+   101	    {
+   102	        $data = $request->validated();
+   103	        $me = $request->user('admin');
+   104	        $role = (string) $data['role'];
+   105	        $aktif = $this->flag($data['is_active'] ?? null, (bool) $admin->is_active);
+   106	
+   107	        if ($me !== null && $me->id === $admin->id && $role !== $admin->role) {
+   108	            throw ValidationException::withMessages([
+   109	                'role' => 'Tidak bisa mengubah role akun sendiri.',
+   110	            ]);
+   111	        }
+   112	
+   113	        if ($me !== null && $me->id === $admin->id && ! $aktif) {
+   114	            throw ValidationException::withMessages([
+   115	                'is_active' => 'Tidak bisa menonaktifkan akun sendiri.',
+   116	            ]);
+   117	        }
+   118	
+   119	        $ownerHilang = $admin->role === 'owner'
+   120	            && (bool) $admin->is_active
+   121	            && ($role !== 'owner' || ! $aktif);
+   122	
+   123	        if ($ownerHilang && ! $this->adaOwnerAktifLain($admin->id)) {
+   124	            throw ValidationException::withMessages([
+   125	                'role' => 'Minimal satu owner aktif harus ada.',
+   126	            ]);
+   127	        }
+   128	
+   129	        $attributes = [
+   130	            'name' => trim((string) $data['name']),
+   131	            'email' => strtolower(trim((string) $data['email'])),
+   132	            'role' => $role,
+   133	            'is_active' => $aktif,
+   134	        ];
+   135	
+   136	        if (isset($data['password']) && (string) $data['password'] !== '') {
+   137	            $attributes['password'] = (string) $data['password'];
+   138	        }
+   139	
+   140	        $admin->forceFill($attributes)->save();
+   141	
+   142	        return redirect()
+   143	            ->route('admin.accounts.index')
+   144	            ->with('success', 'Akun admin diperbarui.');
+   145	    }
+   146	
+   147	    public function destroy(Request $request, Admin $admin): RedirectResponse
+   148	    {
+   149	        $me = $request->user('admin');
+   150	
+   151	        if ($me !== null && $me->id === $admin->id) {
+   152	            throw ValidationException::withMessages([
+   153	                'akun' => 'Tidak bisa menghapus akun sendiri.',
+   154	            ]);
+   155	        }
+   156	
+   157	        if ($admin->role === 'owner'
+   158	            && (bool) $admin->is_active
+   159	            && ! $this->adaOwnerAktifLain($admin->id)) {
+   160	            throw ValidationException::withMessages([
+   161	                'akun' => 'Minimal satu owner aktif harus ada.',
+   162	            ]);
+   163	        }
+   164	
+   165	        $admin->delete();
+   166	
+   167	        return redirect()
+   168	            ->route('admin.accounts.index')
+   169	            ->with('success', 'Akun admin dihapus.');
+   170	    }
+   171	
+   172	    /**
+   173	     * @return array<string, mixed>
+   174	     */
+   175	    private function row(Admin $admin, ?int $viewerId): array
+   176	    {
+   177	        return [
+   178	            'id' => $admin->id,
+   179	            'name' => $admin->name,
+   180	            'email' => $admin->email,
+   181	            'role' => $admin->role,
+   182	            'is_active' => (bool) $admin->is_active,
+   183	            'is_self' => $viewerId !== null && $viewerId === $admin->id,
+   184	            'created_at' => $admin->created_at?->toIso8601String(),
+   185	        ];
+   186	    }
+   187	
+   188	    private function adaOwnerAktifLain(int $adminId): bool
+   189	    {
+   190	        return Admin::query()
+   191	            ->where('role', 'owner')
+   192	            ->where('is_active', true)
+   193	            ->whereKeyNot($adminId)
+   194	            ->exists();
+   195	    }
+   196	}
+=== D. Modal.jsx ===
+     1	import React, { useEffect, useRef } from 'react';
+     2	import { cn } from '../lib/format';
+     3	import { useBodyScrollLock, useFocusTrap } from '../lib/hooks';
+     4	import { CloseIcon } from './icons';
+     5	
+     6	const SIZES = {
+     7	    md: 'max-w-modal',
+     8	    lg: 'max-w-modalLg',
+     9	};
+    10	
+    11	/**
+    12	 * Modal dasar — docs/design.md §4.24 (turunan: `ConfirmDialog`).
+    13	 * Overlay gelap, Esc menutup, klik overlay menutup, fokus terperangkap,
+    14	 * scroll body dikunci, `aria-modal="true"`.
+    15	 */
+    16	export default function Modal({
+    17	    open = false,
+    18	    title = null,
+    19	    description = null,
+    20	    children = null,
+    21	    footer = null,
+    22	    onClose,
+    23	    size = 'md',
+    24	    closeLabel = 'Tutup',
+    25	}) {
+    26	    const panelRef = useRef(null);
+    27	
+    28	    useBodyScrollLock(open);
+    29	    useFocusTrap(panelRef, open);
+    30	
+    31	    useEffect(() => {
+    32	        if (!open) return undefined;
+    33	
+    34	        const onKeyDown = (event) => {
+    35	            if (event.key === 'Escape') onClose?.();
+    36	        };
+    37	
+    38	        document.addEventListener('keydown', onKeyDown);
+    39	
+    40	        return () => document.removeEventListener('keydown', onKeyDown);
+    41	    }, [open, onClose]);
+    42	
+    43	    if (!open) return null;
+    44	
+    45	    return (
+    46	        <div
+    47	            className="fixed inset-0 z-modal flex items-center justify-center bg-black/50 p-4"
+    48	            onMouseDown={(event) => {
+    49	                if (event.target === event.currentTarget) onClose?.();
+    50	            }}
+    51	        >
+    52	            <div
+    53	                ref={panelRef}
+    54	                role="dialog"
+    55	                aria-modal="true"
+    56	                aria-labelledby={title ? 'modal-title' : undefined}
+    57	                tabIndex={-1}
+    58	                className={cn(
+    59	                    'w-full rounded-xl bg-white p-6 shadow-raised animate-modal-in',
+    60	                    SIZES[size] ?? SIZES.md
+    61	                )}
+    62	            >
+    63	                <div className="flex items-start justify-between gap-4">
+    64	                    <div className="min-w-0">
+    65	                        {title && (
+    66	                            <h2 id="modal-title" className="text-h3 text-ink">
+    67	                                {title}
+    68	                            </h2>
+    69	                        )}
+    70	                        {description && <p className="mt-1 text-meta text-ink-soft">{description}</p>}
+    71	                    </div>
+    72	                    {onClose && (
+    73	                        <button
+    74	                            type="button"
+    75	                            onClick={onClose}
+    76	                            aria-label={closeLabel}
+    77	                            className="-mr-2 -mt-1 inline-flex h-touch w-touch items-center justify-center rounded-md text-ink-soft transition-colors duration-hover hover:bg-surface"
+    78	                        >
+    79	                            <CloseIcon size={20} />
+    80	                        </button>
+    81	                    )}
+    82	                </div>
+    83	
+    84	                {children && <div className="mt-4 text-body text-ink">{children}</div>}
+    85	                {footer && <div className="mt-6 flex flex-wrap justify-end gap-3">{footer}</div>}
+    86	            </div>
+    87	        </div>
+    88	    );
+    89	}
+=== E. UpdateAccountRequest ===
+     1	<?php
+     2	
+     3	namespace App\Http\Requests\Admin;
+     4	
+     5	use App\Models\Admin;
+     6	use Illuminate\Foundation\Http\FormRequest;
+     7	use Illuminate\Validation\Rule;
+     8	
+     9	/**
+    10	 * Ubah akun admin (kontrak props §12.21). Kata sandi opsional: diganti bila diisi.
+    11	 */
+    12	class UpdateAccountRequest extends FormRequest
+    13	{
+    14	    public function authorize(): bool
+    15	    {
+    16	        return true;
+    17	    }
+    18	
+    19	    /**
+    20	     * @return array<string, mixed>
+    21	     */
+    22	    public function rules(): array
+    23	    {
+    24	        $admin = $this->route('admin');
+    25	
+    26	        return [
+    27	            'name' => ['required', 'string', 'max:120'],
+    28	            'email' => [
+    29	                'required', 'string', 'email', 'max:190',
+    30	                Rule::unique('admins', 'email')->ignore($admin instanceof Admin ? $admin->id : null),
+    31	            ],
+    32	            'password' => ['nullable', 'string', 'min:8', 'max:255'],
+    33	            'role' => ['required', 'string', 'in:owner,admin,staff'],
+    34	            'is_active' => ['nullable', 'boolean'],
+    35	        ];
+    36	    }
+    37	
+    38	    /**
+    39	     * @return array<string, string>
+    40	     */
+    41	    public function messages(): array
+    42	    {
+    43	        return [
+    44	            'name.required' => 'Nama akun wajib diisi.',
+    45	            'name.max' => 'Nama akun maksimal 120 karakter.',
+    46	            'email.required' => 'Email wajib diisi.',
+    47	            'email.email' => 'Format email tidak valid.',
+    48	            'email.unique' => 'Email sudah dipakai akun lain.',
+    49	            'password.min' => 'Kata sandi minimal 8 karakter.',
+    50	            'role.required' => 'Role wajib dipilih.',
+    51	            'role.in' => 'Role harus owner, admin, atau staff.',
+    52	        ];
+    53	    }
+    54	
+    55	    protected function prepareForValidation(): void
+    56	    {
+    57	        foreach (['name', 'email'] as $field) {
+    58	            $value = $this->input($field);
+    59	
+    60	            if (is_string($value)) {
+    61	                $this->merge([$field => trim($value)]);
+    62	            }
+    63	        }
+    64	    }
+    65	}

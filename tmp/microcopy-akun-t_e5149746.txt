@@ -1,0 +1,54 @@
+=== A. mikroCopy desain (Tambah/Hapus/Simpan/Batal/Reset/Cari) ===
+390:- `SearchInput`: ikon kaca 18px kiri, `h-field`, `rounded-md`, tombol bersihkan saat terisi, debounce 300ms, `aria-label="Cari produk"`.
+447:- Turunan `Modal` `max-w-modal`: judul aksi, nama entitas eksplisit ("Hapus produk *Daster Kancing*?"), tombol `danger` + `secondary`, fokus awal di tombol batal. Wajib untuk semua aksi destruktif (PRD §9).
+477:- Breadcrumb + H1 `font-display text-h1` + slot aksi kanan ("Tambah X"). Jarak bawah 24px. Mobile: aksi turun ke baris sendiri, full-width.
+511:- Empty: ilustrasi garis + "Produk tidak ditemukan" + tombol "Reset filter".
+531:│                        │ [  Tambah ke Keranjang  ]    │  primary full-width 47px
+666:Pola baku: `PageHeader` → toolbar (search + filter) → `Table` → `Pagination`. Form tambah/edit dalam `Modal` besar (`max-w-modalLg` 720px), kecuali produk (butuh galeri + varian) memakai halaman terpisah. Hapus → `ConfirmDialog` dengan nama entitas.
+678:Tab (`TabNav`): Umum · Landing · Carousel · FAQ · Header · Footer · Kontak · SEO · Pembayaran. Setiap tab = form sendiri + "Simpan" sticky bawah. Unggah gambar: `Dropzone` 1:1 + preview.
+
+=== B. PRD+desain: diri sendiri / self ===
+docs/design.md:31:Nilai Erigo adalah hasil ukur dan dipakai sebagai acuan; kolom "Toko Kulot" adalah nilai yang benar-benar dipakai implementasi (identitas sendiri, kontras tetap terjaga). Kolom **Tailwind** adalah nama token di `tailwind.config.js` — **hanya nama ini yang boleh muncul di JSX**.
+docs/design.md:477:- Breadcrumb + H1 `font-display text-h1` + slot aksi kanan ("Tambah X"). Jarak bawah 24px. Mobile: aksi turun ke baris sendiri, full-width.
+docs/design.md:673:- Akun: tabel + modal tambah/ubah; hapus diri sendiri `disabled` dengan alasan (PRD §9).
+docs/design.md:678:Tab (`TabNav`): Umum · Landing · Carousel · FAQ · Header · Footer · Kontak · SEO · Pembayaran. Setiap tab = form sendiri + "Simpan" sticky bawah. Unggah gambar: `Dropzone` 1:1 + preview.
+docs/design.md:755:| Warna brand | Navy `#151F6D` | Navy `#1F2A5E` | identitas sendiri, kontras serupa |
+docs/PRD.md:11:Toko Kulot adalah platform e-commerce fashion (daster & kulot) yang berjalan di website resmi sendiri. Tujuan bisnisnya tiga: **meningkatkan penjualan online**, **memperluas jangkauan lewat SEO**, dan **menaikkan konversi lewat kampanye Meta Ads** (landing page yang cepat dan relevan adalah syarat mutu iklan).
+docs/PRD.md:170:| DELETE | `/admin/akun/{admin}` | `admin.accounts.destroy` | Nonaktifkan/hapus (tidak boleh hapus diri sendiri) |
+docs/PRD.md:260:| `/admin/akun` | Tabel admin: nama, email, role, status | Tambah admin, ubah role, reset password, nonaktifkan (tidak bisa hapus diri sendiri, minimal 1 owner aktif) |
+
+=== C. kontrak role default + errors kunci ===
+1:188:Kredensial salah **atau** email terdaftar di `admins.email` → `errors.email` =
+2:201:(termasuk bila email tidak terdaftar). Throttle kirim ulang → `errors.email` =
+3:218:Token salah/kedaluwarsa → `errors.email` = `Tautan reset tidak valid atau sudah kedaluwarsa.`
+4:219:Email tidak terdaftar → `errors.email` = `Email tidak terdaftar.`
+5:236:| Kondisi | Pesan (`errors.email`) |
+6:330:| Field | Aturan | Pesan galat (`errors.<field>`) |
+7:337:- qty melebihi stok → `errors.qty` = `Stok tersisa {n}.`
+8:1057:`errors.<key>` (Inertia) dengan `<key>` yang disebut di tiap endpoint. Sukses memakai
+9:1102:Galat: `errors.name`, `errors.slug`, `errors.sku`, `errors.category_id`, `errors.base_price`,
+10:1103:`errors.compare_price`, `errors.wholesale_price`, `errors.min_wholesale_qty`,
+11:1104:`errors.description`, `errors.weight_gram`, `errors.images`, `errors.variants`.
+12:1195:Galat: `errors.name`, `errors.slug`, `errors.image`, `errors.sort_order`.
+13:1201:Menolak bila masih dipakai produk: `errors.kategori` = `Kategori masih dipakai 3 produk —
+14:1227:Aksi stok masuk/keluar — galat: `errors.qty` (`Jumlah wajib diisi.`, `Jumlah minimal 1.`,
+15:1228:`Stok tidak cukup — stok saat ini 3.`), `errors.note`. Sukses: kembali ke halaman asal +
+16:1307:Galat: `errors.status` (`Status pesanan wajib dipilih.`,
+17:1315:Query: `q` (nama/email), `role` ∈ `semua`(bawaan)|`owner`|`admin`|`staff`, `status` ∈
+18:1321:    "role": "owner", "is_active": true, "is_self": true, "created_at": "…"}],
+19:1323:  "filter": {"q": null, "role": "semua", "status": "semua"},
+20:1331:min 8), `role` ∈ `owner|admin|staff`, `is_active` (boolean, bawaan `true`).
+21:1332:Galat: `errors.name`, `errors.email`, `errors.password`, `errors.role`.
+22:1338:milik akun itu. Penolakan (lewat `errors.role` / `errors.is_active`):
+23:1339:`Tidak bisa menonaktifkan akun sendiri.`, `Tidak bisa mengubah role akun sendiri.`,
+24:1344:Penolakan: `errors.akun` = `Tidak bisa menghapus akun sendiri.` /
+
+=== D. StoreAccountRequest role default ===
+25:            'password' => ['required', 'string', 'min:8', 'max:255'],
+26:            'role' => ['required', 'string', 'in:owner,admin,staff'],
+27:            'is_active' => ['nullable', 'boolean'],
+44:            'role.required' => 'Role wajib dipilih.',
+45:            'role.in' => 'Role harus owner, admin, atau staff.',
+
+=== E. z-toast + sr-only ada? ===
+156:            zIndex: {

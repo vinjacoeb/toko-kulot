@@ -293,6 +293,25 @@ export const ChartIcon = (props) => (
     </Svg>
 );
 
+/** Ikon hapus — aksi hapus baris keranjang (design §4.28). */
+export const TrashIcon = (props) => (
+    <Svg {...props}>
+        <path d="M4 7h16" />
+        <path d="M10 11v6" />
+        <path d="M14 11v6" />
+        <path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12" />
+        <path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7" />
+    </Svg>
+);
+
+/** Ikon salin — tombol "Salin" kode pesanan (design §5.8). */
+export const CopyIcon = (props) => (
+    <Svg {...props}>
+        <rect x="9" y="9" width="11" height="11" rx="2" />
+        <path d="M15 6.5V5.5A1.5 1.5 0 0 0 13.5 4H5.5A1.5 1.5 0 0 0 4 5.5v8A1.5 1.5 0 0 0 5.5 15h1" />
+    </Svg>
+);
+
 /** Pemetaan nama ikon dari pengaturan admin ke komponen (kontrak: truck|refresh|qris|chat|leaf|scissors). */
 export const TRUST_ICONS = {
     truck: TruckIcon,

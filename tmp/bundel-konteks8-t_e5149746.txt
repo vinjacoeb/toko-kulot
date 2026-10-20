@@ -1,0 +1,540 @@
+
+===== A. PRD: baris menyebut akun/kategori (dengan nomor) =====
+14:- katalog produk dengan filter kategori,
+44:| **Admin/Owner** | Kelola katalog, stok, pesanan, konten, akun admin | /admin/* |
+113:| GET | `/` | `home` | Landing: carousel, kategori, produk unggulan, FAQ, konten pengaturan |
+114:| GET | `/produk` | `products.index` | Katalog + filter kategori + pencarian + sort + pagination |
+123:| POST | `/register` | `register.store` | Buat akun pembeli |
+148:| GET/POST/PUT/DELETE | `/admin/kategori[/{category}]` | `admin.categories.*` | CRUD kategori |
+167:| GET | `/admin/akun` | `admin.accounts.index` | Daftar akun admin |
+168:| POST | `/admin/akun` | `admin.accounts.store` | Tambah akun admin |
+169:| PUT | `/admin/akun/{admin}` | `admin.accounts.update` | Ubah data/role/password |
+170:| DELETE | `/admin/akun/{admin}` | `admin.accounts.destroy` | Nonaktifkan/hapus (tidak boleh hapus diri sendiri) |
+181:| `admins` | name, email (unique), password, role (`owner`\|`admin`\|`staff`), is_active | Guard `admin` |
+183:| `categories` | name, slug (unique), description, image, sort_order, is_active | Kategori produk |
+209:2. Filter kategori / pencarian / sort (terbaru, harga, terlaris).
+253:| `/admin/produk` | Tabel: gambar, nama, SKU, kategori, harga, total stok, status. Pencarian + filter kategori + pagination | Tambah, edit, hapus, aktif/nonaktif, unggah galeri, kelola varian |
+254:| `/admin/kategori` | Tabel kategori + jumlah produk | CRUD, urutkan, aktif/nonaktif |
+260:| `/admin/akun` | Tabel admin: nama, email, role, status | Tambah admin, ubah role, reset password, nonaktifkan (tidak bisa hapus diri sendiri, minimal 1 owner aktif) |
+338:| K5 | Seeder lengkap (kategori, produk, varian, stok, admin, user, order contoh, ulasan, setting, carousel, FAQ) | backenddeveloper | K4 |
+347:| K14 | Halaman admin: produk, kategori, stok, pesanan, pesan, penilaian, pengaturan, akun | frontenddeveloper | K13, K9 |
+364:| A4 | Verifikasi email | Tidak wajib; akun langsung aktif setelah register | Perlu alur verifikasi |
+371:| A11 | Akun admin pertama | Dibuat seeder: `admin@tokokulot.test` / password dari seeder, wajib diganti pemilik | — |
+
+===== B. PRD §9 heading + 40 baris setelahnya =====
+248: ## 9. Panel Admin — Spesifikasi Halaman
+## 9. Panel Admin — Spesifikasi Halaman
+
+| Halaman | Isi wajib | Aksi |
+|---|---|---|
+| `/admin` (Dashboard) | Kartu KPI: omzet hari ini / 7 hari / 30 hari, jumlah order per status, produk terlaris, stok kritis (< 5), grafik penjualan 14 hari, 5 pesanan terbaru, 5 ulasan terbaru | Klik kartu → halaman terkait |
+| `/admin/produk` | Tabel: gambar, nama, SKU, kategori, harga, total stok, status. Pencarian + filter kategori + pagination | Tambah, edit, hapus, aktif/nonaktif, unggah galeri, kelola varian |
+| `/admin/kategori` | Tabel kategori + jumlah produk | CRUD, urutkan, aktif/nonaktif |
+| `/admin/stok` | Tabel per varian: produk, varian, stok, status. Filter "stok kritis" | Stok masuk/keluar + catatan, riwayat movement |
+| `/admin/pesanan` | Tabel order: kode, tanggal, nama, total, status bayar, status order. Filter status + rentang tanggal | Detail, ubah status, lihat QR/bukti, cetak |
+| `/admin/pesan-masuk` | Tabel pesan: nama, subjek, tanggal, status baca | Baca detail, balas, tandai dibaca |
+| `/admin/penilaian` | Tabel ulasan: produk, pembeli, rating, komentar, balasan, visibilitas | Balas, sembunyikan/tampilkan |
+| `/admin/pengaturan` | Tab: **Umum** (nama toko, tagline, logo, favicon), **Landing** (hero, seksi, CTA), **Carousel**, **FAQ**, **Header** (menu), **Footer** (tentang, tautan, sosial), **Kontak** (email, telepon, WA, alamat, embed peta), **SEO**, **Pembayaran** (Midtrans) | Simpan per tab, unggah gambar, CRUD carousel/FAQ, urutkan |
+| `/admin/akun` | Tabel admin: nama, email, role, status | Tambah admin, ubah role, reset password, nonaktifkan (tidak bisa hapus diri sendiri, minimal 1 owner aktif) |
+
+Semua tabel: server-side pagination, pencarian, dan aksi destruktif memakai konfirmasi modal.
+
+---
+
+## 10. Desain & Slicing
+
+- Rujukan visual: **erigostore.co.id** (Shopify storefront), diduplikasi lewat REA (reverse engineering) menjadi `docs/design.md`.
+- `docs/design.md` wajib memuat: design token (warna, tipografi, spacing, radius, shadow), struktur layout tiap halaman, inventaris komponen beserta state (default/hover/active/disabled/loading/error/empty), grid responsif (mobile 360–639, tablet 640–1023, desktop 1024+), dan catatan animasi.
+- Implementasi memakai Tailwind dengan token dipetakan ke `tailwind.config.js` (bukan hardcode hex di JSX).
+- **Aturan konflik:** bila PRD dan design bertentangan → **PRD menang untuk fungsi**, **design menang untuk tampilan**; catat di `docs/pertanyaan-pemilik.md`.
+- Aset gambar produk sementara memakai placeholder lokal di `public/images/` (tidak boleh menaut ke CDN pihak lain saat produksi).
+
+---
+
+## 11. Non-Functional Requirements
+
+| Aspek | Ketentuan |
+|---|---|
+| Responsif | Mobile-first; tanpa horizontal scroll pada 360px; target sentuh ≥ 44px |
+| Performa | Build Vite ter-split; gambar `loading="lazy"`; LCP ≤ 2,5 s |
+| SEO | Title + meta description dinamis per halaman, canonical, OG tags, `sitemap.xml`, `robots.txt`, JSON-LD `Product` + `BreadcrumbList` |
+| Aksesibilitas | Kontras ≥ 4,5:1, `alt` pada semua gambar, navigasi keyboard, `aria-label` pada kontrol ikon |
+| Keamanan | CSRF aktif, password hashing bcrypt, rate limit login (5/menit), validasi upload (jpg/png/webp ≤ 2MB), middleware guard terpisah, webhook signature diverifikasi |
+| Data | Seed lengkap agar toko bisa didemokan tanpa data asli |
+| Observability | Log Laravel untuk error pembayaran; admin bisa melihat status pembayaran per order |
+
+---
+
+## 12. ATURAN KERJA TIM (WAJIB, TIDAK BOLEH DILANGGAR)
+
+Berlaku untuk semua agent, termasuk techlead.
+
+**R1 — Batas peran.** Setiap agent hanya mengerjakan kartu yang di-assign kepadanya. Tidak boleh mengambil kartu agent lain, tidak boleh mengerjakan "sekalian".
+
+**R2 — Workspace.** Semua kartu memakai `workspace_kind='dir'`, `workspace_path='C:/Users/LENOVO/Downloads/toko-kulot'`. Tidak ada workspace lain, tidak ada clone baru.
+
+**R3 — Larangan `.env`.** Tidak ada agent yang boleh membuat, mengubah, atau menghapus `.env`. Yang di-commit hanya `.env.example`. Nilai `DB_*`, `APP_KEY`, `MIDTRANS_*` diisi pemilik.
+
+**R4 — Larangan install skill/MCP di folder project.** Skill dan MCP dipasang di folder profil agent masing-masing (`C:/Users/LENOVO/AppData/Local/hermes/profiles/<agent>/`), bukan di dalam `toko-kulot/`. Dilarang membuat folder `.agent/`, `.agents/`, `.claude/`, atau sejenisnya di root project.
+
+**R5 — Techlead hanya dokumen.** Techlead hanya membaca `docs/` dan menulis di `docs/` serta membuat/mengubah kartu Kanban. Techlead **tidak menulis kode**, tidak menjalankan `composer`/`npm`/`artisan`, tidak menyalakan server, dan kolom `skills` pada kartunya selalu kosong.
+
+**R6 — Urutan kerja.** Desain dulu, backend fondasi kedua, integrasi terakhir:
+`design.md → migrasi + seeder → auth → katalog API/controller → frontend slicing → checkout QRIS → admin → QA`.
+Dilarang mengerjakan halaman frontend sebelum bagian `design.md` yang relevan selesai.
+
+**R7 — Sumber kebenaran.** Fungsi: `docs/PRD.md`. Tampilan: `docs/design.md`. Bila bertentangan: PRD untuk fungsi, design untuk tampilan, catat di `docs/pertanyaan-pemilik.md`. Jangan memblokir pekerjaan karena ambiguitas — catat lalu lanjut dengan asumsi paling masuk akal.
+
+===== C. AdminLayout ADMIN_NAV penuh =====
+export const ADMIN_NAV = [
+    { key: 'dashboard', label: 'Dashboard', href: '/admin', icon: GridIcon },
+    { key: 'produk', label: 'Produk', href: '/admin/produk', icon: BoxIcon },
+    { key: 'kategori', label: 'Kategori', href: '/admin/kategori', icon: LayersIcon },
+    { key: 'stok', label: 'Stok', href: '/admin/stok', icon: ArchiveIcon },
+    { key: 'pesanan', label: 'Pesanan', href: '/admin/pesanan', icon: CartIcon },
+    { key: 'pesan', label: 'Pesan', href: '/admin/pesan-masuk', icon: MailIcon },
+    { key: 'penilaian', label: 'Penilaian', href: '/admin/penilaian', icon: StarIcon },
+    { key: 'pengaturan', label: 'Pengaturan', href: '/admin/pengaturan', icon: GearIcon },
+    { key: 'akun', label: 'Akun', href: '/admin/akun', icon: UserIcon },
+];
+export default function AdminLayout({ auth = null, nav = ADMIN_NAV, title = null, children }) {
+    const page = usePage();
+    const url = page?.url ?? '';
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
+    const drawerRef = useRef(null);
+    const menuRef = useRef(null);
+
+    useBodyScrollLock(drawerOpen);
+    useFocusTrap(drawerRef, drawerOpen);
+
+    useEffect(() => {
+        setDrawerOpen(false);
+        setMenuOpen(false);
+    }, [url]);
+
+    useEffect(() => {
+        if (!menuOpen) return undefined;
+
+        const onPointerDown = (event) => {
+            if (menuRef.current && !menuRef.current.contains(event.target)) setMenuOpen(false);
+        };
+
+        const onKeyDown = (event) => {
+            if (event.key === 'Escape') setMenuOpen(false);
+        };
+
+        document.addEventListener('mousedown', onPointerDown);
+        document.addEventListener('keydown', onKeyDown);
+
+        return () => {
+            document.removeEventListener('mousedown', onPointerDown);
+            document.removeEventListener('keydown', onKeyDown);
+        };
+    }, [menuOpen]);
+
+    const items = Array.isArray(nav) && nav.length > 0 ? nav : ADMIN_NAV;
+    const userName = auth?.name ?? 'Admin';
+    const userEmail = auth?.email ?? null;
+    const initial = String(userName).trim().charAt(0).toUpperCase() || 'A';
+
+    const logout = () => router.post('/admin/logout');
+
+    const navList = (onNavigate = null) => (
+        <ul className="flex flex-1 flex-col gap-1 p-3">
+            {items.map((item) => {
+                const Icon = item.icon ?? GridIcon;
+                const active = isActive(url, item.href);
+
+                return (
+                    <li key={item.key ?? item.href}>
+                        <Link
+                            href={item.href}
+                            onClick={onNavigate}
+                            aria-current={active ? 'page' : undefined}
+                            className={cn(
+                                'flex h-11 items-center gap-3 rounded-md border-l-[3px] px-3 text-meta transition-colors duration-hover',
+                                active
+                                    ? 'border-accent-500 bg-white/10 text-white'
+                                    : 'border-transparent text-white/75 hover:bg-white/10 hover:text-white'
+                            )}
+                        >
+                            <Icon size={18} />
+                            {item.label}
+                        </Link>
+                    </li>
+                );
+            })}
+        </ul>
+    );
+
+    return (
+        <div className="min-h-screen bg-surface">
+            {title && <Head title={title} />}
+
+            {/* Sidebar desktop */}
+            <aside className="fixed inset-y-0 left-0 z-30 hidden w-sidebar flex-col bg-brand-700 lg:flex">
+                <div className="flex h-topbar items-center px-4 text-white">
+                    <Link href="/admin" className="text-label font-semibold uppercase tracking-wide">
+                        Daster Kulot
+                    </Link>
+                </div>
+                <nav aria-label="Navigasi admin" className="flex flex-1 flex-col overflow-y-auto">
+                    {navList()}
+                </nav>
+            </aside>
+
+            {/* Drawer mobile */}
+            {drawerOpen && (
+                <div className="fixed inset-0 z-drawer lg:hidden">
+                    <button
+                        type="button"
+                        aria-label="Tutup menu"
+                        onClick={() => setDrawerOpen(false)}
+                        className="absolute inset-0 h-full w-full bg-ink/40"
+                    />
+                    <div
+                        ref={drawerRef}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label="Navigasi admin"
+                        className="animate-drawer-in absolute inset-y-0 left-0 flex w-drawer max-w-[85%] flex-col bg-brand-700"
+                    >
+                        <div className="flex h-topbar items-center justify-between px-4 text-white">
+                            <span className="text-label font-semibold uppercase tracking-wide">Daster Kulot</span>
+                            <button
+                                type="button"
+                                onClick={() => setDrawerOpen(false)}
+                                aria-label="Tutup menu"
+                                className="flex h-touch w-touch items-center justify-center rounded-md text-white/80 transition-colors duration-hover hover:bg-white/10 hover:text-white"
+                            >
+                                <CloseIcon size={20} />
+                            </button>
+                        </div>
+                        <nav aria-label="Navigasi admin" className="flex flex-1 flex-col overflow-y-auto">
+                            {navList(() => setDrawerOpen(false))}
+                        </nav>
+                    </div>
+                </div>
+            )}
+
+            <div className="lg:pl-sidebar">
+                <header className="sticky top-0 z-20 flex h-topbar items-center justify-between gap-3 border-b border-line bg-white px-4 lg:px-6">
+                    <button
+                        type="button"
+                        onClick={() => setDrawerOpen(true)}
+                        aria-label="Buka menu"
+                        aria-expanded={drawerOpen}
+                        className="flex h-touch w-touch items-center justify-center rounded-md text-ink transition-colors duration-hover hover:bg-surface lg:hidden"
+                    >
+                        <MenuIcon size={20} />
+                    </button>
+
+                    <p className="hidden text-label font-semibold text-ink lg:block">Panel Admin</p>
+
+                    <div className="relative" ref={menuRef}>
+                        <button
+                            type="button"
+                            onClick={() => setMenuOpen((open) => !open)}
+                            aria-haspopup="menu"
+                            aria-expanded={menuOpen}
+                            className="flex items-center gap-2 rounded-md px-2 py-1 transition-colors duration-hover hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                        >
+                            <span
+                                aria-hidden="true"
+                                className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-label font-semibold text-brand"
+                            >
+                                {initial}
+                            </span>
+                            <span className="hidden max-w-[160px] truncate text-meta text-ink sm:block">{userName}</span>
+                        </button>
+
+                        {menuOpen && (
+                            <div
+                                role="menu"
+                                className="absolute right-0 mt-2 w-56 overflow-hidden rounded-lg border border-line bg-white shadow-raised"
+                            >
+                                <div className="border-b border-line px-4 py-3">
+                                    <p className="truncate text-label font-semibold text-ink">{userName}</p>
+                                    {userEmail && (
+                                        <p className="truncate text-meta text-slate-500">{userEmail}</p>
+                                    )}
+                                </div>
+                                <button
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={logout}
+                                    className="flex w-full items-center gap-2 px-4 py-3 text-left text-label text-ink transition-colors duration-hover hover:bg-surface"
+                                >
+                                    <LogOutIcon size={16} />
+                                    Keluar
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </header>
+
+                <main className="mx-auto w-full max-w-[1200px] px-4 py-6 lg:px-6">{children}</main>
+            </div>
+        </div>
+    );
+}
+2:import { Head, Link, router, usePage } from '@inertiajs/react';
+28:export const ADMIN_NAV = [
+46:export default function AdminLayout({ auth = null, nav = ADMIN_NAV, title = null, children }) {
+47:    const page = usePage();
+119:            {title && <Head title={title} />}
+
+===== D. package.json lengkap =====
+{
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "vite build",
+        "dev": "vite"
+    },
+    "devDependencies": {
+        "@vitejs/plugin-react": "^4.7.0",
+        "autoprefixer": "^10.4.20",
+        "axios": "^1.7.4",
+        "concurrently": "^9.0.1",
+        "laravel-vite-plugin": "^1.2.0",
+        "postcss": "^8.4.47",
+        "tailwindcss": "^3.4.13",
+        "vite": "^6.0.11"
+    },
+    "dependencies": {
+        "@inertiajs/react": "^3.9.1",
+        "react": "^19.3.1",
+        "react-dom": "^19.3.1"
+    },
+    "allowScripts": {
+        "esbuild@0.25.12": true
+    }
+}
+
+===== E. tooling tmp =====
+tmp/admin-messages-harness.jsx
+tmp/baca-kartu.py
+tmp/build-admin-messages-check.mjs
+tmp/build-admin-nav-check.mjs
+tmp/build-auth-check.mjs
+tmp/build-dashboard-cta-check.mjs
+tmp/build-real-check.mjs
+tmp/cek-anak-kartu.py
+tmp/cek-bundel-identifier-bebas.py
+tmp/cek-komponen-tanpa-import.py
+tmp/cek-nav-admin-vs-rute.py
+tmp/cek-tautan-admin-vs-rute.py
+tmp/check-inertia-exports.mjs
+tmp/dump-kartu-t_e5149746.py
+tmp/dump-kontrak-kategori-akun.py
+tmp/dump-settings-json.py
+tmp/inertia-stub.jsx
+tmp/inertia-stub-admin-nav.jsx
+tmp/inertia-stub-messages.jsx
+tmp/inspect-settings.py
+tmp/kanban-anak-kartu.py
+tmp/kanban-cards-relevan.py
+tmp/kanban-kartu-baru.py
+tmp/kanban-workspace-info.py
+tmp/lihat-kartu.py
+tmp/lihat-papan.py
+tmp/lihat-relasi.py
+tmp/lihat-skema-kanban.py
+tmp/peek-datapage.py
+tmp/perbaiki-workspace-kartu.py
+tmp/priceblock-check.bundle.mjs
+tmp/priceblock-check.mjs
+tmp/urldecode.py
+tmp/verify-admin-nav.bundle.mjs
+tmp/verify-admin-nav.mjs
+tmp/verify-auth-real.bundle.mjs
+tmp/verify-auth-real.mjs
+tmp/verify-auth-render.bundle.mjs
+tmp/verify-auth-render.mjs
+tmp/verify-dashboard-cta.bundle.mjs
+tmp/verify-dashboard-cta.mjs
+
+===== F. build-admin-messages-check.mjs 1-80 =====
+// Bundel harness verifikasi halaman Admin/Messages/Index jadi satu berkas IIFE
+// yang bisa dibuka langsung dari browser lewat file://.
+// Jalankan: node tmp/build-admin-messages-check.mjs
+import * as esbuild from 'esbuild';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const JS_ROOT = path.resolve('resources/js');
+const EXT = ['.jsx', '.js', '.mjs', '.tsx', '.ts'];
+
+function resolveAtPath(spec) {
+    const base = path.join(JS_ROOT, spec.slice(2));
+
+    for (const c of [base, ...EXT.map((e) => base + e), ...EXT.map((e) => path.join(base, 'index' + e))]) {
+        if (fs.existsSync(c) && fs.statSync(c).isFile()) return c;
+    }
+
+    return null;
+}
+
+await esbuild.build({
+    entryPoints: ['tmp/admin-messages-harness.jsx'],
+    outfile: 'tmp/admin-messages-harness.js',
+    bundle: true,
+    format: 'iife',
+    platform: 'browser',
+    jsx: 'transform',
+    define: { 'process.env.NODE_ENV': '"development"' },
+    logLevel: 'warning',
+    alias: { '@inertiajs/react': './tmp/inertia-stub-messages.jsx' },
+    loader: { '.png': 'dataurl', '.jpg': 'dataurl', '.jpeg': 'dataurl', '.svg': 'dataurl', '.webp': 'dataurl' },
+    plugins: [
+        {
+            name: 'alias-at-resources',
+            setup(build) {
+                build.onResolve({ filter: /^@\// }, (args) => {
+                    const resolved = resolveAtPath(args.path);
+
+                    if (!resolved) return { errors: [{ text: `tidak bisa resolve ${args.path}` }] };
+
+                    return { path: resolved };
+                });
+            },
+        },
+    ],
+});
+
+const cssFiles = fs
+    .readdirSync('public/build/assets')
+    .filter((f) => /^app-.*\.css$/.test(f))
+    .sort(
+        (a, b) =>
+            fs.statSync(path.join('public/build/assets', b)).mtimeMs -
+            fs.statSync(path.join('public/build/assets', a)).mtimeMs
+    );
+const cssHref = cssFiles.length > 0 ? `../public/build/assets/${cssFiles[0]}` : null;
+
+if (!cssHref) console.warn('peringatan: CSS hasil build tidak ditemukan, harness tanpa gaya.');
+
+const html = `<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Harness Admin/Messages/Index</title>
+${cssHref ? `<link rel="stylesheet" href="${cssHref}">` : ''}
+</head>
+<body>
+<div id="app"></div>
+<script src="admin-messages-harness.js"></script>
+</body>
+</html>
+`;
+
+fs.writeFileSync('tmp/admin-messages-harness.html', html);
+console.log(`harness siap: tmp/admin-messages-harness.html (css: ${cssHref ?? 'tidak ada'})`);
+
+===== G. cek-tautan-admin-vs-rute.py 1-60 =====
+#!/usr/bin/env python
+# Audit tambahan kartu t_6ee422f2 (QA-007): setiap URL '/admin/...' di resources/js
+# harus cocok dengan rute di routes/admin.php, dengan METODE yang benar:
+#   href=...                      -> GET (klik tautan)
+#   router.<m>( / form.<m>(       -> metode m
+# Segmen dinamis ({x} pada rute, ${...} pada template literal) = satu segmen path.
+# Konteks yang tidak dikenal hanya dilaporkan sebagai info.
+# Jalankan: python tmp/cek-tautan-admin-vs-rute.py
+import re
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+SRC = ROOT / "resources" / "js"
+ROUTES = ROOT / "routes" / "admin.php"
+
+WILD = "\x00"
+
+
+def ke_pola(path: str):
+    """Path rute/tautan -> pola regex; penanda dinamis jadi satu segmen path."""
+    tanpa_wild = re.sub(r"(\{[^}]+\}|\$\{[^}]*\})", WILD, path)
+    escaped = re.escape(tanpa_wild).replace(re.escape(WILD), "[^/]+")
+    return re.compile(escaped + r"\Z")
+
+
+routes_src = ROUTES.read_text(encoding="utf-8")
+pola_rute = []
+for method, path in re.findall(r"Route::(get|post|put|patch|delete)\('([^']*)'", routes_src):
+    full = "/admin" + (path if path.startswith("/") else "/" + path)
+    full = full.rstrip("/") if full != "/admin" else "/admin"
+    pola_rute.append((method.upper(), full, ke_pola(full)))
+
+LITERAL = re.compile(r"""['"`](/admin[^'"`\n]*)['"`]""")
+KONTEKS = re.compile(
+    r"(href\s*[:=]\s*|router\.(get|post|put|patch|delete)\s*\(\s*|form\.(post|put|patch|delete)\s*\(\s*)$"
+)
+
+temuan = []
+diperiksa = []
+
+for berkas in sorted(SRC.rglob("*.jsx")) + sorted(SRC.rglob("*.js")):
+    teks = berkas.read_text(encoding="utf-8")
+    for m in LITERAL.finditer(teks):
+        url = m.group(1)
+        if url.startswith("/admin/login") or url.startswith("/admin/logout"):
+            continue
+        awal = teks[max(0, m.start() - 60):m.start()]
+        ctx = KONTEKS.search(awal)
+        if ctx is None:
+            metode, asal = None, "tidak dikenal"
+        elif ctx.group(1).startswith("href"):
+            metode, asal = "GET", "href"
+        else:
+            mm = ctx.group(2) or ctx.group(3)
+            metode, asal = mm.upper(), ("router." if ctx.group(2) else "form.") + mm
+
+        url_bersih = url.split("?")[0].rstrip("/") or "/admin"
+        if metode is None:
+            cocok = [f"{m2} {p}" for m2, p, pola in pola_rute if pola.match(url_bersih)]
+
+===== H. icons.jsx exports =====
+26:export const SearchIcon = (props) => (
+33:export const CartIcon = (props) => (
+41:export const MenuIcon = (props) => (
+47:export const CloseIcon = (props) => (
+53:export const ChevronDownIcon = (props) => (
+59:export const ChevronLeftIcon = (props) => (
+65:export const ChevronRightIcon = (props) => (
+71:export const StarIcon = ({ filled = false, ...props }) => (
+77:export const CheckIcon = (props) => (
+83:export const TruckIcon = (props) => (
+92:export const ReturnIcon = (props) => (
+99:export const ShieldCheckIcon = (props) => (
+106:export const HeadsetIcon = (props) => (
+115:export const UserIcon = (props) => (
+122:export const MailIcon = (props) => (
+129:export const PhoneIcon = (props) => (
+135:export const MapPinIcon = (props) => (
+142:export const AlertIcon = (props) => (
+150:export const ImageOffIcon = (props) => (
+158:export const SpinnerIcon = ({ size = 16, className = '' }) => (
+173:export const InstagramIcon = (props) => (
+181:export const FacebookIcon = (props) => (
+187:export const TikTokIcon = (props) => (
+194:export const WhatsAppIcon = (props) => (
+201:export const LeafIcon = (props) => (
+208:export const ScissorsIcon = (props) => (
+216:export const GridIcon = (props) => (
+225:export const BoxIcon = (props) => (
+233:export const LayersIcon = (props) => (
+241:export const ArchiveIcon = (props) => (
+249:export const GearIcon = (props) => (
+256:export const LogOutIcon = (props) => (
+264:export const WalletIcon = (props) => (
+272:export const TrendUpIcon = (props) => (
+279:export const TrendDownIcon = (props) => (
+286:export const ChartIcon = (props) => (
+297:export const TrashIcon = (props) => (
+308:export const CopyIcon = (props) => (
+316:export const TRUST_ICONS = {
+333:export const SOCIAL_ICONS = {
+  539 25645 tmp/bundel-konteks8-t_e5149746.txt

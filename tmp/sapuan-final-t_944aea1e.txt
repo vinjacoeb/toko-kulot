@@ -1,0 +1,37 @@
+## 8) sapuan akhir pada keadaan beku (dijalankan 2026-10-20 15:59:08 +0700)
+# catatan: berkas bukti ini tidak memuat frasa terlarang, baik sebelum maupun sesudah bagian ini ditulis,
+#          jadi hasil sapuan di bawah tetap sah untuk keadaan akhir.
+
+$ grep -rn "belum dirende[r]" docs/                     # seluruh docs/, semua ekstensi
+exit=1 (1 = tidak ada hasil)
+
+$ grep -rni "butuh keputusan tech lea[d]" docs/         # seluruh docs/
+exit=1 (1 = tidak ada hasil)
+
+$ grep -rn "belum dirende[r]" docs/catatan-frontend*.md # perintah wajib kartu (pola kelas karakter)
+exit=1 (1 = tidak ada hasil)
+
+$ grep -n "cari" resources/js/Layouts/AdminLayout.jsx   # perintah wajib kartu
+28: * Deviasi disengaja (design §5.10 catatan D8, keputusan kartu `t_b5de72e3`): kolom `⌕ cari`
+29: * pada topbar TIDAK dirender — jalur pencarian admin adalah toolbar per halaman daftar
+30: * (design §5.12) dan PRD §5.2 tidak memuat rute pencarian. Jangan menambahkannya sendiri.
+exit=0
+
+$ sed -n '32,$p' resources/js/Layouts/AdminLayout.jsx | grep -ni "cari|search"   # kode, bukan komentar
+exit=1 (1 = tidak ada hasil)
+
+$ npm run build                                           # perintah wajib kartu
+[2mpublic/build/[22m[36massets/Index-CXVCafX1.js            [39m[1m[2m 49.73 kB[22m[1m[22m[2m │ gzip:  11.76 kB[22m
+[2mpublic/build/[22m[36massets/app-Bi-jA20D.js              [39m[1m[2m361.82 kB[22m[1m[22m[2m │ gzip: 113.41 kB[22m
+[32m✓ built in 2.99s[39m
+exit=0
+
+$ git status --short resources/js/Layouts/AdminLayout.jsx docs/catatan-frontend.md docs/catatan-frontend-admin.md docs/bukti-frontend-t_944aea1e.txt
+ M docs/catatan-frontend.md
+?? docs/bukti-frontend-t_944aea1e.txt
+?? docs/catatan-frontend-admin.md
+?? resources/js/Layouts/AdminLayout.jsx
+
+Kesimpulan: kolom cari tetap tidak dirender (0 elemen di kode), tidak ada rute baru, tidak ada catatan
+keputusan tertunda soal topbar yang tersisa di docs/, build exit 0. Klik topbar di browser nyata:
+belum diuji, butuh browser.

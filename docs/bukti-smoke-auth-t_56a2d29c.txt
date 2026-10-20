@@ -1,0 +1,35 @@
+BUKTI SMOKE HALAMAN AUTH — kartu devops t_56a2d29c
+Waktu      : 2026-10-20 14:36:00 +0700
+Server     : http://127.0.0.1:8000 (server pemilik; hanya GET, tanpa login, tanpa submit)
+Kolektor   : window.onerror + unhandledrejection + console.error via Page.addScriptToEvaluateOnNewDocument
+
+path (redirect bila ada)                      vp   teks simpul input  form console
+------------------------------------------------------------------------------------------------------------------------------------
+/login -> /login                             360      0      0     0     0 error: Uncaught ReferenceError: route is not defined [KOSONG/BLANK] [CONSOLE]
+/login -> /login                             768      0      0     0     0 error: Uncaught ReferenceError: route is not defined [KOSONG/BLANK] [CONSOLE]
+/login -> /login                            1280      0      0     0     0 error: Uncaught ReferenceError: route is not defined [KOSONG/BLANK] [CONSOLE]
+/checkout -> /login                          360      0      0     0     0 error: Uncaught ReferenceError: route is not defined [KOSONG/BLANK] [CONSOLE]
+/checkout -> /login                          768      0      0     0     0 error: Uncaught ReferenceError: route is not defined [KOSONG/BLANK] [CONSOLE]
+/checkout -> /login                         1280      0      0     0     0 error: Uncaught ReferenceError: route is not defined [KOSONG/BLANK] [CONSOLE]
+/forgot-password -> /forgot-password         360    128     43     1     1 BERSIH
+/forgot-password -> /forgot-password         768    150     43     1     1 BERSIH
+/forgot-password -> /forgot-password        1280    150     43     1     1 BERSIH
+/register -> /register                       360    203     58     6     1 BERSIH
+/register -> /register                       768    225     58     6     1 BERSIH
+/register -> /register                      1280    225     58     6     1 BERSIH
+/reset-password/token-uji -> /reset-password/token-uji   360    170     50     4     1 BERSIH
+/reset-password/token-uji -> /reset-password/token-uji   768    192     50     4     1 BERSIH
+/reset-password/token-uji -> /reset-password/token-uji  1280    192     50     4     1 BERSIH
+/admin/login -> /admin/login                 360     62     17     2     1 BERSIH
+/admin/login -> /admin/login                 768     62     17     2     1 BERSIH
+/admin/login -> /admin/login                1280     62     17     2     1 BERSIH
+
+Ringkasan: 18 pengukuran, 6 bermasalah
+
+Pratinjau teks halaman (viewport 1280):
+  /login                       -> (kosong)
+  /checkout                    -> (kosong)
+  /forgot-password             -> Lewati ke konten utama TOKO KULOT Beranda Produk Kontak Lupa Kata Sandi Email Kirim Tautan
+  /register                    -> Lewati ke konten utama TOKO KULOT Beranda Produk Kontak Daftar Akun Nama Email Nomor Whats
+  /reset-password/token-uji    -> Lewati ke konten utama TOKO KULOT Beranda Produk Kontak Reset Kata Sandi Email Kata Sandi 
+  /admin/login                 -> Masuk Panel Admin Email * Kata sandi * Masuk Khusus pengelola

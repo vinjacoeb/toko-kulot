@@ -1,0 +1,309 @@
+# Bukti kartu t_67576fb2 — aturan tone badge §4.21 v2.1 (-strong) + badge diskon solid
+Tanggal: 2026-10-20 15:38:34 +0700  Repo: C:/Users/LENOVO/Downloads/toko-kulot
+
+## SEBELUM — grep pil/badge state (kelas lama)
+$ grep -rn "bg-warning/10 text-warning\|bg-success/10 text-success\|bg-danger/10 text-danger\|bg-slate-200/60 text-slate-500" resources/js
+resources/js/Components/QrisPanel.jsx:65:                <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success/10 text-success" aria-hidden="true">
+resources/js/Components/StatusBadge.jsx:21:    warning: 'bg-warning/10 text-warning',
+resources/js/Components/StatusBadge.jsx:22:    success: 'bg-success/10 text-success',
+resources/js/Components/StatusBadge.jsx:23:    danger: 'bg-danger/10 text-danger',
+resources/js/Components/StatusBadge.jsx:24:    neutral: 'bg-slate-200/60 text-slate-500',
+resources/js/Pages/Admin/Messages/Index.jsx:304:                    <StatusBadge status="sudah dibaca" label="Sudah dibaca" className="bg-success/10 text-success" />
+resources/js/Pages/Admin/Messages/Index.jsx:306:                    <StatusBadge status="belum dibaca" label="Belum dibaca" className="bg-warning/10 text-warning" />
+resources/js/Pages/Admin/Reviews/Index.jsx:279:                    className={row.is_visible ? 'bg-success/10 text-success' : undefined}
+resources/js/Pages/Public/CheckoutSuccess.jsx:77:                        className="mt-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-success/10 text-success"
+
+## SEBELUM — grep token state sebagai teks
+$ grep -rn "text-warning\|text-success\|text-danger" resources/js
+resources/js/Components/CartLine.jsx:126:                        className="text-danger disabled:opacity-45"
+resources/js/Components/Countdown.jsx:51:            className={cn('inline-flex items-center gap-1.5 text-meta font-mono', expired ? 'text-danger' : 'text-ink', className)}
+resources/js/Components/ErrorState.jsx:24:            <span className="text-danger" aria-hidden="true">
+resources/js/Components/Field.jsx:26:                        <span className="text-danger" aria-hidden="true">
+resources/js/Components/Field.jsx:39:                <p id={errorId} className="mt-1.5 text-meta text-danger" role="alert">
+resources/js/Components/InlineNotice.jsx:21:    success: 'text-success',
+resources/js/Components/InlineNotice.jsx:22:    warning: 'text-warning',
+resources/js/Components/InlineNotice.jsx:23:    error: 'text-danger',
+resources/js/Components/KpiCard.jsx:55:                                hasDelta && numericDelta > 0 && 'text-success',
+resources/js/Components/KpiCard.jsx:56:                                hasDelta && numericDelta < 0 && 'text-danger',
+resources/js/Components/QrisPanel.jsx:65:                <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success/10 text-success" aria-hidden="true">
+resources/js/Components/QrisPanel.jsx:178:                <p role="status" className="mt-2 text-center text-meta text-success">
+resources/js/Components/StatusBadge.jsx:21:    warning: 'bg-warning/10 text-warning',
+resources/js/Components/StatusBadge.jsx:22:    success: 'bg-success/10 text-success',
+resources/js/Components/StatusBadge.jsx:23:    danger: 'bg-danger/10 text-danger',
+resources/js/Components/Toast.jsx:7:    success: { bar: 'border-l-success', icon: CheckIcon, color: 'text-success' },
+resources/js/Components/Toast.jsx:8:    warning: { bar: 'border-l-warning', icon: AlertIcon, color: 'text-warning' },
+resources/js/Components/Toast.jsx:9:    error: { bar: 'border-l-danger', icon: AlertIcon, color: 'text-danger' },
+resources/js/Pages/Admin/Dashboard.jsx:201:                                        <span className="shrink-0 text-meta font-semibold text-danger">
+resources/js/Pages/Admin/Dashboard.jsx:245:                                        <p className="flex items-center gap-1 text-meta text-warning">
+resources/js/Pages/Admin/Messages/Index.jsx:304:                    <StatusBadge status="sudah dibaca" label="Sudah dibaca" className="bg-success/10 text-success" />
+resources/js/Pages/Admin/Messages/Index.jsx:306:                    <StatusBadge status="belum dibaca" label="Belum dibaca" className="bg-warning/10 text-warning" />
+resources/js/Pages/Admin/Reviews/Index.jsx:279:                    className={row.is_visible ? 'bg-success/10 text-success' : undefined}
+resources/js/Pages/Admin/Settings/Index.jsx:315:                <IconButton label={removeLabel} onClick={onRemove} className="text-danger">
+resources/js/Pages/Admin/Settings/Index.jsx:1720:                                        className="mt-6 text-danger"
+resources/js/Pages/Public/Auth/Register.jsx:129:            <p id="register-terms-error" role="alert" className="mt-1.5 text-meta text-danger">
+resources/js/Pages/Public/CheckoutSuccess.jsx:77:                        className="mt-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-success/10 text-success"
+resources/js/Pages/Public/Products/Show.jsx:260:                                <p className="mt-1 text-meta text-success">
+resources/js/Pages/Public/Products/Show.jsx:317:                        <p className={soldOut ? 'mt-4 text-meta text-danger' : 'mt-4 text-meta text-success'}>
+resources/js/Pages/Public/Products/Show.jsx:329:                            <p className="mt-3 text-meta text-danger" role="alert">
+resources/js/Pages/Public/Products/Show.jsx:368:                            <p className="mt-2 text-meta text-warning" role="status">
+resources/js/Pages/Public/Products/Show.jsx:397:                                            <td className="py-1.5 text-right font-semibold text-success">
+
+## SEBELUM — badge diskon PriceBlock
+$ grep -rn "sale-500" resources/js
+resources/js/Components/PriceBlock.jsx:23:                    <span className="rounded-sm bg-sale-500/10 px-1.5 py-0.5 text-badge font-semibold text-sale-500">
+
+## SESUDAH — grep bentuk lama di resources/js (hanya komentar dokumentasi yang menyebut bentuk terlarang)
+$ grep -rn "bg-sale-500/10\|text-sale-500\|bg-warning/10 text-warning[^-]\|bg-slate-200/60 text-slate-500" resources/js
+(bersih)
+
+## SESUDAH — kelas baku baru pada komponen+halaman
+resources/js/Components/StatusBadge.jsx:12: * text-slate-600` (6,17:1).
+resources/js/Components/StatusBadge.jsx:25:    warning: 'bg-warning/10 text-warning-strong',
+resources/js/Components/StatusBadge.jsx:26:    success: 'bg-success/10 text-success-strong',
+resources/js/Components/StatusBadge.jsx:27:    danger: 'bg-danger/10 text-danger-strong',
+resources/js/Components/StatusBadge.jsx:28:    neutral: 'bg-slate-200/60 text-slate-600',
+resources/js/Components/Badge.jsx:9: *   sale    → `bg-sale-500 text-white` (4,65:1; bentuk tint 10% + token dasar sale hanya 4,00:1 — dilarang)
+resources/js/Components/Badge.jsx:11: *   success → `bg-success/10 text-success-strong` (5,33:1; token dasar success hanya 2,96:1 — dilarang)
+resources/js/Components/Badge.jsx:12: *   warning → `bg-warning/10 text-warning-strong` (5,34:1; token dasar warning hanya 2,86:1 — dilarang)
+resources/js/Components/Badge.jsx:13: *   danger  → `bg-danger/10 text-danger-strong` (5,95:1 di atas tint; token dasar danger 4,13:1 — dilarang)
+resources/js/Components/Badge.jsx:19:    sale: 'bg-sale-500 text-white',
+resources/js/Components/Badge.jsx:20:    success: 'bg-success/10 text-success-strong',
+resources/js/Components/Badge.jsx:21:    warning: 'bg-warning/10 text-warning-strong',
+resources/js/Components/Badge.jsx:22:    danger: 'bg-danger/10 text-danger-strong',
+resources/js/Components/PriceBlock.jsx:23:                    <span className="rounded-sm bg-sale-500 px-1.5 py-0.5 text-badge font-semibold text-white">
+resources/js/Pages/Admin/Messages/Index.jsx:304:                    <StatusBadge status="sudah dibaca" label="Sudah dibaca" className="bg-success/10 text-success-strong" />
+resources/js/Pages/Admin/Messages/Index.jsx:306:                    <StatusBadge status="belum dibaca" label="Belum dibaca" className="bg-warning/10 text-warning-strong" />
+resources/js/Pages/Admin/Reviews/Index.jsx:279:                    className={row.is_visible ? 'bg-success/10 text-success-strong' : undefined}
+--- BUILD ---
+[2mpublic/build/[22m[35massets/app-McaDlWlw.css             [39m[1m[2m 57.34 kB[22m[1m[22m[2m │ gzip:  10.21 kB[22m
+[2mpublic/build/[22m[36massets/app-BQJW9H3n.js              [39m[1m[2m361.78 kB[22m[1m[22m[2m │ gzip: 113.40 kB[22m
+[32m✓ built in 3.37s[39m
+
+## Harness render komponen (tmp/verify-badge-tone.mjs)
+$ node tmp/build-badge-tone-check.mjs && node tmp/verify-badge-tone.bundle.mjs
+bundel harness siap: tmp/verify-badge-tone.bundle.mjs
+== StatusBadge — peta tone §4.21 v2.1 ==
+  ok   StatusBadge status="pending" kelas baku
+  ok   StatusBadge status="pending" label "Menunggu"
+  ok   StatusBadge status="pending" tanpa bentuk kelas lama/terlarang
+  ok   StatusBadge status="pending" tidak memakai text-white di tint
+  ok   StatusBadge status="PENDING" kelas baku
+  ok   StatusBadge status="PENDING" label "Menunggu"
+  ok   StatusBadge status="PENDING" tanpa bentuk kelas lama/terlarang
+  ok   StatusBadge status="PENDING" tidak memakai text-white di tint
+  ok   StatusBadge status="dibayar" kelas baku
+  ok   StatusBadge status="dibayar" label "Dibayar"
+  ok   StatusBadge status="dibayar" tanpa bentuk kelas lama/terlarang
+  ok   StatusBadge status="dibayar" tidak memakai text-white di tint
+  ok   StatusBadge status="diproses" kelas baku
+  ok   StatusBadge status="diproses" label "Diproses"
+  ok   StatusBadge status="diproses" tanpa bentuk kelas lama/terlarang
+  ok   StatusBadge status="diproses" tidak memakai text-white di tint
+  ok   StatusBadge status="dikirim" kelas baku
+  ok   StatusBadge status="dikirim" label "Dikirim"
+  ok   StatusBadge status="dikirim" tanpa bentuk kelas lama/terlarang
+  ok   StatusBadge status="dikirim" tidak memakai text-white di tint
+  ok   StatusBadge status="selesai" kelas baku
+  ok   StatusBadge status="selesai" label "Selesai"
+  ok   StatusBadge status="selesai" tanpa bentuk kelas lama/terlarang
+  ok   StatusBadge status="selesai" tidak memakai text-white di tint
+  ok   StatusBadge status="batal" kelas baku
+  ok   StatusBadge status="batal" label "Batal"
+  ok   StatusBadge status="batal" tanpa bentuk kelas lama/terlarang
+  ok   StatusBadge status="batal" tidak memakai text-white di tint
+  ok   StatusBadge status="Sudah dibaca" kelas baku
+  ok   StatusBadge status="Sudah dibaca" label "Sudah dibaca"
+  ok   StatusBadge status="Sudah dibaca" tanpa bentuk kelas lama/terlarang
+  ok   StatusBadge status="Sudah dibaca" tidak memakai text-white di tint
+  ok   StatusBadge status="arsip" kelas baku
+  ok   StatusBadge status="arsip" label "arsip"
+  ok   StatusBadge status="arsip" tanpa bentuk kelas lama/terlarang
+  ok   StatusBadge status="arsip" tidak memakai text-white di tint
+  ok   StatusBadge status=null kelas baku
+  ok   StatusBadge status=null label "-"
+  ok   StatusBadge status=null tanpa bentuk kelas lama/terlarang
+  ok   StatusBadge status=null tidak memakai text-white di tint
+  ok   StatusBadge status="batal" kelas baku
+  ok   StatusBadge status="batal" label "Dibatalkan"
+  ok   StatusBadge status="batal" tanpa bentuk kelas lama/terlarang
+  ok   StatusBadge status="batal" tidak memakai text-white di tint
+== StatusBadge — override tone per halaman (halaman pesan/ulasan admin) ==
+  ok   override warning halaman pesan terpasang
+  ok   override warning halaman pesan tanpa token dasar
+  ok   override success halaman pesan terpasang
+  ok   Reviews tanpa override (sembunyi) tetap neutral
+== Badge — tone §4.21 v2.1 (promo/sale) ==
+  ok   Badge tone=(default) kelas baku
+  ok   Badge tone=(default) isi "Baru"
+  ok   Badge tone=(default) tanpa bentuk kelas lama/terlarang
+  ok   Badge tone=brand kelas baku
+  ok   Badge tone=brand isi "Baru"
+  ok   Badge tone=brand tanpa bentuk kelas lama/terlarang
+  ok   Badge tone=accent kelas baku
+  ok   Badge tone=accent isi "Promo"
+  ok   Badge tone=accent tanpa bentuk kelas lama/terlarang
+  ok   Badge tone=sale kelas baku
+  ok   Badge tone=sale isi "Sale"
+  ok   Badge tone=sale tanpa bentuk kelas lama/terlarang
+  ok   Badge tone=success kelas baku
+  ok   Badge tone=success isi "Tersedia"
+  ok   Badge tone=success tanpa bentuk kelas lama/terlarang
+  ok   Badge tone=warning kelas baku
+  ok   Badge tone=warning isi "Terbatas"
+  ok   Badge tone=warning tanpa bentuk kelas lama/terlarang
+  ok   Badge tone=danger kelas baku
+  ok   Badge tone=danger isi "Habis"
+  ok   Badge tone=danger tanpa bentuk kelas lama/terlarang
+  ok   Badge tone=neon kelas baku
+  ok   Badge tone=neon isi "Tone tak dikenal"
+  ok   Badge tone=neon tanpa bentuk kelas lama/terlarang
+  ok   Badge accent memakai text-ink, bukan text-white
+  ok   Badge meneruskan className
+== PriceBlock — badge diskon solid (T5) ==
+  ok   badge diskon dirender saat comparePrice > price
+  ok   badge diskon solid bg-sale-500 text-white
+  ok   persentase diskon benar
+  ok   PriceBlock tanpa tint sale/accent terlarang
+  ok   harga jual tampil
+  ok   harga coret tetap text-meta text-slate-500 line-through (§11.4 T2, kartu t_90759be9)
+  ok   badge diskon solid juga pada size="sm"
+  ok   harga string dari server tetap benar
+  ok   tanpa comparePrice tidak ada badge diskon
+  ok   comparePrice < price tidak ada badge diskon
+== Kontrol negatif — harness harus menandai markup LAMA sebagai gagal ==
+  ok   kontrol negatif: pil warning lama tertangkap
+  ok   kontrol negatif: pil neutral lama tertangkap
+  ok   kontrol negatif: pil accent lama (text-white) tertangkap
+  ok   kontrol negatif: pil accent tint lama tertangkap
+  ok   kontrol negatif: badge diskon tint lama tertangkap
+  ok   kontrol positif: teks meta slate-500 di atas putih TIDAK ditandai
+  ok   kontrol positif: badge diskon solid TIDAK ditandai
+== Ringkasan ==
+  91/91 lulus, 0 gagal
+
+## docs/qa/kontras-badge.py (tabel §4.21 v2.1)
+$ python docs/qa/kontras-badge.py
+== Tabel tone badge §4.21 ==
+  brand    bg-brand/10 text-brand                 dokumen 9,35:1 | hitung 9,35:1 (brand-100) OK
+  warning  bg-warning/10 text-warning-strong      dokumen 5,34:1 | hitung 5,34:1 (brand-100) OK
+  success  bg-success/10 text-success-strong      dokumen 5,33:1 | hitung 5,33:1 (brand-100) OK
+  danger   bg-danger/10 text-danger-strong        dokumen 5,95:1 | hitung 5,95:1 (brand-100) OK
+  neutral  bg-slate-200/60 text-slate-600         dokumen 6,17:1 | hitung 6,17:1 (brand-100) OK
+  accent   bg-accent-500 text-ink                 dokumen 10,11:1 | hitung 10,11:1 (putih) OK
+  sale     bg-sale-500 text-white                 dokumen 4,65:1 | hitung 4,65:1 (putih) OK
+
+== Tabel tone solid §4.21 ==
+  brand-700    putih 13,54:1 OK  | ink 1,38:1 OK OK
+  accent       putih 1,85:1 OK  | ink 10,11:1 OK OK
+  accent-600   putih 2,38:1 OK  | ink 7,89:1 OK OK
+  sale-500     putih 4,65:1 OK  | ink 4,03:1 OK OK
+  success      putih 3,30:1 OK  | ink 5,68:1 OK OK
+  warning      putih 3,19:1 OK  | ink 5,88:1 OK OK
+  danger       putih 4,83:1 OK  | ink 3,88:1 OK OK
+
+== Token -strong ==
+  success-strong   #166534 OK
+  warning-strong   #92400E OK
+  danger-strong    #991B1B OK
+
+== HASIL ==
+  SEMUA angka tabel §4.21 cocok dengan hitungan WCAG 2.1 (toleransi 0,006) — 7 tone + 7 tone solid.
+EXIT=0
+
+## token-check.mjs
+$ node token-check.mjs
+OK: semua 55 token ter-resolve
+fontSize.display = clamp(40px, 2.55vw + 30.8px, 64px)
+fontSize.h1 = clamp(32px, 1.28vw + 27.4px, 44px)
+container padding = {"DEFAULT":"16px","lg":"50px"} | screens.xl = 1300px
+EXIT=0
+
+## Urutan kelas di CSS terkompilasi (override halaman harus menang)
+$ python tmp/cek-urutan-css-t_67576fb2.py
+CSS: public/build/assets\app-McaDlWlw.css (57337 byte)
+
+-- offset kelas --
+  bg-slate-200/60        ADA        26267
+  bg-success/10          ADA        26494
+  bg-warning/10          ADA        26628
+  bg-danger/10           ADA        24638
+  bg-brand/10            ADA        24509
+  bg-sale-500            ADA        26085
+  bg-accent-500          ADA        23610
+  text-slate-600         ADA        34174
+  text-success-strong    ADA        34260
+  text-warning-strong    ADA        34351
+  text-danger-strong     ADA        32065
+  text-ink               ADA        33014
+  text-white             ADA        34442
+
+-- urutan yang dipakai halaman (kelas belakangan menang) --
+  text-success-strong (34260) vs text-slate-600 (34174) -> MENANG
+  text-warning-strong (34351) vs text-slate-600 (34174) -> MENANG
+  bg-success/10 (26494) vs bg-slate-200/60 (26267) -> MENANG
+  bg-warning/10 (26628) vs bg-slate-200/60 (26267) -> MENANG
+
+-- bentuk tint sale lama harus sudah tidak ada --
+  .bg-sale-500\/10       tidak ada 
+  .text-sale-500{        tidak ada 
+
+HASIL: semua kelas terkompilasi & urutan override aman
+EXIT=0
+
+## Sapuan bundel
+$ python tmp/cek-komponen-tanpa-import.py .
+file diperiksa: 81
+resources\js\app.jsx: App
+$ python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build
+chunk .js diperiksa: 49
+OK: tidak ada identifier komponen JSX tanpa import/definisi di bundel.
+
+## Perubahan berkas
+$ git status --porcelain <berkas yang disentuh>
+ M resources/js/Components/PriceBlock.jsx
+?? resources/js/Components/Badge.jsx
+?? resources/js/Components/StatusBadge.jsx
+?? resources/js/Pages/Admin/Messages/Index.jsx
+?? resources/js/Pages/Admin/Reviews/Index.jsx
+$ git diff --stat resources/js
+ resources/js/Components/Breadcrumb.jsx       |  2 +-
+ resources/js/Components/EmptyState.jsx       |  2 +-
+ resources/js/Components/ErrorState.jsx       |  2 +-
+ resources/js/Components/FaqAccordion.jsx     |  2 +-
+ resources/js/Components/Field.jsx            |  4 ++--
+ resources/js/Components/FilterPanel.jsx      |  6 +++---
+ resources/js/Components/InlineNotice.jsx     |  4 ++--
+ resources/js/Components/Input.jsx            |  2 +-
+ resources/js/Components/NavDrawer.jsx        |  2 +-
+ resources/js/Components/PriceBlock.jsx       |  4 ++--
+ resources/js/Components/ProductCard.jsx      |  8 ++++----
+ resources/js/Components/RatingSummary.jsx    |  6 +++---
+ resources/js/Components/ReviewCard.jsx       |  2 +-
+ resources/js/Components/StarRating.jsx       |  2 +-
+ resources/js/Components/Textarea.jsx         |  2 +-
+ resources/js/Components/Toast.jsx            |  4 ++--
+ resources/js/Components/icons.jsx            | 19 +++++++++++++++++++
+ resources/js/Pages/Public/Contact.jsx        |  2 +-
+ resources/js/Pages/Public/Products/Index.jsx |  2 +-
+ resources/js/Pages/Public/Products/Show.jsx  | 18 +++++++++---------
+ resources/js/lib/format.js                   | 26 ++++++++++++++++++++++++++
+ 21 files changed, 83 insertions(+), 38 deletions(-)
+
+## Catatan: `npm run build` exit 0; CSS `app-McaDlWlw.css` dibuat 15:42; tidak ada kelas tint sale di CSS terkompilasi.
+
+## Daftar berkas + baris yang diubah
+1. resources/js/Components/StatusBadge.jsx:21-24 (peta CLASSES) + komentar 1-20 -> warning/success/danger pakai -strong, neutral jadi bg-slate-200/60 text-slate-600
+2. resources/js/Components/Badge.jsx (baru, 38 baris): 16-22 peta CLASSES (brand/accent/sale/success/warning/danger), fallback tone tak dikenal -> brand
+3. resources/js/Components/PriceBlock.jsx:22-23 -> badge diskon solid bg-sale-500 text-white (baris 22 text-slate-400->text-slate-500 milik kartu t_90759be9/T2)
+4. resources/js/Pages/Admin/Messages/Index.jsx:304 -> bg-success/10 text-success-strong; :306 -> bg-warning/10 text-warning-strong
+5. resources/js/Pages/Admin/Reviews/Index.jsx:279 -> bg-success/10 text-success-strong
+
+## Peta Definition of Done
+- [x] Tidak ada pil/badge bg-{token}/10 text-{token} (lihat '## SESUDAH' baris 55-58: hanya komentar dokumentasi; grep kelas nyata bersih)
+- [x] Kelas -strong terpakai: StatusBadge.jsx:25-27, Badge.jsx:20-22, Messages/Index.jsx:304,306, Reviews/Index.jsx:279 + ter-generate di CSS (.text-success-strong 34260, .text-warning-strong 34351)
+- [x] npm run build exit 0; node token-check.mjs -> OK: semua 55 token ter-resolve (baris 215)
+- [x] Daftar berkas+baris & hasil grep sebelum/sesudah: berkas ini + docs/catatan-frontend.md
+- [x] python docs/qa/kontras-badge.py EXIT=0 (baris 211)
+
+## Di luar lingkup (kartu t_90759be9, T1-T4/T6): teks/ikon state non-badge
+resources/js/Components/InlineNotice.jsx:21-23 (text-success/text-warning/text-danger), KpiCard.jsx:55-56, Field.jsx:39, Countdown.jsx:51, ErrorState.jsx:24, CartLine.jsx:126, QrisPanel.jsx:65, CheckoutSuccess.jsx:77 - tidak disentuh di kartu ini (bukti '## SEBELUM' baris 16-51).

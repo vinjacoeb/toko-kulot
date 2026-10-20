@@ -1,0 +1,89 @@
+BUKTI BUILD BEKU RILIS — kartu devops t_5f75f779
+Waktu      : 2026-10-20 16:46–16:52 +07:00 (waktu sistem)
+Repo       : C:/Users/LENOVO/Downloads/toko-kulot
+Prasyarat  : papan kanban 16:46:10 — satu-satunya kartu terbuka adalah kartu ini (t_5f75f779, running);
+             tidak ada kartu penulis berjalan (t_954abfe8 selesai 16:38, t_14cad9e2 selesai 16:36).
+             Berkas sumber terakhir berubah 16:36:04 (13 berkas resources/js dari t_954abfe8).
+Server     : 127.0.0.1:8000 milik pemilik (devops tidak menyalakan server, tidak migrasi/seed, .env tidak disentuh).
+
+==============================================================================
+1. npm run build (build beku)
+==============================================================================
+Perintah: npm run build
+Hasil   : exit 0, "✓ built in 2.61s"
+Keluaran (ekor, apa adanya):
+
+public/build/assets/ProductGrid-CIbvC7vO.js        4.94 kB │ gzip:   2.07 kB
+public/build/assets/Contact-y4rmy3Iv.js            5.76 kB │ gzip:   2.10 kB
+public/build/assets/Cart-D7LNsCy6.js               6.01 kB │ gzip:   2.39 kB
+public/build/assets/Checkout-D8khtKoS.js           7.70 kB │ gzip:   2.60 kB
+public/build/assets/CheckoutSuccess-CyWc3muC.js    8.05 kB │ gzip:   2.69 kB
+public/build/assets/DataTable-0yq9gZDn.js          8.74 kB │ gzip:   2.96 kB
+public/build/assets/PublicLayout-ZSzoC0Y8.js       9.33 kB │ gzip:   3.16 kB
+public/build/assets/Button-ptrrBJ2o.js             9.43 kB │ gzip:   3.09 kB
+public/build/assets/Index-BdYawz88.js              9.64 kB │ gzip:   3.47 kB
+public/build/assets/Index-DdGrwQlE.js              9.70 kB │ gzip:   3.56 kB
+public/build/assets/Index-CXWZXEKb.js             11.33 kB │ gzip:   4.07 kB
+public/build/assets/Index-DH0WIETA.js             11.78 kB │ gzip:   4.09 kB
+public/build/assets/Index-Be1lzWmg.js             11.81 kB │ gzip:   4.28 kB
+public/build/assets/Dashboard-wtRri09b.js         12.01 kB │ gzip:   4.21 kB
+public/build/assets/Home-CJ76EhFh.js              13.44 kB │ gzip:   4.35 kB
+public/build/assets/Show-DDcDEgmE.js              13.97 kB │ gzip:   4.81 kB
+public/build/assets/CheckoutPay-FL0drDvW.js       16.94 kB │ gzip:   6.29 kB
+public/build/assets/Index-BoDsgwmC.js             49.73 kB │ gzip:  11.76 kB
+public/build/assets/app-C4HDW06B.js              361.82 kB │ gzip: 113.40 kB
+✓ built in 2.61s
+
+Angka build beku (diukur langsung dari berkas, bukan dari keluaran Vite):
+  manifest.json      : public/build/manifest.json, mtime 2026-10-20 16:46:51.954 +0700, 18.817 B
+  sha256 manifest    : 83cd3362d607bf9041932920842f0968a5b96d91fb8a938e027d739f421dade8
+  jumlah berkas      : 51 berkas di public/build (50 aset di public/build/assets + manifest.json)
+  chunk aplikasi     : public/build/assets/app-C4HDW06B.js (361.816 B)
+  css aplikasi       : public/build/assets/app-C4SfSLQH.css (57.446 B)
+  berkas asing/stale : tidak ada — semua berkas di public/build bertimestamp 16:46 (Vite mengosongkan outDir)
+  sumber lebih baru  : 0 berkas (resources, app, routes, config, database, tests, tailwind.config.js,
+                       vite.config.js, package.json, composer.json) lebih baru dari manifest 16:46:51
+  bundel yang dilayani server saat smoke: http://127.0.0.1:8000/build/assets/app-C4HDW06B.js (sama dengan chunk beku)
+
+==============================================================================
+2. Tiga penyapu statis pada build beku
+==============================================================================
+2a. node <scratch-devops>/check-jsx-imports.mjs resources/js
+    Berkas diperiksa : 81
+    Pemakaian tag JSX: 711
+    Temuan           : 0
+    EXIT=0
+
+2b. python tmp/cek-komponen-tanpa-import.py .
+    file diperiksa: 81
+    resources\js\app.jsx: App
+    EXIT=0
+    (satu-satunya baris keluaran = positif palsu yang sudah dikenal: `App` adalah parameter
+     fungsi setup di app.jsx, didefinisikan di berkas yang sama)
+
+2c. python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build
+    chunk .js diperiksa: 49
+    OK: tidak ada identifier komponen JSX tanpa import/definisi di bundel.
+    EXIT=0
+
+==============================================================================
+3. Smoke 9 rute x 3 viewport pada build beku
+==============================================================================
+Berkas bukti: docs/bukti-smoke-beku-t_5f75f779.txt (dijalankan 16:49:24 pada app-C4HDW06B.js)
+Ringkasan   : 27 pengukuran, 0 bermasalah (0 TEKS KOSONG, 0 geser horizontal, 27/27 konsol BERSIH),
+              3 baris bertanda informatif "teks pendek" (/admin/login — halaman nyata, bukan kosong).
+Kolektor    : window.onerror + unhandledrejection + console.error dipasang lewat
+              Page.addScriptToEvaluateOnNewDocument (sebelum document start).
+
+==============================================================================
+4. Suite PHP
+==============================================================================
+Perintah: PHP_INI_SCAN_DIR=<scratch-devops>/phpsqlite php artisan test
+Hasil   : exit 0 — Tests: 190 passed (1111 assertions), Duration 41.26s, 0 failed / 0 skipped / 0 incomplete.
+          (sqlite :memory: lewat php.ini tambahan di scratch; php.ini global dan .env tidak disentuh)
+
+==============================================================================
+5. Pemeriksaan sesudah verifikasi (build tidak bergerak)
+==============================================================================
+manifest.json mtime 16:46:51.954 +0700 dan sha256 83cd3362d607bf90… TIDAK berubah setelah build, smoke, dan suite.
+chunk app-*.js tetap tunggal: app-C4HDW06B.js. 0 berkas sumber lebih baru dari manifest.

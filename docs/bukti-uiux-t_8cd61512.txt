@@ -1,0 +1,96 @@
+BUKTI VERIFIKASI KONTRAS TONE BADGE - kartu UIUX t_8cd61512
+Tanggal: 20 Okt 2026 | Repo: C:/Users/LENOVO/Downloads/toko-kulot | Standar: WCAG 2.1 §1.4.3 (teks) & §1.4.11 (non-teks)
+
+1. METODE (dapat diulang)
+   - lin(c) = c/12.92 bila c <= 0.03928, selain itu ((c+0.055)/1.055)^2.4   (c = kanal/255)
+   - L = 0.2126*R + 0.7152*G + 0.0722*B ; rasio = (L_terang + 0.05) / (L_gelap + 0.05)
+   - Latar tint `bg-{token}/10` dikomposit: C = 0.10*F + 0.90*Latar
+   - Skrip verifikasi (tanpa dependensi): docs/qa/kontras-badge.py di repo (kanonik, membaca tailwind.config.js)
+   - Ambang: teks normal (< 24px) 4,5:1; teks besar 3:1; elemen non-teks 3:1; AAA 7:1
+   - Teks badge = text-badge clamp(11px, 0.11vw + 10.6px, 12px) -> pada 360px = 11,0px dan 1300px = 12,0px, selalu < 24px
+
+2. REPRODUKSI TEMUAN FRONTEND (t_fc2c5b98: 2,86:1 / 2,96:1) - bentuk lama `bg-{token}/10 text-{token}`
+   LATAR PUTIH (badge di kartu/tabel putih)
+     warning  #D97706 di bg-warning/10 -> 2,86:1  GAGAL (< 4,5:1)
+     success  #16A34A di bg-success/10 -> 2,96:1  GAGAL
+     danger   #DC2626 di bg-danger/10  -> 4,13:1  GAGAL
+     brand    #1F2A5E di bg-brand/10   -> 11,27:1  lolos
+     neutral  #64748B di bg-slate-200/60 -> 4,20:1  GAGAL
+     (kontrol) #64748B di putih -> 4,76:1 ; #94A3B8 di putih -> 2,56:1
+
+3. ATURAN v2.1 - rasio per latar (lama -> baru)
+  brand    #1F2A5E          | lama 11,27:1 | baru 9,35:1 | putih 11,27:1  `surface` 10,43:1  `brand-100` 9,35:1  `slate-200/60` 9,96:1
+  warning  #92400E          | lama 2,86:1 | baru 5,34:1 | putih 6,36:1  `surface` 5,91:1  `brand-100` 5,34:1  `slate-200/60` 5,68:1
+  success  #166534          | lama 2,96:1 | baru 5,33:1 | putih 6,40:1  `surface` 5,94:1  `brand-100` 5,33:1  `slate-200/60` 5,67:1
+  danger   #991B1B          | lama 4,13:1 | baru 5,95:1 | putih 7,11:1  `surface` 6,59:1  `brand-100` 5,95:1  `slate-200/60` 6,33:1
+  neutral  bg-slate-200/60 text-slate-600 | lama 4,20:1 (di atas putih) | baru 6,17:1 (terendah, di atas brand-100)
+  accent   bg-accent-500 text-ink | lama(bentuk tint) 1,74:1 | baru 10,11:1
+  sale     bg-sale-500 text-white  | lama(bentuk tint) 4,00:1 | baru 4,65:1
+  -> seluruh tone baru >= 5,33:1 (ambang 4,5:1)
+
+4. TONE SOLID - warna teks wajib per token
+   token solid      + text-white      + text-ink
+   brand-700      13,54:1 OK       1,38:1 GAGAL
+   accent         1,85:1 GAGAL     10,11:1 OK
+   accent-600     2,38:1 GAGAL     7,89:1 OK
+   sale-500       4,65:1 OK        4,03:1 GAGAL
+   success        3,30:1 GAGAL     5,68:1 OK
+   warning        3,19:1 GAGAL     5,88:1 OK
+   danger         4,83:1 OK        3,88:1 GAGAL
+
+5. TOKEN & VERIFIKASI TEKNIS
+   - tailwind.config.js (+3 token, aditif): success-strong #166534, warning-strong #92400E, danger-strong #991B1B
+     Tangga baku: token state = shade 600, varian -strong = shade 800.
+     Kandidat shade 700 - green-700 #15803D: 3,75:1 di atas tint-nya sendiri (brand-100), 5,02:1 di atas putih; amber-700 #B45309: 3,78:1 (brand-100), 5,02:1 di atas putih. Keduanya masih >= 4,5:1 tetapi margin tipis; dipilih shade 800 (green-800 5,33:1, amber-800 5,34:1) agar aman di tepi tint dan pada teks 11-12px.
+   - token-check.mjs: +3 baris cek -> `node token-check.mjs` = "OK: semua 55 token ter-resolve"
+   - kelas benar-benar sampai ke CSS (Tailwind CLI 3.4.19, berkas probe):
+       .text-warning-strong { --tw-text-opacity: 1; color: rgb(146 64 14 / var(--tw-text-opacity, 1)); }
+       .text-success-strong { --tw-text-opacity: 1; color: rgb(22 101 52 / var(--tw-text-opacity, 1)); }
+       .text-danger-strong { --tw-text-opacity: 1; color: rgb(153 27 27 / var(--tw-text-opacity, 1)); }
+       .text-slate-600 { --tw-text-opacity: 1; color: rgb(71 85 105 / var(--tw-text-opacity, 1)); }
+   - `npm run build` setelah perubahan token: `✓ built in 6.02s` (hijau)
+
+6. LATAR TINT HASIL KOMPOSIT (10% di atas putih)
+   bg-brand   /10 -> rgb(233,234,239)
+   bg-warning /10 -> rgb(251,241,230)
+   bg-success /10 -> rgb(232,246,237)
+   bg-danger  /10 -> rgb(252,233,233)
+   bg-sale    /10 -> rgb(252,234,230)
+   bg-slate-200/60 -> rgb(238,241,246)
+
+7. TEMUAN DI LUAR BADGE (diteruskan, tidak diubah di kartu ini)
+   T1/T2 teks meta & harga coret slate-400 di putih 2,56:1 -> usul slate-500 4,76:1 (t_90759be9)
+   T3    text-success/text-warning sebagai teks 3,30:1 / 3,19:1 -> -strong 7,13:1 / 7,09:1 (t_90759be9)
+   T5    badge diskon PriceBlock.jsx:23 bentuk tint 4,00:1 vs solid 4,65:1 (t_67576fb2)
+   T6    ikon success/warning di chip tint 2,96:1 / 2,86:1 (ambang non-teks 3:1) -> -strong 6,40:1 / 6,36:1 (t_90759be9)
+   Aman: teks InlineNotice text-ink 16,80:1/16,79:1/17,13:1 ; ikon success/warning 2,96:1 (ambang non-teks 3:1)
+
+
+
+8. VERIFIKASI ULANG OTOMATIS (perintah di repo)
+   $ python docs/qa/kontras-badge.py   -> EXIT 0
+   == Tabel tone badge §4.21 ==
+     brand    bg-brand/10 text-brand                 dokumen 9,35:1 | hitung 9,35:1 (brand-100) OK
+     warning  bg-warning/10 text-warning-strong      dokumen 5,34:1 | hitung 5,34:1 (brand-100) OK
+     success  bg-success/10 text-success-strong      dokumen 5,33:1 | hitung 5,33:1 (brand-100) OK
+     danger   bg-danger/10 text-danger-strong        dokumen 5,95:1 | hitung 5,95:1 (brand-100) OK
+     neutral  bg-slate-200/60 text-slate-600         dokumen 6,17:1 | hitung 6,17:1 (brand-100) OK
+     accent   bg-accent-500 text-ink                 dokumen 10,11:1 | hitung 10,11:1 (putih) OK
+     sale     bg-sale-500 text-white                 dokumen 4,65:1 | hitung 4,65:1 (putih) OK
+   
+   == Tabel tone solid §4.21 ==
+     brand-700    putih 13,54:1 OK  | ink 1,38:1 OK OK
+     accent       putih 1,85:1 OK  | ink 10,11:1 OK OK
+     accent-600   putih 2,38:1 OK  | ink 7,89:1 OK OK
+     sale-500     putih 4,65:1 OK  | ink 4,03:1 OK OK
+     success      putih 3,30:1 OK  | ink 5,68:1 OK OK
+     warning      putih 3,19:1 OK  | ink 5,88:1 OK OK
+     danger       putih 4,83:1 OK  | ink 3,88:1 OK OK
+   
+   == Token -strong ==
+     success-strong   #166534 OK
+     warning-strong   #92400E OK
+     danger-strong    #991B1B OK
+   
+   == HASIL ==
+     SEMUA angka tabel §4.21 cocok dengan hitungan WCAG 2.1 (toleransi 0,006) — 7 tone + 7 tone solid.

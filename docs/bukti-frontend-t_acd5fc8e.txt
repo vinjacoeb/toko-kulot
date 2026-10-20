@@ -1,0 +1,109 @@
+Smoke browser halaman auth — 2026-10-20 15:04:21
+Server: http://127.0.0.1:8000 (server dev pemilik, tidak dinyalakan oleh agent)
+Kolektor galat: window.onerror + unhandledrejection + console.error, dipasang sebelum dokumen dimuat
+
+=== viewport 360x640 (mobile=true) ===
+[360px] GET /login                       teks=95    simpul=57    h1='Masuk'                overflow=0 console_error=0
+[360px] POST /login                      diklik -> teks=142   galat_kolom/global='Email wajib diisi.' console_error=0
+[360px] GET /register                    teks=159   simpul=68    h1='Daftar Akun'          overflow=0 console_error=0
+[360px] POST /register                   diklik -> teks=302   galat_kolom/global='Nama wajib diisi.' console_error=0
+[360px] GET /forgot-password             teks=102   simpul=50    h1='Lupa Kata Sandi'      overflow=0 console_error=0
+[360px] POST /forgot-password            diklik -> teks=123   galat_kolom/global='Email wajib diisi.' console_error=0
+[360px] GET /reset-password/token-dummy  teks=120   simpul=56    h1='Reset Kata Sandi'     overflow=0 console_error=0
+[360px] POST /reset-password/token-dummy diklik -> teks=192   galat_kolom/global='Email wajib diisi. Minta tautan reset baru' console_error=0
+
+=== viewport 768x900 (mobile=false) ===
+[768px] GET /login                       teks=95    simpul=57    h1='Masuk'                overflow=0 console_error=0
+[768px] POST /login                      diklik -> teks=142   galat_kolom/global='Email wajib diisi.' console_error=0
+[768px] GET /register                    teks=0     simpul=3     h1=None                   overflow=0 console_error=0
+        !!! [] | 
+[768px] POST /register                   tanpa tombol submit -> teks=159   galat_kolom/global=None console_error=0
+[768px] GET /forgot-password             teks=102   simpul=50    h1='Lupa Kata Sandi'      overflow=0 console_error=0
+[768px] POST /forgot-password            diklik -> teks=123   galat_kolom/global='Email wajib diisi.' console_error=0
+[768px] GET /reset-password/token-dummy  teks=120   simpul=56    h1='Reset Kata Sandi'     overflow=0 console_error=0
+[768px] POST /reset-password/token-dummy diklik -> teks=192   galat_kolom/global='Email wajib diisi. Minta tautan reset baru' console_error=0
+
+=== viewport 1280x900 (mobile=false) ===
+[1280px] GET /login                       teks=256   simpul=57    h1='Masuk'                overflow=0 console_error=0
+[1280px] POST /login                      diklik -> teks=303   galat_kolom/global='Email wajib diisi.' console_error=0
+[1280px] GET /register                    teks=320   simpul=68    h1='Daftar Akun'          overflow=0 console_error=0
+[1280px] POST /register                   diklik -> teks=463   galat_kolom/global='Nama wajib diisi.' console_error=0
+[1280px] GET /forgot-password             teks=263   simpul=50    h1='Lupa Kata Sandi'      overflow=0 console_error=0
+[1280px] POST /forgot-password            diklik -> teks=284   galat_kolom/global='Email wajib diisi.' console_error=0
+[1280px] GET /reset-password/token-dummy  teks=281   simpul=56    h1='Reset Kata Sandi'     overflow=0 console_error=0
+[1280px] POST /reset-password/token-dummy diklik -> teks=353   galat_kolom/global='Email wajib diisi. Minta tautan reset baru' console_error=0
+
+ringkasan: 24 kasus ukur (12 GET + 12 POST), 1 kasus dengan galat
+settings asli: store_name=Toko Kulot | trust_strip=4 item
+judul bullet: Dikirim dari Pekalongan | Tukar Ukuran | Bayar QRIS | Balas Cepat
+LULUS  Login: nama toko asli tampil di panel brand
+GAGAL  Login: tagline asli tampil
+LULUS  Login: tidak ada NaN/undefined
+LULUS  Register: nama toko asli tampil di panel brand
+GAGAL  Register: tagline asli tampil
+LULUS  Register: tidak ada NaN/undefined
+LULUS  ForgotPassword: nama toko asli tampil di panel brand
+GAGAL  ForgotPassword: tagline asli tampil
+LULUS  ForgotPassword: tidak ada NaN/undefined
+LULUS  ResetPassword: nama toko asli tampil di panel brand
+GAGAL  ResetPassword: tagline asli tampil
+LULUS  ResetPassword: tidak ada NaN/undefined
+LULUS  panel brand: 3 bullet pertama dari trust_strip tampil
+LULUS  panel brand: subjudul bullet tampil
+LULUS  panel brand: item ke-4 tidak tampil
+LULUS  panel brand: ikon trust_strip dipakai (aria-hidden)
+LULUS  tanpa settings: nama bawaan Toko Kulot tampil
+LULUS  tanpa settings: tanpa NaN/undefined
+LULUS  tanpa settings: tidak ada judul bullet asli
+LULUS  trust_strip kosong: panel tetap render nama toko
+LULUS  trust_strip kosong: tanpa bullet
+
+ringkasan: 21 pemeriksaan, gagal 4
+
+=== panel brand di halaman hidup (server dev) — 2026-10-20 15:11:55 ===
+[1280px] h1='Masuk' overflow=0 bullet_terlihat=True jumlah_bullet=3 console_error=0
+        teks_panel: 'TOKO KULOT Daster & kulot nyaman untuk harian Dikirim dari Pekalongan Dikemas hari yang sama Tukar Ukuran Bisa tukar dalam 3 hari Bayar QRIS Semua e-wallet dan m-banking'
+        kelas_panel: 'flex h-[160px] flex-col justify-center gap-3 bg-brand-700 px-6 py-6 text-white l'
+[768px] h1='Masuk' overflow=0 bullet_terlihat=False jumlah_bullet=3 console_error=0
+        teks_panel: 'TOKO KULOT'
+        kelas_panel: 'flex h-[160px] flex-col justify-center gap-3 bg-brand-700 px-6 py-6 text-white l'
+[360px] h1='Masuk' overflow=0 bullet_terlihat=False jumlah_bullet=3 console_error=0
+        teks_panel: 'TOKO KULOT'
+        kelas_panel: 'flex h-[160px] flex-col justify-center gap-3 bg-brand-700 px-6 py-6 text-white l'
+
+=== Susulan 20-10-2026 15:14 — koreksi harness & konfirmasi ulang ===
+Catatan: blok 'GAGAL <halaman>: tagline asli tampil' di atas adalah artefak normalisasi entitas HTML di harness
+(tagline memuat '&' yang dirender '&amp;' lalu entitas diganti spasi), BUKAN bug UI. Setelah harness diperbaiki:
+$ node tmp/build-real-check.mjs && node tmp/verify-auth-real.bundle.mjs
+settings asli: store_name=Toko Kulot | trust_strip=4 item
+judul bullet: Dikirim dari Pekalongan | Tukar Ukuran | Bayar QRIS | Balas Cepat
+LULUS  Login: nama toko asli tampil di panel brand
+LULUS  Login: tagline asli tampil
+LULUS  Login: tidak ada NaN/undefined
+LULUS  Register: nama toko asli tampil di panel brand
+LULUS  Register: tagline asli tampil
+LULUS  Register: tidak ada NaN/undefined
+LULUS  ForgotPassword: nama toko asli tampil di panel brand
+LULUS  ForgotPassword: tagline asli tampil
+LULUS  ForgotPassword: tidak ada NaN/undefined
+LULUS  ResetPassword: nama toko asli tampil di panel brand
+LULUS  ResetPassword: tagline asli tampil
+LULUS  ResetPassword: tidak ada NaN/undefined
+LULUS  panel brand: 3 bullet pertama dari trust_strip tampil
+LULUS  panel brand: subjudul bullet tampil
+LULUS  panel brand: item ke-4 tidak tampil
+LULUS  panel brand: ikon trust_strip dipakai (aria-hidden)
+LULUS  tanpa settings: nama bawaan Toko Kulot tampil
+LULUS  tanpa settings: tanpa NaN/undefined
+LULUS  tanpa settings: tidak ada judul bullet asli
+LULUS  trust_strip kosong: panel tetap render nama toko
+LULUS  trust_strip kosong: tanpa bullet
+
+ringkasan: 21 pemeriksaan, gagal 0
+exit=0
+
+Keluaran yang sudah dijalankan (20-10-2026 15:11:11):
+  npm run build                                  -> ✓ built in 9.94s, exit 0; chunk app-DYkdi1Ss.js 361.78 kB; manifest.json 18356 byte (15:11)
+  python tmp/cek-komponen-tanpa-import.py .      -> 80 berkas, hanya app.jsx: App (false positive parameter setup)
+  python tmp/cek-bundel-identifier-bebas.py ...  -> 49 chunk, OK
+  node tmp/verify-auth-render.bundle.mjs         -> ringkasan: 42/42 pemeriksaan lulus (fixture, kontrak §6 + design §5.5)

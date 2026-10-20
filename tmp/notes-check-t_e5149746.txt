@@ -1,0 +1,18 @@
+=== wc ===
+  442 docs/catatan-frontend.md
+   32 docs/bukti-frontend-t_e5149746.txt
+  474 total
+=== tail catatan ===
+- `npm run build` -> exit 0, 714 modul, "built in 4.30s".
+- `python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build` -> 49 chunk, tidak ada identifier JSX tanpa import/definisi.
+- `python tmp/cek-tautan-admin-vs-rute.py` -> 42 url admin vs 41 rute: LULUS (URL dinamis PUT/DELETE kategori & akun cocok).
+- Belum diuji, butuh browser: interaksi runtime (buka/tutup modal, kirim ganda, fokus awal Batal, responsif 360/768/1024/1280, keyboard, zoom 200%, kontras).
+=== tail bukti ===
+
+Catatan: kedua berkas halaman adalah berkas untracked (stub dari kartu sebelumnya),
+tidak ada berkas milik agent lain yang diubah selain penambahan catatan ini.
+=== git target ===
+ M docs/catatan-frontend.md
+?? docs/bukti-frontend-t_e5149746.txt
+?? resources/js/Pages/Admin/Accounts/Index.jsx
+?? resources/js/Pages/Admin/Categories/Index.jsx

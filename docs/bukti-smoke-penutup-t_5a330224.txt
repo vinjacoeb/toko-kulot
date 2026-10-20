@@ -1,0 +1,49 @@
+BUKTI SMOKE PENUTUP RILIS — kartu devops t_5a330224
+Waktu      : 2026-10-20 15:37:47 +0700
+Server     : http://127.0.0.1:8000 (server pemilik sudah berjalan; devops tidak menyalakan server)
+Mode       : hanya GET (tanpa login, tanpa submit form, tanpa tambah keranjang)
+Bundel     : http://127.0.0.1:8000/build/assets/app-D9VeOng4.js
+Kolektor   : window.onerror + unhandledrejection + console.error dipasang lewat
+             Page.addScriptToEvaluateOnNewDocument (sebelum document start)
+
+path (redirect bila ada)                          vp   teks simpul input  form overflow console
+--------------------------------------------------------------------------------------------------------------------------------------------
+/ -> /                                           360   2027    460     0     0       +0 BERSIH
+/ -> /                                           768   2054    460     0     0       +0 BERSIH
+/ -> /                                          1280   2054    460     0     0       +0 BERSIH
+/produk -> /produk                               360   1791    633     8     0       +0 BERSIH
+/produk -> /produk                               768   1818    633     8     0       +0 BERSIH
+/produk -> /produk                              1280   1906    633     8     0       +0 BERSIH
+/produk/setelan-kulot-linen-lengan-panjang -> /produk/setelan-kulot-linen-lengan-panjang   360   1329    308     1     0       +0 BERSIH
+/produk/setelan-kulot-linen-lengan-panjang -> /produk/setelan-kulot-linen-lengan-panjang   768   1352    308     1     0       +0 BERSIH
+/produk/setelan-kulot-linen-lengan-panjang -> /produk/setelan-kulot-linen-lengan-panjang  1280   1352    308     1     0       +0 BERSIH
+/kontak-kami -> /kontak-kami                     360    827    152     6     1       +0 BERSIH
+/kontak-kami -> /kontak-kami                     768    854    152     6     1       +0 BERSIH
+/kontak-kami -> /kontak-kami                    1280    854    152     6     1       +0 BERSIH
+/keranjang -> /keranjang                         360    156     56     0     0       +0 BERSIH
+/keranjang -> /keranjang                         768    178     56     0     0       +0 BERSIH
+/keranjang -> /keranjang                        1280    178     56     0     0       +0 BERSIH
+/login -> /login                                 360     95     54     3     1       +0 BERSIH
+/login -> /login                                 768     95     54     3     1       +0 BERSIH
+/login -> /login                                1280    256     54     3     1       +0 BERSIH
+/register -> /register                           360    159     65     6     1       +0 BERSIH
+/register -> /register                           768    159     65     6     1       +0 BERSIH
+/register -> /register                          1280    320     65     6     1       +0 BERSIH
+/admin/login -> /admin/login                     360     62     17     2     1       +0 BERSIH [teks pendek]
+/admin/login -> /admin/login                     768     62     17     2     1       +0 BERSIH [teks pendek]
+/admin/login -> /admin/login                    1280     62     17     2     1       +0 BERSIH [teks pendek]
+/checkout -> /login                              360     95     54     3     1       +0 BERSIH
+/checkout -> /login                              768     95     54     3     1       +0 BERSIH
+/checkout -> /login                             1280    256     54     3     1       +0 BERSIH
+
+Ringkasan: 27 pengukuran, 0 bermasalah (TEKS KOSONG / geser horizontal / galat console), 3 bertanda informatif (teks pendek / tanpa form - bukan galat)
+Pratinjau teks halaman (viewport 1280):
+  /                              -> Lewati ke konten utama Gratis ongkir untuk pembelian di atas Rp300.000 Beranda Produk Kontak Kami Koleksi Dast
+  /produk                        -> Lewati ke konten utama Gratis ongkir untuk pembelian di atas Rp300.000 Beranda Produk Kontak Kami Beranda / Pr
+  /produk/setelan-kulot-linen-lengan-panjang -> Lewati ke konten utama Gratis ongkir untuk pembelian di atas Rp300.000 Beranda Produk Kontak Kami Beranda / Se
+  /kontak-kami                   -> Lewati ke konten utama Gratis ongkir untuk pembelian di atas Rp300.000 Beranda Produk Kontak Kami Beranda / Ko
+  /keranjang                     -> Lewati ke konten utama TOKO KULOT Beranda Produk Kontak Beranda / Keranjang Keranjang Keranjang masih kosong M
+  /login                         -> Lewati ke konten utama TOKO KULOT Daster & kulot nyaman untuk harian Dikirim dari Pekalongan Dikemas hari yang
+  /register                      -> Lewati ke konten utama TOKO KULOT Daster & kulot nyaman untuk harian Dikirim dari Pekalongan Dikemas hari yang
+  /admin/login                   -> Masuk Panel Admin Email * Kata sandi * Masuk Khusus pengelola
+  /checkout                      -> Lewati ke konten utama TOKO KULOT Daster & kulot nyaman untuk harian Dikirim dari Pekalongan Dikemas hari yang

@@ -3,6 +3,7 @@ import { Link } from '@inertiajs/react';
 import { cn, rupiah, formatNumber } from '../lib/format';
 import { ImageOffIcon } from './icons';
 import StarRating from './StarRating';
+import PriceBlock from './PriceBlock';
 
 /**
  * Kartu produk — docs/design.md §4.2, docs/komponen.md §1.
@@ -28,7 +29,6 @@ export default function ProductCard({ product, onAddToCart = null, priority = fa
 
     const name = product?.name ?? 'Produk';
     const href = product?.slug ? `/produk/${product.slug}` : '/produk';
-    const price = rupiah(product?.base_price);
     const ratingValue = Number(product?.rating_avg ?? 0) || 0;
     const ratingCount = Number(product?.rating_count ?? 0) || 0;
     const wholesalePrice = rupiah(product?.wholesale_price);
@@ -90,7 +90,7 @@ export default function ProductCard({ product, onAddToCart = null, priority = fa
 
             <div className="flex flex-1 flex-col gap-1 p-3">
                 {product?.category?.name && (
-                    <p className="text-badge uppercase text-slate-400">{product.category.name}</p>
+                    <p className="text-badge uppercase text-slate-500">{product.category.name}</p>
                 )}
 
                 <h3 className="min-h-[2.5rem] text-h3 text-ink">
@@ -99,7 +99,7 @@ export default function ProductCard({ product, onAddToCart = null, priority = fa
                     </Link>
                 </h3>
 
-                <p className="text-h3 font-bold text-ink">{price ?? '-'}</p>
+                <PriceBlock price={Number(product?.base_price ?? 0)} comparePrice={product?.compare_price} size="sm" />
 
                 {wholesalePrice && minWholesale > 0 && (
                     <p className="text-meta text-ink-soft">
@@ -109,7 +109,7 @@ export default function ProductCard({ product, onAddToCart = null, priority = fa
 
                 <div className="mt-1 flex items-center gap-1.5">
                     <StarRating value={ratingValue} size="sm" readOnly />
-                    <span className="text-meta text-slate-400">{`(${formatNumber(ratingCount)})`}</span>
+                    <span className="text-meta text-slate-500">{`(${formatNumber(ratingCount)})`}</span>
                 </div>
             </div>
 

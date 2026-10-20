@@ -1,0 +1,1672 @@
+
+===== A. design.md headings =====
+9:## Riwayat Revisi
+18:## 1. Karakter Visual yang Diambil dari Erigo
+26:## 2. Design Token
+28:### 2.1 Warna
+59:### 2.2 Tipografi
+93:### 2.3 Spacing, radius, shadow, container, ukuran
+125:### 2.4 Breakpoint & target uji
+137:### 2.5 Peta token → `tailwind.config.js`
+166:### 2.6 Aturan pemakaian token
+175:## 3. Layout Global
+177:### 3.1 Header (68px, sticky)
+194:### 3.2 Footer (hitam, 4 kolom → 1 kolom mobile)
+215:### 3.3 Pola seksi landing (urutan baku)
+229:### 3.4 Shell admin
+235:## 4. Inventaris Komponen
+239:### 4.0 Matriks state universal
+255:### 4.1 `Button`
+268:### 4.2 `ProductCard`
+285:### 4.3 `StarRating`
+291:### 4.4 `QrisPanel`
+308:### 4.5 `Input` / `Select` / `Textarea`
+316:### 4.6 `Accordion` (FAQ)
+322:### 4.7 `Table` (admin)
+330:### 4.8 `Toast`
+335:### 4.9 `Modal`
+339:### 4.10 `Skeleton`
+343:### 4.11 `IconButton`
+348:### 4.12 `Header` + `NavDrawer`
+353:### 4.13 `Breadcrumb`
+357:### 4.14 `SectionHeader`
+361:### 4.15 `HeroCarousel`
+367:### 4.16 `CategoryCard`
+372:### 4.17 `TrustStrip`
+376:### 4.18 `FilterPanel` + `BottomSheet`
+382:### 4.19 `SearchInput` + `SortSelect`
+388:### 4.20 `QtyStepper` + `VariantChip` + `ColorSwatch`
+394:### 4.21 `PriceBlock` + `StatusBadge` + `Countdown`
+400:### 4.22 `Pagination`
+404:### 4.23 `EmptyState` + `ErrorState` + `InlineNotice`
+410:### 4.24 `ConfirmDialog`
+414:### 4.25 `Dropzone`
+419:### 4.26 `KpiCard` + `ChartCard`
+424:### 4.27 `TabNav`
+428:### 4.28 `CartLine` + `OrderSummary`
+434:### 4.29 `ReviewCard` + `RatingSummary` + `ReviewForm`
+440:### 4.30 `PageHeader` (admin)
+444:### 4.31 `Footer`
+450:## 5. Layout per Halaman
+454:### 5.1 `/` Landing
+460:### 5.2 `/produk` Katalog
+481:### 5.3 `/produk/{slug}` Detail
+518:### 5.4 `/kontak-kami`
+538:### 5.5 `/login`, `/register`, `/forgot-password`, `/reset-password/{token}`
+548:### 5.6 `/keranjang`
+556:### 5.7 `/checkout`
+562:### 5.8 `/checkout/{order}/bayar` & `/selesai`
+582:### 5.9 Admin — `/admin/login`
+587:### 5.10 Admin — shell
+612:### 5.11 Admin — `/admin` Dashboard
+628:### 5.12 Admin — halaman CRUD
+640:### 5.13 Admin — `/admin/pengaturan`
+645:### 5.14 Halaman error (404 / 403 / 419 / 500)
+652:### 5.15 Loading global (transisi Inertia)
+656:### 5.16 `/checkout/{order}/status` (JSON)
+660:### 5.17 Rute tanpa UI khusus
+665:### 5.18 Matriks cakupan rute → halaman desain
+683:## 6. Motion
+699:## 7. Aturan Implementasi
+714:## 8. Selisih dengan Sumber (disengaja)
+729:## 9. Checklist Kesesuaian (dipakai QA)
+756:## 10. Traceability PRD ↔ Desain
+774:## 11. Catatan REA, drift & batas verifikasi
+776:### 11.1 Yang benar-benar diverifikasi (20 Okt 2026)
+788:### 11.2 Batas: yang **tidak** diverifikasi ulang
+794:### 11.3 Drift yang ditemukan saat K3
+808:## 12. Berkas Terkait
+
+===== B. kontrak-props 1050-1215 =====
+2026-10-20: 22 rute terdaftar dan seluruh test hijau (`php artisan test` → 189 passed, 0 failed);
+bentuk props di bawah sudah cocok dengan keluaran controller. Semua rute di grup middleware
+`admin` (guard `admin`, akun nonaktif ditolak). Semua tanggal ISO 8601 zona `Asia/Jakarta`.
+Semua uang integer rupiah (bukan string). Nilai kosong `null`.
+
+Galat: pelanggaran aturan (validasi form, penolakan aksi seperti "kategori masih dipakai",
+"stok tidak cukup", "tidak bisa menghapus akun sendiri") selalu dikembalikan sebagai
+`errors.<key>` (Inertia) dengan `<key>` yang disebut di tiap endpoint. Sukses memakai
+`flash.success` (string). Tidak ada `flash.error`.
+
+### 12.0 Bentuk baku
+
+Paginator bawaan Laravel: `{ data, links, meta }`, `meta` =
+`{current_page,last_page,per_page,total}`, **15 baris** per halaman. Setiap halaman daftar
+menambah dua key di level halaman: `filter` (nilai filter yang sedang aktif, dipakai untuk
+mengisi ulang kontrol filter) dan `ringkasan` (angka ringkas, sesuai PRD §9).
+
+### 12.1 GET `/admin/produk` — `admin.products.index` — `Admin/Products/Index`
+
+Query: `q` (nama/SKU), `kategori` (id kategori), `status` ∈ `semua`(bawaan)|`aktif`|`nonaktif`,
+`stok` ∈ `semua`(bawaan)|`habis`|`kritis` (stok aktif < 5), `urut` ∈
+`terbaru`(bawaan)|`nama`|`harga`|`stok`, `page`. Filter tak sah diabaikan (kembali ke bawaan).
+
+```json
+{
+  "produk": {"data": [{
+    "id": 3, "name": "Daster Batik Pekalongan", "slug": "daster-batik-pekalongan", "sku": "DSR-BTK-01",
+    "category": {"id": 1, "name": "Daster", "slug": "daster"},
+    "base_price": 85000, "compare_price": 99000, "wholesale_price": 75000, "min_wholesale_qty": 6,
+    "is_active": true, "is_featured": false,
+    "stock": 24, "variant_count": 3,
+    "image": {"id": 7, "path": "/images/seed/produk/daster-1.png", "alt": "Daster Batik Pekalongan"},
+    "url": "/produk/daster-batik-pekalongan",
+    "created_at": "2026-10-20T09:15:00+07:00", "updated_at": "2026-10-20T09:15:00+07:00"
+  }], "links": ["…"], "meta": {"current_page": 1, "last_page": 1, "per_page": 15, "total": 3}},
+  "filter": {"q": null, "kategori": null, "status": "semua", "stok": "semua", "urut": "terbaru"},
+  "kategori": [{"id": 1, "name": "Daster", "slug": "daster"}],
+  "ringkasan": {"total": 3, "aktif": 3, "nonaktif": 0, "stok_kritis": 1}
+}
+```
+
+`stock` = jumlah `stock` varian aktif; `image` = gambar utama atau `null`; `variant_count` =
+jumlah varian. `ringkasan.stok_kritis` = jumlah produk dengan total stok aktif < 5.
+
+### 12.2 GET `/admin/produk/tambah` — `admin.products.create` — `Admin/Products/Create`
+
+Props: `kategori` (semua kategori, urut `sort_order`, `name` — termasuk nonaktif),
+`ukuran_baku` (daftar ukuran resmi dari `App\Support\VariantSize`).
+
+### 12.3 POST `/admin/produk` — `admin.products.store`
+
+Redirect sukses: `admin.products.index` + `flash.success` = `Produk disimpan.`
+Galat: `errors.name`, `errors.slug`, `errors.sku`, `errors.category_id`, `errors.base_price`,
+`errors.compare_price`, `errors.wholesale_price`, `errors.min_wholesale_qty`,
+`errors.description`, `errors.weight_gram`, `errors.images`, `errors.variants`.
+
+| Field | Aturan |
+|---|---|
+| `name` | wajib, maks 180 |
+| `slug` | opsional (dibuat dari nama bila kosong), unik |
+| `sku` | wajib, maks 60, unik |
+| `category_id` | wajib, harus ada |
+| `short_description` | opsional, maks 255 |
+| `description` | opsional, maks 5000 |
+| `weight_gram` | opsional, integer ≥ 0 |
+| `base_price` | wajib, integer ≥ 0 |
+| `compare_price` | opsional, integer > `base_price` |
+| `wholesale_price` | opsional, integer < `base_price` |
+| `min_wholesale_qty` | wajib bila `wholesale_price` diisi, integer ≥ 1 |
+| `is_active`, `is_featured` | boolean, bawaan `true` / `false` |
+| `images[]` | opsional, maks 5, jpg/jpeg/png/webp maks 2 MB per berkas |
+| `images_alt[]` | opsional, sejajar indeks dengan `images[]`, maks 180 |
+| `variants[]` | wajib, 1–50 baris: `size` (wajib, dari `ukuran_baku`), `color` (opsional, maks 40), `sku` (opsional, maks 60, unik antar baris), `price_delta` (integer, bawaan 0), `stock` (integer ≥ 0, bawaan 0), `is_active` (bawaan `true`) |
+
+Form unggah memakai `POST` + `_method=PUT` untuk update. Varian tanpa `sku` diberi SKU otomatis
+`{sku-produk}-{ukuran}-{warna}`. `stock` awal varian dicatat sebagai `stock_movements` tipe `in`.
+
+### 12.4 GET `/admin/produk/{product}` — `admin.products.show` — `Admin/Products/Show`
+
+Props `produk` (bentuk **detail** di bawah), `ukuran_baku`, `ringkasan` =
+`{"varian_total": 3, "stok_total": 24, "stok_kritis": 1, "terjual": 12}`.
+Bentuk detail `produk` (= `produk` pada §12.5):
+
+```json
+{
+  "id": 3, "name": "…", "slug": "…", "sku": "…", "category_id": 1,
+  "category": {"id": 1, "name": "Daster", "slug": "daster"},
+  "short_description": null, "description": null, "weight_gram": 300,
+  "base_price": 85000, "compare_price": 99000, "wholesale_price": 75000, "min_wholesale_qty": 6,
+  "is_active": true, "is_featured": false, "stock": 24, "variant_count": 3,
+  "url": "/produk/daster-batik-pekalongan",
+  "created_at": "…", "updated_at": "…",
+  "images": [{"id": 7, "path": "…", "alt": "…", "is_primary": true, "sort_order": 0}],
+  "variants": [{"id": 12, "size": "L", "color": "Hitam", "sku": "DSR-BTK-01-L-HITAM",
+                "label": "L / Hitam", "price_delta": 0, "stock": 10, "is_active": true}]
+}
+```
+
+### 12.5 GET `/admin/produk/{product}/ubah` — `admin.products.edit` — `Admin/Products/Edit`
+
+Props: `produk` (detail, §12.4), `kategori`, `ukuran_baku`.
+
+### 12.6 PUT `/admin/produk/{product}` — `admin.products.update`
+
+Aturan sama dengan §12.3, kecuali: `slug`/`sku` unik kecuali milik produk itu sendiri, dan
+tambahan `hapus_images[]` (id gambar milik produk ini) serta `primary_image_id` (id gambar
+milik produk ini; bila kosong gambar utama tetap/tidak berubah). Varian: baris berisi `id`
+diperbarui (harus varian produk ini), baris tanpa `id` dibuat baru, varian lama yang tidak
+dikirim dihapus bila belum pernah masuk pesanan atau dinonaktifkan bila sudah. Perubahan
+`stock` varian lewat form dicatat sebagai `stock_movements` tipe `adjust` (selisih).
+Redirect sukses: `admin.products.index` + `flash.success` = `Produk diperbarui.`
+
+### 12.7 DELETE `/admin/produk/{product}` — `admin.products.destroy`
+
+Berkas galeri dihapus dari disk. Redirect: `admin.products.index` + `flash.success` =
+`Produk dihapus.`
+
+### 12.8 GET `/admin/kategori` — `admin.categories.index` — `Admin/Categories/Index`
+
+Query: `q` (nama/slug), `status` ∈ `semua`(bawaan)|`aktif`|`nonaktif`, `page`. Urut
+`sort_order`, lalu `name`.
+
+```json
+{
+  "kategori": {"data": [{
+    "id": 1, "name": "Daster", "slug": "daster", "description": null,
+    "image": "/images/seed/kategori/daster.png",
+    "sort_order": 1, "is_active": true, "product_count": 3,
+    "created_at": "…", "updated_at": "…"
+  }], "links": ["…"], "meta": {"current_page": 1, "last_page": 1, "per_page": 15, "total": 5}},
+  "filter": {"q": null, "status": "semua"},
+  "ringkasan": {"total": 5, "aktif": 5, "nonaktif": 0}
+}
+```
+
+Catatan frontend: **tidak ada** rute GET `admin/kategori/tambah` maupun `.../ubah` (PRD §5.2
+tidak memintanya). Form tambah/ubah kategori dikerjakan inline di halaman ini; tombol
+`/admin/kategori/tambah` pada placeholder harus diganti.
+
+### 12.9 POST `/admin/kategori` — `admin.categories.store`
+### 12.10 PUT `/admin/kategori/{category}` — `admin.categories.update`
+
+Field: `name` (wajib, maks 120), `slug` (opsional, unik; dibuat dari nama bila kosong),
+`description` (opsional, maks 1000), `image` (opsional, jpg/jpeg/png/webp maks 2 MB),
+`sort_order` (integer 0–999, bawaan 0), `is_active` (boolean, bawaan `true`).
+Galat: `errors.name`, `errors.slug`, `errors.image`, `errors.sort_order`.
+Redirect: `admin.categories.index`; `flash.success` = `Kategori disimpan.` /
+`Kategori diperbarui.`
+
+### 12.11 DELETE `/admin/kategori/{category}` — `admin.categories.destroy`
+
+Menolak bila masih dipakai produk: `errors.kategori` = `Kategori masih dipakai 3 produk —
+pindahkan atau hapus produknya dulu.` Sukses: redirect `admin.categories.index` +
+`flash.success` = `Kategori dihapus.`
+
+### 12.12 GET `/admin/stok` — `admin.stocks.index` — `Admin/Stocks/Index`
+
+Query: `q` (nama produk/SKU varian), `status` ∈ `semua`(bawaan)|`habis`|`kritis` (`kritis`
+berarti stok < 5, termasuk habis), `kategori` (id), `urut` ∈ `nama`(bawaan)|`stok_terkecil`|
+`stok_terbesar`, `page`. Baris = **varian**.
+
+```json
+{
+  "stok": {"data": [{
+    "id": 12, "product": {"id": 3, "name": "…", "slug": "…"},
+    "size": "L", "color": "Hitam", "label": "L / Hitam", "sku": "DSR-BTK-01-L-HITAM",
+
+===== C. kontrak-props 1300-1365 =====
+`payment` = `null` bila belum ada baris pembayaran. `status_berikut` = status yang boleh
+dipilih dari status sekarang (rantai `pending`→`dibayar`→`diproses`→`dikirim`→`selesai`, plus
+`batal` selama belum final; `selesai` dan `batal` tidak punya lanjutan).
+
+### 12.18 PATCH `/admin/pesanan/{order}/status` — `admin.orders.status`
+
+Field: `status` (wajib, salah satu dari `status_berikut`), `note` (opsional, maks 255).
+Galat: `errors.status` (`Status pesanan wajib dipilih.`,
+`Status pesanan tidak bisa diubah dari Dibayar ke Selesai.`). Efek: status berubah; bila
+menjadi `batal` stok semua item dikembalikan lewat `stock_movements` tipe `in` (satu per varian);
+bila menjadi `dibayar` dan `paid_at` masih kosong, `paid_at` diisi sekarang. Sukses: kembali ke
+halaman asal + `flash.success` = `Status pesanan diperbarui.`
+
+### 12.19 GET `/admin/akun` — `admin.accounts.index` — `Admin/Accounts/Index`
+
+Query: `q` (nama/email), `role` ∈ `semua`(bawaan)|`owner`|`admin`|`staff`, `status` ∈
+`semua`(bawaan)|`aktif`|`nonaktif`, `page`. Urut `owner`, `admin`, `staff`, lalu `name`.
+
+```json
+{
+  "akun": {"data": [{"id": 1, "name": "Owner Toko", "email": "owner@tokokulot.test",
+    "role": "owner", "is_active": true, "is_self": true, "created_at": "…"}],
+    "links": ["…"], "meta": {"current_page": 1, "last_page": 1, "per_page": 15, "total": 3}},
+  "filter": {"q": null, "role": "semua", "status": "semua"},
+  "ringkasan": {"total": 3, "owner": 1, "admin": 1, "staff": 1, "aktif": 3}
+}
+```
+
+### 12.20 POST `/admin/akun` — `admin.accounts.store`
+
+Field: `name` (wajib, maks 120), `email` (wajib, email, unik, maks 190), `password` (wajib,
+min 8), `role` ∈ `owner|admin|staff`, `is_active` (boolean, bawaan `true`).
+Galat: `errors.name`, `errors.email`, `errors.password`, `errors.role`.
+Redirect: `admin.accounts.index` + `flash.success` = `Akun admin disimpan.`
+
+### 12.21 PUT `/admin/akun/{admin}` — `admin.accounts.update`
+
+Sama dengan §12.20, kecuali `password` opsional (diganti bila diisi) dan `email` unik kecuali
+milik akun itu. Penolakan (lewat `errors.role` / `errors.is_active`):
+`Tidak bisa menonaktifkan akun sendiri.`, `Tidak bisa mengubah role akun sendiri.`,
+`Minimal satu owner aktif harus ada.` Sukses: `flash.success` = `Akun admin diperbarui.`
+
+### 12.22 DELETE `/admin/akun/{admin}` — `admin.accounts.destroy`
+
+Penolakan: `errors.akun` = `Tidak bisa menghapus akun sendiri.` /
+`Minimal satu owner aktif harus ada.` Sukses: `flash.success` = `Akun admin dihapus.`
+(`stock_movements.admin_id` menjadi `null` — riwayat stok tetap utuh.)
+
+### 12.23 Status
+| Bagian | Status |
+|---|---|
+| 12.1–12.7 Produk | DRAFT |
+| 12.8–12.11 Kategori | DRAFT |
+| 12.12–12.15 Stok | DRAFT |
+| 12.16–12.18 Pesanan | DRAFT |
+| 12.19–12.22 Akun | DRAFT |
+
+===== D. ListProps.php =====
+<?php
+
+namespace App\Http\Controllers\Admin\Concerns;
+
+/**
+ * Pembantu bersama daftar admin: bentuk paginator baku (kontrak props §12.0) dan
+ * pembacaan filter query yang mengabaikan nilai tak sah (kembali ke bawaan).
+ */
+trait ListProps
+{
+    /**
+     * @param  \Illuminate\Contracts\Pagination\LengthAwarePaginator<int, mixed>  $paginator
+     * @return array<string, int>
+     */
+    protected function meta($paginator): array
+    {
+        return [
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'per_page' => $paginator->perPage(),
+            'total' => $paginator->total(),
+        ];
+    }
+
+    protected function teks(mixed $value): ?string
+    {
+        $text = trim((string) $value);
+
+        return $text === '' ? null : $text;
+    }
+
+    protected function angka(mixed $value): ?int
+    {
+        return is_numeric($value) ? (int) $value : null;
+    }
+
+    /**
+     * @param  list<string>  $allowed
+     */
+    protected function pilihan(mixed $value, array $allowed, string $default): string
+    {
+        $value = is_string($value) ? $value : '';
+
+        return in_array($value, $allowed, true) ? $value : $default;
+    }
+
+    /**
+     * Tanggal `YYYY-MM-DD` yang sah, selain itu `null`.
+     */
+    protected function tanggal(mixed $value): ?string
+    {
+        $text = trim((string) $value);
+
+        return preg_match('/^\d{4}-\d{2}-\d{2}$/', $text) === 1 ? $text : null;
+    }
+
+    /**
+     * Checkbox/boolean dari form; nilai tak ada memakai bawaan.
+     */
+    protected function flag(mixed $value, bool $default): bool
+    {
+        return $value === null ? $default : filter_var($value, FILTER_VALIDATE_BOOLEAN);
+    }
+}
+
+===== E. CategoryController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Admin\Concerns\ListProps;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreCategoryRequest;
+use App\Http\Requests\Admin\UpdateCategoryRequest;
+use App\Models\Category;
+use App\Support\MediaStorage;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Inertia\Response;
+
+/**
+ * Kategori admin (PRD §5.2, kontrak props §12.8–§12.11).
+ *
+ * Tidak ada halaman tambah/ubah tersendiri: form kategori dikerjakan inline pada
+ * halaman daftar, jadi controller ini hanya punya index + tulisan redirect.
+ */
+class CategoryController extends Controller
+{
+    use ListProps;
+
+    public function index(Request $request): Response
+    {
+        $filter = [
+            'q' => $this->teks($request->query('q')),
+            'status' => $this->pilihan($request->query('status'), ['aktif', 'nonaktif'], 'semua'),
+        ];
+
+        $query = Category::query()->withCount('products');
+
+        if ($filter['q'] !== null) {
+            $like = '%'.$filter['q'].'%';
+            $query->where(fn ($where) => $where
+                ->where('name', 'like', $like)
+                ->orWhere('slug', 'like', $like));
+        }
+
+        if ($filter['status'] === 'aktif') {
+            $query->where('is_active', true);
+        } elseif ($filter['status'] === 'nonaktif') {
+            $query->where('is_active', false);
+        }
+
+        $kategori = $query
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->paginate(15)
+            ->withQueryString();
+
+        return Inertia::render('Admin/Categories/Index', [
+            'kategori' => [
+                'data' => collect($kategori->items())->map(fn (Category $row) => $this->row($row))->all(),
+                'links' => $kategori->linkCollection()->all(),
+                'meta' => $this->meta($kategori),
+            ],
+            'filter' => $filter,
+            'ringkasan' => [
+                'total' => Category::query()->count(),
+                'aktif' => Category::query()->where('is_active', true)->count(),
+                'nonaktif' => Category::query()->where('is_active', false)->count(),
+            ],
+        ]);
+    }
+
+    public function store(StoreCategoryRequest $request): RedirectResponse
+    {
+        $data = $request->validated();
+        $image = $request->file('image');
+
+        Category::query()->create([
+            'name' => trim((string) $data['name']),
+            'slug' => $this->uniqueSlug((string) ($data['slug'] ?? ''), (string) $data['name'], null),
+            'description' => $this->teks($data['description'] ?? null),
+            'image' => $image === null ? null : MediaStorage::store($image, 'kategori'),
+            'sort_order' => (int) ($data['sort_order'] ?? 0),
+            'is_active' => $this->flag($data['is_active'] ?? null, true),
+        ]);
+
+        return redirect()
+            ->route('admin.categories.index')
+            ->with('success', 'Kategori disimpan.');
+    }
+
+    public function update(UpdateCategoryRequest $request, Category $category): RedirectResponse
+    {
+        $data = $request->validated();
+        $image = $request->file('image');
+        $imageLama = $category->image;
+
+        $category->forceFill([
+            'name' => trim((string) $data['name']),
+            'slug' => $this->uniqueSlug((string) ($data['slug'] ?? ''), (string) $data['name'], $category),
+            'description' => $this->teks($data['description'] ?? null),
+            'image' => $image === null ? $imageLama : MediaStorage::store($image, 'kategori'),
+            'sort_order' => (int) ($data['sort_order'] ?? $category->sort_order),
+            'is_active' => $this->flag($data['is_active'] ?? null, (bool) $category->is_active),
+        ])->save();
+
+        if ($image !== null && $imageLama !== null) {
+            MediaStorage::delete($imageLama);
+        }
+
+        return redirect()
+            ->route('admin.categories.index')
+            ->with('success', 'Kategori diperbarui.');
+    }
+
+    public function destroy(Category $category): RedirectResponse
+    {
+        $jumlahProduk = $category->products()->count();
+
+        if ($jumlahProduk > 0) {
+            throw ValidationException::withMessages([
+                'kategori' => sprintf(
+                    'Kategori masih dipakai %d produk — pindahkan atau hapus produknya dulu.',
+                    $jumlahProduk,
+                ),
+            ]);
+        }
+
+        MediaStorage::delete($category->image);
+        $category->delete();
+
+        return redirect()
+            ->route('admin.categories.index')
+            ->with('success', 'Kategori dihapus.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function row(Category $category): array
+    {
+        return [
+            'id' => $category->id,
+            'name' => $category->name,
+            'slug' => $category->slug,
+            'description' => $category->description,
+            'image' => $category->image,
+            'sort_order' => (int) $category->sort_order,
+            'is_active' => (bool) $category->is_active,
+            'product_count' => (int) ($category->products_count ?? 0),
+            'created_at' => $category->created_at?->toIso8601String(),
+            'updated_at' => $category->updated_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * Slug dari input atau dari nama; ditambah akhiran angka bila sudah dipakai.
+     */
+    private function uniqueSlug(string $slug, string $name, ?Category $category): string
+    {
+        $base = Str::slug($slug !== '' ? $slug : $name);
+
+        if ($base === '') {
+            throw ValidationException::withMessages([
+                'slug' => 'Slug tidak bisa dibuat dari nama kategori — isi slug manual.',
+            ]);
+        }
+
+        $candidate = $base;
+        $suffix = 2;
+
+        while (Category::query()
+            ->where('slug', $candidate)
+            ->when($category, fn ($query) => $query->whereKeyNot($category->id))
+            ->exists()) {
+            $candidate = $base.'-'.$suffix;
+            $suffix++;
+        }
+
+        return $candidate;
+    }
+}
+
+===== F. AccountController.php =====
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Admin\Concerns\ListProps;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreAccountRequest;
+use App\Http\Requests\Admin\UpdateAccountRequest;
+use App\Models\Admin;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Inertia\Response;
+
+/**
+ * Akun admin (PRD §5.2, kontrak props §12.19–§12.22).
+ *
+ * Penjaga terakhir: tidak boleh menghapus/menonaktifkan akun sendiri, dan harus
+ * selalu tersisa minimal satu owner aktif.
+ */
+class AccountController extends Controller
+{
+    use ListProps;
+
+    /** @var list<string> */
+    private const ROLES = ['owner', 'admin', 'staff'];
+
+    public function index(Request $request): Response
+    {
+        $filter = [
+            'q' => $this->teks($request->query('q')),
+            'role' => $this->pilihan($request->query('role'), self::ROLES, 'semua'),
+            'status' => $this->pilihan($request->query('status'), ['aktif', 'nonaktif'], 'semua'),
+        ];
+
+        $query = Admin::query();
+
+        if ($filter['q'] !== null) {
+            $like = '%'.$filter['q'].'%';
+            $query->where(fn ($where) => $where
+                ->where('name', 'like', $like)
+                ->orWhere('email', 'like', $like));
+        }
+
+        if ($filter['role'] !== 'semua') {
+            $query->where('role', $filter['role']);
+        }
+
+        if ($filter['status'] === 'aktif') {
+            $query->where('is_active', true);
+        } elseif ($filter['status'] === 'nonaktif') {
+            $query->where('is_active', false);
+        }
+
+        $akun = $query
+            ->orderByRaw("case role when 'owner' then 0 when 'admin' then 1 else 2 end")
+            ->orderBy('name')
+            ->paginate(15)
+            ->withQueryString();
+
+        $me = $request->user('admin');
+
+        return Inertia::render('Admin/Accounts/Index', [
+            'akun' => [
+                'data' => collect($akun->items())
+                    ->map(fn (Admin $row) => $this->row($row, $me?->id))
+                    ->all(),
+                'links' => $akun->linkCollection()->all(),
+                'meta' => $this->meta($akun),
+            ],
+            'filter' => $filter,
+            'ringkasan' => [
+                'total' => Admin::query()->count(),
+                'owner' => Admin::query()->where('role', 'owner')->count(),
+                'admin' => Admin::query()->where('role', 'admin')->count(),
+                'staff' => Admin::query()->where('role', 'staff')->count(),
+                'aktif' => Admin::query()->where('is_active', true)->count(),
+            ],
+        ]);
+    }
+
+    public function store(StoreAccountRequest $request): RedirectResponse
+    {
+        $data = $request->validated();
+
+        Admin::query()->create([
+            'name' => trim((string) $data['name']),
+            'email' => strtolower(trim((string) $data['email'])),
+            'password' => (string) $data['password'],
+            'role' => (string) $data['role'],
+            'is_active' => $this->flag($data['is_active'] ?? null, true),
+        ]);
+
+        return redirect()
+            ->route('admin.accounts.index')
+            ->with('success', 'Akun admin disimpan.');
+    }
+
+    public function update(UpdateAccountRequest $request, Admin $admin): RedirectResponse
+    {
+        $data = $request->validated();
+        $me = $request->user('admin');
+        $role = (string) $data['role'];
+        $aktif = $this->flag($data['is_active'] ?? null, (bool) $admin->is_active);
+
+        if ($me !== null && $me->id === $admin->id && $role !== $admin->role) {
+            throw ValidationException::withMessages([
+                'role' => 'Tidak bisa mengubah role akun sendiri.',
+            ]);
+        }
+
+        if ($me !== null && $me->id === $admin->id && ! $aktif) {
+            throw ValidationException::withMessages([
+                'is_active' => 'Tidak bisa menonaktifkan akun sendiri.',
+            ]);
+        }
+
+        $ownerHilang = $admin->role === 'owner'
+            && (bool) $admin->is_active
+            && ($role !== 'owner' || ! $aktif);
+
+        if ($ownerHilang && ! $this->adaOwnerAktifLain($admin->id)) {
+            throw ValidationException::withMessages([
+                'role' => 'Minimal satu owner aktif harus ada.',
+            ]);
+        }
+
+        $attributes = [
+            'name' => trim((string) $data['name']),
+            'email' => strtolower(trim((string) $data['email'])),
+            'role' => $role,
+            'is_active' => $aktif,
+        ];
+
+        if (isset($data['password']) && (string) $data['password'] !== '') {
+            $attributes['password'] = (string) $data['password'];
+        }
+
+        $admin->forceFill($attributes)->save();
+
+        return redirect()
+            ->route('admin.accounts.index')
+            ->with('success', 'Akun admin diperbarui.');
+    }
+
+    public function destroy(Request $request, Admin $admin): RedirectResponse
+    {
+        $me = $request->user('admin');
+
+        if ($me !== null && $me->id === $admin->id) {
+            throw ValidationException::withMessages([
+                'akun' => 'Tidak bisa menghapus akun sendiri.',
+            ]);
+        }
+
+        if ($admin->role === 'owner'
+            && (bool) $admin->is_active
+            && ! $this->adaOwnerAktifLain($admin->id)) {
+            throw ValidationException::withMessages([
+                'akun' => 'Minimal satu owner aktif harus ada.',
+            ]);
+        }
+
+        $admin->delete();
+
+        return redirect()
+            ->route('admin.accounts.index')
+            ->with('success', 'Akun admin dihapus.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function row(Admin $admin, ?int $viewerId): array
+    {
+        return [
+            'id' => $admin->id,
+            'name' => $admin->name,
+            'email' => $admin->email,
+            'role' => $admin->role,
+            'is_active' => (bool) $admin->is_active,
+            'is_self' => $viewerId !== null && $viewerId === $admin->id,
+            'created_at' => $admin->created_at?->toIso8601String(),
+        ];
+    }
+
+    private function adaOwnerAktifLain(int $adminId): bool
+    {
+        return Admin::query()
+            ->where('role', 'owner')
+            ->where('is_active', true)
+            ->whereKeyNot($adminId)
+            ->exists();
+    }
+}
+
+===== G1. StoreCategoryRequest.php =====
+<?php
+
+namespace App\Http\Requests\Admin;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+/**
+ * Tambah kategori (kontrak props §12.9).
+ */
+class StoreCategoryRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function rules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:120'],
+            'slug' => ['nullable', 'string', 'max:140', 'regex:/^[a-z0-9]+(-[a-z0-9]+)*$/', 'unique:categories,slug'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'sort_order' => ['nullable', 'integer', 'between:0,999'],
+            'is_active' => ['nullable', 'boolean'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'name.required' => 'Nama kategori wajib diisi.',
+            'name.max' => 'Nama kategori maksimal 120 karakter.',
+            'slug.regex' => 'Slug hanya boleh huruf kecil, angka, dan tanda hubung.',
+            'slug.unique' => 'Slug sudah dipakai kategori lain.',
+            'description.max' => 'Deskripsi maksimal 1000 karakter.',
+            'image.image' => 'Gambar kategori harus berupa gambar.',
+            'image.mimes' => 'Gambar kategori harus JPG, PNG, atau WebP maksimal 2 MB.',
+            'image.max' => 'Gambar kategori harus JPG, PNG, atau WebP maksimal 2 MB.',
+            'sort_order.integer' => 'Urutan harus berupa angka.',
+            'sort_order.between' => 'Urutan harus antara 0 sampai 999.',
+        ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        foreach (['name', 'slug', 'description'] as $field) {
+            $value = $this->input($field);
+
+            if (is_string($value)) {
+                $this->merge([$field => trim($value)]);
+            }
+        }
+    }
+}
+
+===== G2. UpdateCategoryRequest.php =====
+<?php
+
+namespace App\Http\Requests\Admin;
+
+use App\Models\Category;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+/**
+ * Ubah kategori (kontrak props §12.10).
+ */
+class UpdateCategoryRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function rules(): array
+    {
+        $category = $this->route('category');
+
+        return [
+            'name' => ['required', 'string', 'max:120'],
+            'slug' => [
+                'nullable', 'string', 'max:140', 'regex:/^[a-z0-9]+(-[a-z0-9]+)*$/',
+                Rule::unique('categories', 'slug')->ignore($category instanceof Category ? $category->id : null),
+            ],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'sort_order' => ['nullable', 'integer', 'between:0,999'],
+            'is_active' => ['nullable', 'boolean'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'name.required' => 'Nama kategori wajib diisi.',
+            'name.max' => 'Nama kategori maksimal 120 karakter.',
+            'slug.regex' => 'Slug hanya boleh huruf kecil, angka, dan tanda hubung.',
+            'slug.unique' => 'Slug sudah dipakai kategori lain.',
+            'description.max' => 'Deskripsi maksimal 1000 karakter.',
+            'image.image' => 'Gambar kategori harus berupa gambar.',
+            'image.mimes' => 'Gambar kategori harus JPG, PNG, atau WebP maksimal 2 MB.',
+            'image.max' => 'Gambar kategori harus JPG, PNG, atau WebP maksimal 2 MB.',
+            'sort_order.integer' => 'Urutan harus berupa angka.',
+            'sort_order.between' => 'Urutan harus antara 0 sampai 999.',
+        ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        foreach (['name', 'slug', 'description'] as $field) {
+            $value = $this->input($field);
+
+            if (is_string($value)) {
+                $this->merge([$field => trim($value)]);
+            }
+        }
+    }
+}
+
+===== G3. StoreAccountRequest.php =====
+<?php
+
+namespace App\Http\Requests\Admin;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+/**
+ * Tambah akun admin (kontrak props §12.20).
+ */
+class StoreAccountRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function rules(): array
+    {
+        return [
+            'name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'string', 'email', 'max:190', 'unique:admins,email'],
+            'password' => ['required', 'string', 'min:8', 'max:255'],
+            'role' => ['required', 'string', 'in:owner,admin,staff'],
+            'is_active' => ['nullable', 'boolean'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'name.required' => 'Nama akun wajib diisi.',
+            'name.max' => 'Nama akun maksimal 120 karakter.',
+            'email.required' => 'Email wajib diisi.',
+            'email.email' => 'Format email tidak valid.',
+            'email.unique' => 'Email sudah dipakai akun lain.',
+            'password.required' => 'Kata sandi wajib diisi.',
+            'password.min' => 'Kata sandi minimal 8 karakter.',
+            'role.required' => 'Role wajib dipilih.',
+            'role.in' => 'Role harus owner, admin, atau staff.',
+        ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        foreach (['name', 'email'] as $field) {
+            $value = $this->input($field);
+
+            if (is_string($value)) {
+                $this->merge([$field => trim($value)]);
+            }
+        }
+    }
+}
+
+===== G4. UpdateAccountRequest.php =====
+<?php
+
+namespace App\Http\Requests\Admin;
+
+use App\Models\Admin;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+/**
+ * Ubah akun admin (kontrak props §12.21). Kata sandi opsional: diganti bila diisi.
+ */
+class UpdateAccountRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function rules(): array
+    {
+        $admin = $this->route('admin');
+
+        return [
+            'name' => ['required', 'string', 'max:120'],
+            'email' => [
+                'required', 'string', 'email', 'max:190',
+                Rule::unique('admins', 'email')->ignore($admin instanceof Admin ? $admin->id : null),
+            ],
+            'password' => ['nullable', 'string', 'min:8', 'max:255'],
+            'role' => ['required', 'string', 'in:owner,admin,staff'],
+            'is_active' => ['nullable', 'boolean'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'name.required' => 'Nama akun wajib diisi.',
+            'name.max' => 'Nama akun maksimal 120 karakter.',
+            'email.required' => 'Email wajib diisi.',
+            'email.email' => 'Format email tidak valid.',
+            'email.unique' => 'Email sudah dipakai akun lain.',
+            'password.min' => 'Kata sandi minimal 8 karakter.',
+            'role.required' => 'Role wajib dipilih.',
+            'role.in' => 'Role harus owner, admin, atau staff.',
+        ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        foreach (['name', 'email'] as $field) {
+            $value = $this->input($field);
+
+            if (is_string($value)) {
+                $this->merge([$field => trim($value)]);
+            }
+        }
+    }
+}
+
+===== H. MediaStorage.php =====
+<?php
+
+namespace App\Support;
+
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+
+/**
+ * Penyimpanan berkas gambar unggahan admin (PRD §11: jpg/png/webp, maks 2 MB).
+ *
+ * Nama berkas selalu dibuat server, path yang disimpan berbentuk `/storage/<folder>/<nama>`
+ * sehingga frontend bisa memakainya langsung sebagai `src`.
+ */
+final class MediaStorage
+{
+    public const PREFIX = '/storage/';
+
+    /**
+     * Simpan unggahan ke disk `public` dan kembalikan path publiknya.
+     */
+    public static function store(UploadedFile $file, string $directory): string
+    {
+        $extension = strtolower($file->getClientOriginalExtension());
+
+        if ($extension === '') {
+            $extension = strtolower((string) $file->extension()) ?: 'jpg';
+        }
+
+        $name = Str::random(32).'.'.$extension;
+
+        Storage::disk('public')->putFileAs($directory, $file, $name);
+
+        return self::PREFIX.$directory.'/'.$name;
+    }
+
+    /**
+     * Hapus berkas lama bila path-nya memang berkas unggahan (`/storage/...`).
+     * Path aset bawaan repo dibiarkan.
+     */
+    public static function delete(?string $path): void
+    {
+        if ($path === null || ! str_starts_with($path, self::PREFIX)) {
+            return;
+        }
+
+        $relative = Str::after($path, self::PREFIX);
+
+        if ($relative === '') {
+            return;
+        }
+
+        Storage::disk('public')->delete($relative);
+    }
+}
+
+===== I. Settings helpers =====
+27:const SETTINGS_URL = '/admin/pengaturan';
+28:const LANDING_URL = '/admin/pengaturan/landing';
+29:const CAROUSEL_URL = '/admin/pengaturan/carousel';
+30:const FAQ_URL = '/admin/pengaturan/faq';
+32:const BREADCRUMB = [{ label: 'Dashboard', href: '/admin' }, { label: 'Pengaturan' }];
+34:const TABS = [
+47:const TAB_KEYS = {
+56:const MAX_NAV = 8;
+57:const MAX_SOCIAL = 8;
+58:const MAX_LINKS = 8;
+59:const MAX_TRUST = 6;
+60:const MAX_WHY_US = 6;
+62:const IMAGE_TYPE_LABEL = 'JPG, PNG, atau WebP';
+63:const LOGO_ACCEPT = 'image/jpeg,image/png,image/webp';
+64:const FAVICON_ACCEPT = 'image/jpeg,image/png,image/webp,image/x-icon,image/vnd.microsoft.icon,.ico';
+65:const LOGO_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];
+66:const FAVICON_EXTENSIONS = [...LOGO_EXTENSIONS, '.ico'];
+68:const SOCIAL_PLATFORMS = Array.from(new Set([...Object.keys(SOCIAL_ICONS), 'shopee']));
+69:const TRUST_ICON_KEYS = Object.keys(TRUST_ICONS);
+71:const NAV_AKTIF = ADMIN_NAV.map((item) =>
+75:const fieldId = (prefix, index) => `${prefix}-${index}`;
+77:const text = (value) => (value === null || value === undefined ? '' : String(value));
+78:const asList = (value) => (Array.isArray(value) ? value : []);
+79:const asObject = (value) => (value && typeof value === 'object' && !Array.isArray(value) ? value : {});
+80:const isFileValue = (value) => typeof File !== 'undefined' && value instanceof File;
+81:const trimmed = (value) => text(value).trim();
+82:const orNull = (value) => {
+83:    const clean = trimmed(value);
+87:const clampInt = (value, min, max, fallback) => {
+88:    const parsed = Number.parseInt(text(value).replace(/[^0-9-]/g, ''), 10);
+93:const cleanRows = (rows, keys) => asList(rows).filter((row) => keys.some((key) => trimmed(asObject(row)[key]) !== ''));
+95:const readTabFromUrl = () => {
+97:    const requested = new URLSearchParams(window.location.search).get('tab');
+101:const checkUpload = (file, { maxKb, message, extensions }) => {
+103:    const extension = `.${text(file.name).split('.').pop()}`.toLowerCase();
+104:    const type = text(file.type).toLowerCase();
+105:    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'].concat(
+121:const readFooterLinksMode = (raw) => {
+122:    const value = asList(raw);
+127:function useToastFromFlash(flash) {
+128:    const [toast, setToast] = useState(null);
+129:    const success = flash && typeof flash.success === 'string' ? flash.success : null;
+130:    const error = flash && typeof flash.error === 'string' ? flash.error : null;
+137:    const dismiss = () => setToast(null);
+141:function TabNav({ active, onSelect }) {
+175:function SectionCard({ title = null, description = null, children }) {
+189:function StickySave({ dirty, processing, resetLabel = null, onReset = null, saveLabel = 'Simpan' }) {
+211:function Thumb({ src, size = 48, className = '' }) {
+212:    const [failed, setFailed] = useState(false);
+218:    const style = { width: `${size}px`, height: `${size}px` };
+243:function ImageField({
+257:    const [objectUrl, setObjectUrl] = useState(null);
+269:    const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
+270:    const sizeLabel = maxKb >= 1024 ? `${Math.round(maxKb / 1024)} MB` : `${maxKb} KB`;
+310:function ArrayRow({ children, onRemove, removeLabel }) {
+323:function StatusCell({ active }) {
+335:function ConfirmDialog({ open, title, description, confirmLabel, processing, onConfirm, onCancel }) {
+359:export default function SettingsIndex({ auth = null, pengaturan = null, carousels = [], faqs = [], flash = null }) {
+360:    const [tab, setTab] = useState(() => readTabFromUrl());
+361:    const [pendingTab, setPendingTab] = useState(null);
+362:    const [reloading, setReloading] = useState(false);
+363:    const [toast, dismissToast] = useToastFromFlash(flash);
+364:    const [actionError, setActionError] = useState(null);
+366:    const [logoError, setLogoError] = useState(null);
+367:    const [faviconError, setFaviconError] = useState(null);
+368:    const [footerLinksError, setFooterLinksError] = useState(null);
+370:    const [carouselEditing, setCarouselEditing] = useState(null);
+371:    const [carouselOpen, setCarouselOpen] = useState(false);
+372:    const [carouselImageError, setCarouselImageError] = useState(null);
+373:    const [carouselPendingDelete, setCarouselPendingDelete] = useState(null);
+374:    const [faqEditing, setFaqEditing] = useState(null);
+375:    const [faqOpen, setFaqOpen] = useState(false);
+376:    const [faqPendingDelete, setFaqPendingDelete] = useState(null);
+377:    const [deleting, setDeleting] = useState(false);
+379:    const groups = useMemo(() => {
+392:    const hero = useMemo(() => asObject(groups.landing.landing_hero), [groups]);
+393:    const sections = useMemo(() => asObject(groups.landing.landing_sections), [groups]);
+394:    const footerLinksMode = useMemo(() => readFooterLinksMode(groups.footer.footer_links), [groups]);
+396:    const sectionKeys = useMemo(
+408:    const settingsForm = useForm({
+453:    const landingForm = useForm({
+496:    const carouselForm = useForm({
+506:    const faqForm = useForm({
+513:    const carouselRows = asList(carousels);
+514:    const faqRows = asList(faqs);
+516:    const anyDirty = settingsForm.isDirty || landingForm.isDirty || carouselForm.isDirty || faqForm.isDirty;
+518:    const applyTab = (next) => {
+527:    const requestTab = (next) => {
+536:    const discardAndSwitch = () => {
+554:    const reload = () => {
+
+===== J. Messages helpers =====
+33:const BREADCRUMB = [{ label: 'Dashboard', href: '/admin' }, { label: 'Pesan Masuk' }];
+35:const DEFAULT_FILTER = { q: '', status: 'semua' };
+38:const STATUS_OPTIONS = [
+48:const NAV_AKTIF = ADMIN_NAV.map((item) => (item.key === 'pesan' ? { ...item, disabled: false } : item));
+51:const asText = (value) => {
+58:const asCount = (value) => {
+59:    const number = Number(value ?? 0);
+65:const normalizeFilter = (filter) => ({
+75:const readPaginator = (paginator) => {
+76:    const source = paginator ?? {};
+77:    const meta = source.meta && typeof source.meta === 'object' ? source.meta : source;
+87:export default function MessagesIndex({
+94:    const [query, setQuery] = useState(() => normalizeFilter(filter));
+95:    const [navLoading, setNavLoading] = useState(false);
+96:    const [navError, setNavError] = useState(null);
+97:    const [toast, setToast] = useState(null);
+98:    const [busyId, setBusyId] = useState(null);
+99:    const [actionError, setActionError] = useState(null);
+100:    const [targetId, setTargetId] = useState(null);
+101:    const [askDiscard, setAskDiscard] = useState(false);
+103:    const form = useForm({ admin_reply: '' });
+105:    const paginator = useMemo(() => readPaginator(pesan), [pesan]);
+106:    const total = asCount(ringkasan?.total);
+107:    const belumDibaca = asCount(ringkasan?.belum_dibaca);
+111:    const target = useMemo(
+116:    const filterActive = query.q.trim() !== '' || query.status !== DEFAULT_FILTER.status;
+135:    const load = (params) => {
+150:    const paramsFor = (source, page = 1) => {
+161:    const applyFilters = (overrides = {}) => {
+167:    const resetFilters = () => {
+172:    const changePage = (page) => load(paramsFor(query, page));
+174:    const reload = () => load(paramsFor(query, paginator.currentPage));
+176:    const openDetail = (row) => {
+184:    const closeDetail = () => {
+191:    const replyDirty = target !== null && form.data.admin_reply.trim() !== asText(target.admin_reply).trim();
+193:    const requestClose = () => {
+206:    const onHttpException = (response) => {
+220:    const markRead = (row) => {
+243:    const submitReply = (event) => {
+258:    const columns = [
+334:    const replyText = target ? asText(target.admin_reply) : '';
+
+===== K. AdminLayout 1-130 =====
+import React, { useEffect, useRef, useState } from 'react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { cn } from '../lib/format';
+import { useBodyScrollLock, useFocusTrap } from '../lib/hooks';
+import {
+    ArchiveIcon,
+    BoxIcon,
+    CartIcon,
+    CloseIcon,
+    GearIcon,
+    GridIcon,
+    LayersIcon,
+    LogOutIcon,
+    MailIcon,
+    MenuIcon,
+    StarIcon,
+    UserIcon,
+} from '../Components/icons';
+
+/**
+ * Kerangka admin — docs/design.md §5.10, docs/komponen.md §2.
+ * Sidebar `w-sidebar bg-brand-700` (desktop tetap, mobile drawer), topbar `h-topbar`.
+ * Seluruh item menunjuk rute yang terdaftar di `routes/admin.php` (PRD §5.2), jadi
+ * semuanya tautan aktif. Jangan menambah item tanpa rutenya, dan jangan
+ * menonaktifkan item yang rutenya ada — sidebar yang mati memutus navigasi
+ * antar-modul admin (QA-007).
+ */
+export const ADMIN_NAV = [
+    { key: 'dashboard', label: 'Dashboard', href: '/admin', icon: GridIcon },
+    { key: 'produk', label: 'Produk', href: '/admin/produk', icon: BoxIcon },
+    { key: 'kategori', label: 'Kategori', href: '/admin/kategori', icon: LayersIcon },
+    { key: 'stok', label: 'Stok', href: '/admin/stok', icon: ArchiveIcon },
+    { key: 'pesanan', label: 'Pesanan', href: '/admin/pesanan', icon: CartIcon },
+    { key: 'pesan', label: 'Pesan', href: '/admin/pesan-masuk', icon: MailIcon },
+    { key: 'penilaian', label: 'Penilaian', href: '/admin/penilaian', icon: StarIcon },
+    { key: 'pengaturan', label: 'Pengaturan', href: '/admin/pengaturan', icon: GearIcon },
+    { key: 'akun', label: 'Akun', href: '/admin/akun', icon: UserIcon },
+];
+
+const isActive = (url, href) => {
+    if (!url || !href) return false;
+    if (href === '/admin') return url === '/admin' || url === '/admin/';
+    return url === href || url.startsWith(`${href}/`) || url.startsWith(`${href}?`);
+};
+
+export default function AdminLayout({ auth = null, nav = ADMIN_NAV, title = null, children }) {
+    const page = usePage();
+    const url = page?.url ?? '';
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
+    const drawerRef = useRef(null);
+    const menuRef = useRef(null);
+
+    useBodyScrollLock(drawerOpen);
+    useFocusTrap(drawerRef, drawerOpen);
+
+    useEffect(() => {
+        setDrawerOpen(false);
+        setMenuOpen(false);
+    }, [url]);
+
+    useEffect(() => {
+        if (!menuOpen) return undefined;
+
+        const onPointerDown = (event) => {
+            if (menuRef.current && !menuRef.current.contains(event.target)) setMenuOpen(false);
+        };
+
+        const onKeyDown = (event) => {
+            if (event.key === 'Escape') setMenuOpen(false);
+        };
+
+        document.addEventListener('mousedown', onPointerDown);
+        document.addEventListener('keydown', onKeyDown);
+
+        return () => {
+            document.removeEventListener('mousedown', onPointerDown);
+            document.removeEventListener('keydown', onKeyDown);
+        };
+    }, [menuOpen]);
+
+    const items = Array.isArray(nav) && nav.length > 0 ? nav : ADMIN_NAV;
+    const userName = auth?.name ?? 'Admin';
+    const userEmail = auth?.email ?? null;
+    const initial = String(userName).trim().charAt(0).toUpperCase() || 'A';
+
+    const logout = () => router.post('/admin/logout');
+
+    const navList = (onNavigate = null) => (
+        <ul className="flex flex-1 flex-col gap-1 p-3">
+            {items.map((item) => {
+                const Icon = item.icon ?? GridIcon;
+                const active = isActive(url, item.href);
+
+                return (
+                    <li key={item.key ?? item.href}>
+                        <Link
+                            href={item.href}
+                            onClick={onNavigate}
+                            aria-current={active ? 'page' : undefined}
+                            className={cn(
+                                'flex h-11 items-center gap-3 rounded-md border-l-[3px] px-3 text-meta transition-colors duration-hover',
+                                active
+                                    ? 'border-accent-500 bg-white/10 text-white'
+                                    : 'border-transparent text-white/75 hover:bg-white/10 hover:text-white'
+                            )}
+                        >
+                            <Icon size={18} />
+                            {item.label}
+                        </Link>
+                    </li>
+                );
+            })}
+        </ul>
+    );
+
+    return (
+        <div className="min-h-screen bg-surface">
+            {title && <Head title={title} />}
+
+            {/* Sidebar desktop */}
+            <aside className="fixed inset-y-0 left-0 z-30 hidden w-sidebar flex-col bg-brand-700 lg:flex">
+                <div className="flex h-topbar items-center px-4 text-white">
+                    <Link href="/admin" className="text-label font-semibold uppercase tracking-wide">
+                        Daster Kulot
+                    </Link>
+                </div>
+                <nav aria-label="Navigasi admin" className="flex flex-1 flex-col overflow-y-auto">
+                    {navList()}
+                </nav>
+
+===== L. flash helper grep =====
+
+===== M. Skeleton.jsx =====
+import React from 'react';
+import { cn } from '../lib/format';
+
+const SHAPES = {
+    text: 'h-3 w-full',
+    title: 'h-6 w-2/3',
+    card: 'aspect-square w-full',
+    row: 'h-tableRow w-full',
+    circle: 'h-10 w-10 rounded-full',
+};
+
+/** Placeholder memuat (design §4.17, §6). Dekoratif: aria-hidden. */
+export default function Skeleton({ variant = 'text', count = 1, className = '' }) {
+    return Array.from({ length: count }).map((_, index) => (
+        <div
+            key={index}
+            aria-hidden="true"
+            className={cn('skeleton', SHAPES[variant] ?? SHAPES.text, className)}
+        />
+    ));
+}
+
+===== N. Messages 1-70 =====
+import React, { useEffect, useMemo, useState } from 'react';
+import { router, useForm } from '@inertiajs/react';
+import AdminLayout, { ADMIN_NAV } from '../../../Layouts/AdminLayout';
+import PageHeader from '../../../Components/PageHeader';
+import DataTable from '../../../Components/DataTable';
+import SearchInput from '../../../Components/SearchInput';
+import Select from '../../../Components/Select';
+import Field from '../../../Components/Field';
+import Button from '../../../Components/Button';
+import Textarea from '../../../Components/Textarea';
+import Modal from '../../../Components/Modal';
+import Pagination from '../../../Components/Pagination';
+import StatusBadge from '../../../Components/StatusBadge';
+import InlineNotice from '../../../Components/InlineNotice';
+import Toast from '../../../Components/Toast';
+import { formatDateTime, formatNumber } from '../../../lib/format';
+
+/**
+ * Pesan masuk dari formulir kontak — docs/design.md §5.12 ("Detail pesan: isi pesan,
+ * textarea balasan, tombol 'Tandai dibaca'") dan docs/kontrak-props.md §10.1–§10.3.
+ *
+ * Props server (app/Http/Controllers/Admin/MessageController.php@index):
+ *   pesan     paginator Laravel (data, links, current_page, last_page, total)
+ *   filter    { q: string|null, status: 'semua'|'belum'|'sudah' }
+ *   ringkasan { total, belum_dibaca }
+ *   flash     { success, error } — props bersama (HandleInertiaRequests).
+ *
+ * Aksi memakai URL literal routes/admin.php:
+ *   tandai dibaca -> PATCH /admin/pesan-masuk/{id}/baca  (kontrak §10.2, koreksi PATCH 20 Okt 2026)
+ *   balas         -> POST  /admin/pesan-masuk/{id}/balas (kontrak §10.3)
+ */
+
+const BREADCRUMB = [{ label: 'Dashboard', href: '/admin' }, { label: 'Pesan Masuk' }];
+
+const DEFAULT_FILTER = { q: '', status: 'semua' };
+
+/** Enum `status` mengikuti kontrak §10.1: semua | belum | sudah. */
+const STATUS_OPTIONS = [
+    { value: 'semua', label: 'Semua status' },
+    { value: 'belum', label: 'Belum dibaca' },
+    { value: 'sudah', label: 'Sudah dibaca' },
+];
+
+/**
+ * Sidebar admin: rute /admin/pesan-masuk sudah terdaftar (routes/admin.php), jadi
+ * entri "Pesan" dibuka di halaman ini — pola sama dengan Settings/Index.jsx.
+ */
+const NAV_AKTIF = ADMIN_NAV.map((item) => (item.key === 'pesan' ? { ...item, disabled: false } : item));
+
+/** Nilai server bisa null; semua teks melewati helper ini agar tidak ada "undefined" di layar. */
+const asText = (value) => {
+    if (value === null || value === undefined) return '';
+
+    return typeof value === 'string' ? value : String(value);
+};
+
+/** Angka dari server bisa string; hasil selalu >= 0 dan bukan NaN. */
+const asCount = (value) => {
+    const number = Number(value ?? 0);
+
+    return Number.isFinite(number) && number > 0 ? number : 0;
+};
+
+/** Normalisasi props `filter` dari server; nilai kosong/tak dikenal -> bawaan. */
+const normalizeFilter = (filter) => ({
+    q: typeof filter?.q === 'string' ? filter.q : '',
+    status: filter?.status === null || filter?.status === undefined ? 'semua' : String(filter.status),
+});
+
+/**
+
+===== O. Messages 380-546 =====
+                    {filterActive && (
+                        <Button variant="secondary" onClick={resetFilters}>
+                            Reset filter
+                        </Button>
+                    )}
+                </div>
+
+                <div className="flex flex-col gap-3">
+                    <DataTable
+                        caption="Daftar pesan masuk dari formulir kontak"
+                        columns={columns}
+                        rows={paginator.rows}
+                        loading={navLoading}
+                        error={navError}
+                        onRetry={reload}
+                        emptyTitle={filterActive ? 'Tidak ada pesan yang cocok' : 'Belum ada pesan'}
+                        emptyDescription={
+                            filterActive
+                                ? 'Ubah kata kunci atau filter untuk melihat pesan lain.'
+                                : 'Pesan dari formulir kontak akan tampil di sini.'
+                        }
+                        emptyActionLabel={filterActive ? 'Reset filter' : null}
+                        emptyActionHref={filterActive ? '/admin/pesan-masuk' : null}
+                    />
+
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-meta text-slate-500">
+                            {paginator.rows.length > 0
+                                ? `Menampilkan ${formatNumber(paginator.rows.length)} dari ${formatNumber(
+                                      paginator.total
+                                  )} pesan`
+                                : 'Tidak ada pesan untuk ditampilkan.'}
+                        </p>
+                        <Pagination
+                            currentPage={paginator.currentPage}
+                            lastPage={paginator.lastPage}
+                            onPageChange={changePage}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <Modal
+                open={target !== null}
+                onClose={requestClose}
+                title="Detail pesan"
+                description={
+                    target
+                        ? `${asText(target.name) || 'Tanpa nama'} · ${asText(target.email) || 'Email tidak tersedia'}`
+                        : null
+                }
+                size="lg"
+                footer={
+                    askDiscard ? (
+                        <>
+                            <p className="mr-auto self-center text-meta text-ink-soft">
+                                Balasan belum tersimpan. Buang perubahan?
+                            </p>
+                            <Button variant="secondary" onClick={() => setAskDiscard(false)}>
+                                Lanjut mengedit
+                            </Button>
+                            <Button variant="danger" onClick={closeDetail}>
+                                Buang
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            <Button
+                                variant="secondary"
+                                onClick={requestClose}
+                                disabled={form.processing || busyId !== null}
+                            >
+                                Tutup
+                            </Button>
+                            {target && !target.is_read && (
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => markRead(target)}
+                                    loading={busyId === target.id}
+                                    disabled={busyId !== null && busyId !== target.id}
+                                >
+                                    Tandai dibaca
+                                </Button>
+                            )}
+                            <Button
+                                variant="primary"
+                                onClick={() => submitReply(null)}
+                                loading={form.processing}
+                                disabled={!replyDirty || busyId !== null}
+                            >
+                                Kirim balasan
+                            </Button>
+                        </>
+                    )
+                }
+            >
+                {target && (
+                    <form className="flex flex-col gap-4" onSubmit={submitReply}>
+                        <div className="rounded-md bg-surface p-4">
+                            <p className="text-badge uppercase text-slate-500">Isi pesan</p>
+                            <p className="mt-1 text-h3 text-ink">{asText(target.subject) || 'Tanpa subjek'}</p>
+
+                            <dl className="mt-3 grid gap-x-6 gap-y-1 text-meta text-ink-soft sm:grid-cols-2">
+                                <div className="flex gap-2">
+                                    <dt className="shrink-0 text-slate-500">Email</dt>
+                                    <dd className="min-w-0 break-all">{asText(target.email) || '-'}</dd>
+                                </div>
+                                <div className="flex gap-2">
+                                    <dt className="shrink-0 text-slate-500">Telepon</dt>
+                                    <dd>{asText(target.phone) || '-'}</dd>
+                                </div>
+                                <div className="flex gap-2 sm:col-span-2">
+                                    <dt className="shrink-0 text-slate-500">Diterima</dt>
+                                    <dd>{formatDateTime(target.created_at)}</dd>
+                                </div>
+                            </dl>
+
+                            <p className="mt-3 whitespace-pre-line text-body text-ink-soft">
+                                {asText(target.message) || '-'}
+                            </p>
+                        </div>
+
+                        {replyText !== '' && (
+                            <div className="border-l-[3px] border-accent-500 bg-surface p-3">
+                                <p className="text-badge uppercase text-slate-500">Balasan toko</p>
+                                <p className="mt-1 whitespace-pre-line text-meta text-ink-soft">{replyText}</p>
+                                <p className="mt-1 text-meta text-slate-400">
+                                    {formatDateTime(target.replied_at)}
+                                </p>
+                            </div>
+                        )}
+
+                        <Field
+                            label="Balasan"
+                            htmlFor="admin_reply"
+                            required
+                            hint="Maksimal 2000 karakter. Balasan dikirim ke email pengirim."
+                            error={form.errors.admin_reply ?? null}
+                        >
+                            <Textarea
+                                id="admin_reply"
+                                name="admin_reply"
+                                rows={5}
+                                maxLength={2000}
+                                value={form.data.admin_reply}
+                                error={form.errors.admin_reply ?? null}
+                                onChange={(event) => form.setData('admin_reply', event.target.value)}
+                                placeholder="Tulis balasan untuk pengirim"
+                            />
+                        </Field>
+                    </form>
+                )}
+            </Modal>
+
+            {toast && (
+                <div className="pointer-events-none fixed bottom-4 right-4 z-toast flex w-full max-w-[360px]">
+                    <Toast
+                        tone={toast.tone}
+                        title={toast.title}
+                        message={toast.message}
+                        onClose={() => setToast(null)}
+                    />
+                </div>
+            )}
+        </AdminLayout>
+    );
+}
+
+===== P. Categories + Accounts placeholder saat ini =====
+import React from 'react';
+import AdminLayout from '../../../Layouts/AdminLayout';
+import PageHeader from '../../../Components/PageHeader';
+import DataTable from '../../../Components/DataTable';
+import Button from '../../../Components/Button';
+
+export default function Index({ categories = [], loading = false, error = null }) {
+    const columns = [
+        { key: 'name', header: 'Nama Kategori', render: (row) => row.name },
+        { key: 'slug', header: 'Slug', render: (row) => row.slug },
+        { key: 'product_count', header: 'Jumlah Produk', render: (row) => row.product_count },
+    ];
+
+    return (
+        <AdminLayout title="Kategori">
+            <PageHeader title="Kategori">
+                <Button href="/admin/kategori/tambah">Tambah Kategori</Button>
+            </PageHeader>
+            <DataTable
+                columns={columns}
+                rows={categories}
+                loading={loading}
+                error={error}
+            />
+        </AdminLayout>
+    );
+}
+
+---
+import React from 'react';
+import AdminLayout from '../../../Layouts/AdminLayout';
+import PageHeader from '../../../Components/PageHeader';
+import DataTable from '../../../Components/DataTable';
+import Button from '../../../Components/Button';
+
+export default function Index({ accounts = [], loading = false, error = null }) {
+    const columns = [
+        { key: 'name', header: 'Nama', render: (row) => row.name },
+        { key: 'email', header: 'Email', render: (row) => row.email },
+        { key: 'role', header: 'Role', render: (row) => row.role },
+        { key: 'status', header: 'Status', render: (row) => row.status },
+    ];
+
+    return (
+        <AdminLayout title="Akun Admin">
+            <PageHeader title="Akun Admin">
+                <Button href="/admin/akun/tambah">Tambah Admin</Button>
+            </PageHeader>
+            <DataTable
+                columns={columns}
+                rows={accounts}
+                loading={loading}
+                error={error}
+            />
+        </AdminLayout>
+    );
+}
+
+===== Q. routes/admin.php (kategori + akun) =====
+40:// Terlindungi: middleware `admin` (guard admin + akun aktif).
+111:    Route::get('/kategori', [CategoryController::class, 'index'])->name('categories.index');
+112:    Route::post('/kategori', [CategoryController::class, 'store'])
+115:    Route::put('/kategori/{category}', [CategoryController::class, 'update'])
+118:    Route::delete('/kategori/{category}', [CategoryController::class, 'destroy'])
+140:    Route::get('/akun', [AccountController::class, 'index'])->name('accounts.index');
+141:    Route::post('/akun', [AccountController::class, 'store'])
+144:    Route::put('/akun/{admin}', [AccountController::class, 'update'])
+147:    Route::delete('/akun/{admin}', [AccountController::class, 'destroy'])
+65893 tmp/bundel-konteks-t_e5149746.txt

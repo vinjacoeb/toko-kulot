@@ -1,0 +1,22 @@
+BUKTI RUTE ADMIN BER-PARAMETER UNTUK TAMU (DoD PRD §15.3, lanjutan) — kartu devops t_5a330224
+Waktu   : 2026-10-20 15:25:27 +0700
+Server  : http://127.0.0.1:8000 (server pemilik; devops tidak menyalakan server)
+Metode  : buka /admin/login sebagai tamu (token CSRF dari form), lalu fetch ke rute admin.
+          Body untuk rute tulis sengaja TIDAK VALID: qty kosong (stok) / email salah (akun),
+          sehingga bila gerbang auth gagal pun hanya muncul 422 + validasi, tanpa perubahan data.
+Harapan : id yang ADA  -> 302 ke /admin/login (gerbang auth menang sebelum aksi apa pun).
+          id yang TIDAK ADA -> 404 dari model binding (perilaku sekarang; lihat catatan).
+
+metode  url                              status akhir                     panjang ke /admin/login
+----------------------------------------------------------------------------------------------------
+POST    /admin/stok/10/masuk                200 /admin/login                 4524 YA
+POST    /admin/stok/19/masuk                200 /admin/login                 4524 YA
+POST    /admin/stok/20/masuk                200 /admin/login                 4524 YA
+POST    /admin/stok/21/masuk                200 /admin/login                 4524 YA
+POST    /admin/stok/999999/masuk            404 /admin/stok/999999/masuk     6659 TIDAK
+PUT     /admin/akun/1                       405 /admin/login               868266 YA
+PUT     /admin/akun/999999                  404 /admin/akun/999999           6659 TIDAK
+GET     /admin/akun                         200 /admin/login                 4524 YA
+GET     /admin/pesanan                      200 /admin/login                 4524 YA
+
+Ringkasan: 7 permintaan berakhir di /admin/login; 2 permintaan membalas 404 (id tidak ada).

@@ -1,0 +1,32 @@
+BUKTI VERIFIKASI t_e5149746 — Halaman Admin Kategori & Akun
+Tanggal: 2026-10-20. Dijalankan di C:\Users\LENOVO\Downloads\toko-kulot.
+
+1) npm run build  ->  exit 0
+   vite v6.4.4 building for production...
+   ✓ 714 modules transformed.
+   public/build/assets/app-C4SfSLQH.css   57.45 kB | gzip: 10.22 kB
+   public/build/assets/Index-CXVCafX1.js  49.73 kB | gzip: 11.76 kB   <- halaman admin (kategori/akun)
+   public/build/assets/Index-DvDEr7P_.js  11.78 kB
+   public/build/assets/Index-JAXKzMCT.js  11.81 kB
+   public/build/assets/app-Bi-jA20D.js   361.82 kB | gzip: 113.41 kB
+   ✓ built in 4.30s
+
+2) python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build
+   chunk .js diperiksa: 49
+   OK: tidak ada identifier komponen JSX tanpa import/definisi di bundel.
+
+3) python tmp/cek-tautan-admin-vs-rute.py
+   url '/admin...' diperiksa: 42 | rute admin terdaftar: 41
+   - resources/js/Pages/Admin/Accounts/Index.jsx:294  [PUT via form.put] /admin/akun/${editRow.id} -> PUT /admin/akun/{admin}
+   - resources/js/Pages/Admin/Accounts/Index.jsx:342  [DELETE via router.delete] /admin/akun/${hapus.id} -> DELETE /admin/akun/{admin}
+   - resources/js/Pages/Admin/Categories/Index.jsx:283 [PUT] /admin/kategori/${editRow.id} -> PUT /admin/kategori/{category}
+   - resources/js/Pages/Admin/Categories/Index.jsx:318 [DELETE via router.delete] /admin/kategori/${hapus.id} -> DELETE /admin/kategori/{category}
+   url tanpa rute pada metode yang benar: (tidak ada)
+   LULUS: semua url admin cocok dengan rute terdaftar pada metode yang benar.
+
+4) python tmp/cek-komponen-tanpa-import.py resources/js
+   file diperiksa: 0 (skrip ini hanya menerima daftar berkas eksplisit; cakupan sebenarnya
+   ada di pemeriksaan bundel nomor 2 di atas).
+
+Catatan: kedua berkas halaman adalah berkas untracked (stub dari kartu sebelumnya),
+tidak ada berkas milik agent lain yang diubah selain penambahan catatan ini.

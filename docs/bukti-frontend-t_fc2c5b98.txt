@@ -1,0 +1,181 @@
+BUKTI FRONTEND — kartu t_fc2c5b98
+Halaman Admin/Pesan Masuk (resources/js/Pages/Admin/Messages/Index.jsx)
+Tanggal: 20 Okt 2026. Semua keluaran di bawah adalah keluaran nyata yang dijalankan
+pada repo C:/Users/LENOVO/Downloads/toko-kulot (keluaran panjang dipotong ke baris relevan).
+
+Lingkup: 1 berkas aplikasi (Messages/Index.jsx, 546 baris) + berkas bantu verifikasi di tmp/
+(bukan bagian aplikasi). Tidak ada berkas backend, rute, atau dokumen acuan yang diubah.
+
+------------------------------------------------------------------------------
+1. BUILD
+------------------------------------------------------------------------------
+$ npm run build
+exit 0 (dijalankan setelah Messages/Index.jsx ditulis)
+
+Catatan churn artefak: kartu frontend lain (t_acd5fc8e, t_6ee422f2) menjalankan build
+berulang, sehingga hash di public/build/manifest.json berubah beberapa kali selama
+verifikasi ini (app-B5BYYQNs.css -> app-BbDWBZrJ.css -> app-CBKC4LlZ.css -> app-CwEwAIPU.css).
+Pemeriksaan berikut memakai entri manifest yang berlaku saat diperiksa:
+
+$ grep -A 3 '"resources/js/Pages/Admin/Messages/Index.jsx"' public/build/manifest.json
+  "resources/js/Pages/Admin/Messages/Index.jsx": {
+    "file": "assets/Index-DaqgQ7RB.js",
+    "name": "Index",
+    "src": "resources/js/Pages/Admin/Messages/Index.jsx",
+    "isDynamicEntry": true,
+    "imports": ["resources/js/app.jsx", "_DataTable-CsI95Yg1.js", "_Pagination-FNODZucV.js", ...]
+  }
+
+$ ls -la public/build/assets/Index-DaqgQ7RB.js
+-rw-r--r-- 1 LENOVO 197121 9690 Oct 20 15:06 public/build/assets/Index-DaqgQ7RB.js
+
+$ for s in "Tandai dibaca" "Belum dibaca" "Coba lagi"; do grep -c "$s" <chunk>; done
+Tandai dibaca: 1
+Belum dibaca: 1
+Coba lagi: 1
+=> implementasi halaman benar-benar ada di bundel hasil build saat ini.
+
+------------------------------------------------------------------------------
+2. SAPU KELAS BUG "KOMPONEN TANPA IMPORT" (halaman putih)
+------------------------------------------------------------------------------
+$ python tmp/cek-komponen-tanpa-import.py .
+file diperiksa: 80
+resources\js\app.jsx: App        <- false positive yang sudah dikenal
+                                     (parameter setup({el, App, props}))
+
+$ python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build
+chunk .js diperiksa: 49
+OK: tidak ada identifier komponen JSX tanpa import/definisi di bundel.
+
+------------------------------------------------------------------------------
+3. PHPUNIT
+------------------------------------------------------------------------------
+$ PHP_INI_SCAN_DIR=<scratch>/php-ini php vendor/bin/phpunit tests/Feature/Admin/AdminInboxTest.php
+exit=0
+PHPUnit 11.5.57 by Sebastian Bergmann and contributors.
+..........                                                        10 / 10 (100%)
+Time: 00:03.180, Memory: 48.00 MB
+OK (10 tests, 70 assertions)
+
+$ PHP_INI_SCAN_DIR=<scratch>/php-ini php vendor/bin/phpunit        (seluruh suite)
+exit=0
+............................................................... 189 / 190 ( 99%)
+.                                                               190 / 190 (100%)
+Time: 00:58.131, Memory: 66.00 MB
+OK (190 tests, 1111 assertions)
+
+(php.ini global dan .env pemilik tidak disentuh; sqlite :memory: lewat PHP_INI_SCAN_DIR
+sesuai catatan di docs/asumsi.md butir 12.)
+
+------------------------------------------------------------------------------
+4. VERIFIKASI BROWSER (harness render nyata, CSS hasil build dimuat)
+------------------------------------------------------------------------------
+Harness di tmp/ bukan aplikasi: ia merender Messages/Index.jsx dengan stub
+@inertiajs/react (stateful, mencatat router.get/patch ke window.__calls) di atas
+CSS hasil build, supaya interaksi, ARIA, layout, dan responsif bisa diukur.
+Server pengembangan tidak dinyalakan (aturan kerja).
+
+  $ node tmp/build-admin-messages-check.mjs
+  harness siap: tmp/admin-messages-harness.html (css: ../public/build/assets/app-CwEwAIPU.css)
+
+4.1 Render data (paginator 3 baris: belum dibaca id=11, sudah dibaca + balasan id=12)
+    - tidak ada teks "undefined" maupun "NaN" di DOM
+    - thead 5 kolom (Pengirim, Subjek, Tanggal, Status baca, Aksi); tbody 3 baris
+    - caption tabel ada; search punya label "Cari pesan"; select punya label "Status baca"
+    - baris belum dibaca: badge "Belum dibaca"; baris sudah dibaca: badge "Sudah dibaca"
+
+4.2 Data kosong / null (fixture 2, 3, 4: paginator kosong, props null)
+    - pesan kosong tanpa filter -> "Belum ada pesan" + "Pesan dari formulir kontak akan tampil di sini."
+    - pesan kosong dengan filter aktif -> "Tidak ada pesan yang cocok" + tombol "Reset filter"
+    - props null (pesan/filter/ringkasan/flash = null) -> halaman tetap render,
+      ringkasan tampil "Total 0 pesan · 0 belum dibaca"; tidak ada galat
+
+4.3 Flash sukses dari server
+    - fixture flash { success: 'Balasan tersimpan.' } (teks nyata dari
+      MessageController.php:100) -> toast "Berhasil Balasan tersimpan."
+    - ringkasan fixture { total: '7', belum_dibaca: '2' } (string) -> "Total 7 pesan · 2 belum dibaca"
+      (konversi Number(x ?? 0) + formatNumber)
+
+4.4 Galat daftar + "Coba lagi" (window.__failNextGet)
+    - pesan "Gagal memuat daftar pesan. Periksa koneksi lalu coba lagi."
+    - tombol "Coba lagi" ada; role="alert" ada; tabel tidak menampilkan baris palsu
+    - klik "Coba lagi" -> router.get terkirim ulang dengan param filter yang sama,
+      galat hilang, 3 baris kembali
+
+4.5 Aksi tandai dibaca (PATCH) + simpan balasan (POST)
+    - klik "Tandai dibaca" -> window.__calls: { method: 'patch',
+      url: '/admin/pesan-masuk/11/baca' }  (kontrak §10.2: PATCH)
+    - isi #admin_reply lalu klik "Kirim balasan" -> window.__calls:
+      { method: 'post', url: '/admin/pesan-masuk/11/balas', data: { admin_reply: ... } }
+    - tombol "Kirim balasan" nonaktif selama form.processing (Button:
+      disabled={disabled || loading}) -> tidak ada kirim ganda
+
+4.6 Penjaga perubahan belum tersimpan
+    - ketik draft lalu "Tutup" -> footer berubah "Balasan belum tersimpan. Buang perubahan?"
+      dengan tombol "Lanjut mengedit" dan "Buang"
+    - "Buang" menutup modal; Escape saat tidak ada draft langsung menutup modal
+
+4.7 Throttle 429 (window.__failNextPatch = 429)
+    - InlineNotice error "Aksi gagal" + "Terlalu banyak aksi berturut-turut.
+      Tunggu sebentar, lalu coba lagi." (bukan modal galat bawaan Inertia)
+
+4.8 Filter, pencarian, paginasi (router.get ke URL literal)
+    - ubah status -> router.get '/admin/pesan-masuk' { status: 'belum' }
+    - ketik pencarian -> router.get { q: 'rina' } (debounce), nilai bawaan tidak ditulis ke URL
+    - "Reset filter" -> router.get { } (URL bersih, tanpa param sisa)
+    - klik halaman 2 -> router.get { page: 2 }; preserveState + preserveScroll
+
+4.9 Keyboard
+    - urutan tab: DASTER KULOT -> Dashboard -> Pesan -> Buka menu -> A Admin Uji ->
+      Dashboard -> Cari pesan -> Semua status -> Baca detail -> Tandai dibaca -> ...
+    - modal: fokus masuk ke dalam dialog, 6 kali Tab tetap di dalam dialog
+      (Textarea, Tutup, Tandai dibaca), Escape menutup modal dan fokus kembali ke
+      tombol pemicu "Baca detail"
+    - dialog: role="dialog", aria-modal="true", aria-labelledby terpasang
+
+4.10 Responsif (emulasi viewport, CSS hasil build)
+     lebar   overflow halaman   scroll dalam kontainer tabel   kolom
+     360 px  0 px                448 px (overflow-x: auto)      5
+     768 px  0 px                59 px                          5
+     1024 px 0 px                70 px                          5
+     1280 px 0 px                0 px                           5
+     => tidak ada horizontal scroll pada halaman; tabel menggeser di dalam kontainernya.
+     Zoom 200%: Belum diuji sungguhan (tidak ada kontrol zoom di emulasi ini);
+     proxy lebar 640 px (setara 200% pada viewport 1280 px) juga tanpa overflow halaman.
+
+4.11 Larangan visual (periksa computed style pada seluruh elemen halaman)
+     gradien: tidak ada
+     box-shadow: tidak ada (shadow-raised hanya muncul pada Modal/Toast bawaan komponen)
+     emoji sebagai ikon: tidak ada
+     animation: tidak ada pada elemen halaman
+     font: judul "Pesan Masuk" memakai Bebas Neue (font display desain), tabel Inter
+
+4.12 Warna token (computed style)
+     header tabel: bg rgb(246,246,244) = token surface; teks rgb(100,116,139)
+     badge "Belum dibaca": teks rgb(217,119,6) di atas rgba(217,119,6,0.1) — token warning
+     badge "Sudah dibaca": teks rgb(22,163,74) di atas rgba(22,163,74,0.1) — token success
+     tidak ada warna heksa di JSX (grep bersih)
+
+4.13 TEMUAN KONTRAS (bukan regresi kartu ini, milik sistem desain §4.21)
+     Rasio kontras terukur (WCAG 2.x, teks 12 px bold):
+       badge "Belum dibaca": 2,86:1  (butuh 4,5:1 untuk AA teks normal)
+       badge "Sudah dibaca": 2,96:1
+     Penyebab: bentuk kelas baku §4.21 `bg-{token}/10 text-{token}` dengan token
+     warning #D97706 / success #16A34A; halaman ini memakai bentuk baku tersebut
+     (tidak ada warna baru di JSX). Berlaku juga untuk StatusBadge di halaman admin lain.
+     Diteruskan sebagai kartu UIUX (lihat komentar kartu t_fc2c5b98).
+
+4.14 Galat konsol
+     Perekam window 'error' + 'unhandledrejection' + console.error aktif selama alur
+     penuh (buka detail, tandai dibaca, kirim balasan, filter, reset, paginasi, 429):
+     tidak ada catatan.
+
+------------------------------------------------------------------------------
+5. BATAS VERIFIKASI (jujur, belum diuji)
+------------------------------------------------------------------------------
+- Halaman tidak pernah dirender oleh server Laravel di sini (server pemilik tidak
+  dinyalakan). Harness memakai stub @inertiajs/react: itu bukan bukti integrasi.
+- Kontrak props §10.1-10.3 sudah dicocokkan dengan MessageController (props pesan,
+  filter, ringkasan, flash) secara statis, tetapi respons server nyata belum dilihat.
+- Zoom 200%, pembaca layar, dan perangkat nyata: belum diuji.
+- Kontras terukur di atas hanya untuk badge status baca (temuan 4.13).

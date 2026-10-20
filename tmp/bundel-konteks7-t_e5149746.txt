@@ -1,0 +1,2023 @@
+
+===== Components/DataTable.jsx =====
+import React from 'react';
+import { cn } from '../lib/format';
+import EmptyState from './EmptyState';
+import ErrorState from './ErrorState';
+import Skeleton from './Skeleton';
+
+/**
+ * Tabel data admin — docs/design.md §4.28, docs/komponen.md §4.
+ * Header sticky `h-tableHead bg-surface`, baris `h-tableRow`, teks `text-meta`.
+ * Memuat: 8 baris skeleton. Kosong dan galat adalah dua keadaan berbeda.
+ */
+export default function DataTable({
+    columns = [],
+    rows = [],
+    rowKey = (row, index) => row?.id ?? index,
+    loading = false,
+    error = null,
+    emptyTitle = 'Belum ada data',
+    emptyDescription = null,
+    emptyActionLabel = null,
+    emptyActionHref = null,
+    onRetry = null,
+    onRowClick = null,
+    sort = null,
+    onSort = null,
+    caption = null,
+    className = '',
+}) {
+    const list = Array.isArray(rows) ? rows : [];
+    const hasRows = list.length > 0;
+
+    const cellAlign = (column) =>
+        column.align === 'right' ? 'text-right' : column.align === 'center' ? 'text-center' : 'text-left';
+
+    const sortState = (column) => {
+        if (!sort || sort.key !== column.key) return 'none';
+        return sort.dir === 'desc' ? 'descending' : 'ascending';
+    };
+
+    return (
+        <div className={cn('overflow-hidden rounded-lg border border-line bg-white', className)}>
+            {error ? (
+                <ErrorState
+                    title="Gagal memuat data"
+                    description={typeof error === 'string' ? error : 'Periksa koneksi Anda lalu coba lagi.'}
+                    onRetry={onRetry}
+                    supportHref={null}
+                />
+            ) : loading ? (
+                <div className="flex flex-col" aria-busy="true">
+                    <div className="h-tableHead w-full border-b border-line bg-surface" aria-hidden="true" />
+                    {Array.from({ length: 8 }).map((_, index) => (
+                        <div key={index} className="flex items-center gap-4 border-b border-line px-4 last:border-b-0">
+                            <Skeleton variant="row" />
+                        </div>
+                    ))}
+                </div>
+            ) : !hasRows ? (
+                <EmptyState
+                    title={emptyTitle}
+                    description={emptyDescription}
+                    actionLabel={emptyActionLabel}
+                    actionHref={emptyActionHref}
+                />
+            ) : (
+                <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-meta">
+                        {caption && <caption className="sr-only">{caption}</caption>}
+                        <thead>
+                            <tr className="bg-surface">
+                                {columns.map((column) => {
+                                    const isSorted = sort && sort.key === column.key;
+                                    const sortable = Boolean(onSort && column.sortable !== false);
+
+                                    return (
+                                        <th
+                                            key={column.key}
+                                            scope="col"
+                                            aria-sort={isSorted ? sortState(column) : undefined}
+                                            className={cn(
+                                                'h-tableHead whitespace-nowrap border-b border-line px-4 text-label uppercase text-slate-500',
+                                                cellAlign(column)
+                                            )}
+                                        >
+                                            {sortable ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onSort(column.key)}
+                                                    className={cn(
+                                                        'inline-flex items-center gap-1 rounded-sm transition-colors duration-hover hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
+                                                        isSorted && 'text-ink'
+                                                    )}
+                                                >
+                                                    {column.header}
+                                                    <span aria-hidden="true">
+                                                        {isSorted ? (sort.dir === 'desc' ? '↓' : '↑') : '↕'}
+                                                    </span>
+                                                </button>
+                                            ) : (
+                                                column.header
+                                            )}
+                                        </th>
+                                    );
+                                })}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {list.map((row, index) => {
+                                const clickable = typeof onRowClick === 'function';
+
+                                return (
+                                    <tr
+                                        key={rowKey(row, index)}
+                                        className={cn(
+                                            'h-tableRow border-b border-line last:border-b-0',
+                                            clickable &&
+                                                'cursor-pointer transition-colors duration-hover hover:bg-surface focus-within:bg-surface'
+                                        )}
+                                        onClick={clickable ? () => onRowClick(row, index) : undefined}
+                                    >
+                                        {columns.map((column) => (
+                                            <td
+                                                key={column.key}
+                                                className={cn('px-4 align-middle text-ink', cellAlign(column))}
+                                            >
+                                                {column.render ? column.render(row, index) : (row?.[column.key] ?? '-')}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </div>
+    );
+}
+
+===== Components/Modal.jsx =====
+import React, { useEffect, useRef } from 'react';
+import { cn } from '../lib/format';
+import { useBodyScrollLock, useFocusTrap } from '../lib/hooks';
+import { CloseIcon } from './icons';
+
+const SIZES = {
+    md: 'max-w-modal',
+    lg: 'max-w-modalLg',
+};
+
+/**
+ * Modal dasar — docs/design.md §4.24 (turunan: `ConfirmDialog`).
+ * Overlay gelap, Esc menutup, klik overlay menutup, fokus terperangkap,
+ * scroll body dikunci, `aria-modal="true"`.
+ */
+export default function Modal({
+    open = false,
+    title = null,
+    description = null,
+    children = null,
+    footer = null,
+    onClose,
+    size = 'md',
+    closeLabel = 'Tutup',
+}) {
+    const panelRef = useRef(null);
+
+    useBodyScrollLock(open);
+    useFocusTrap(panelRef, open);
+
+    useEffect(() => {
+        if (!open) return undefined;
+
+        const onKeyDown = (event) => {
+            if (event.key === 'Escape') onClose?.();
+        };
+
+        document.addEventListener('keydown', onKeyDown);
+
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, [open, onClose]);
+
+    if (!open) return null;
+
+    return (
+        <div
+            className="fixed inset-0 z-modal flex items-center justify-center bg-black/50 p-4"
+            onMouseDown={(event) => {
+                if (event.target === event.currentTarget) onClose?.();
+            }}
+        >
+            <div
+                ref={panelRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={title ? 'modal-title' : undefined}
+                tabIndex={-1}
+                className={cn(
+                    'w-full rounded-xl bg-white p-6 shadow-raised animate-modal-in',
+                    SIZES[size] ?? SIZES.md
+                )}
+            >
+                <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                        {title && (
+                            <h2 id="modal-title" className="text-h3 text-ink">
+                                {title}
+                            </h2>
+                        )}
+                        {description && <p className="mt-1 text-meta text-ink-soft">{description}</p>}
+                    </div>
+                    {onClose && (
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            aria-label={closeLabel}
+                            className="-mr-2 -mt-1 inline-flex h-touch w-touch items-center justify-center rounded-md text-ink-soft transition-colors duration-hover hover:bg-surface"
+                        >
+                            <CloseIcon size={20} />
+                        </button>
+                    )}
+                </div>
+
+                {children && <div className="mt-4 text-body text-ink">{children}</div>}
+                {footer && <div className="mt-6 flex flex-wrap justify-end gap-3">{footer}</div>}
+            </div>
+        </div>
+    );
+}
+
+===== Components/Pagination.jsx =====
+import React from 'react';
+import { cn } from '../lib/format';
+
+function buildPages(current, last) {
+    const pages = [];
+    const push = (value) => {
+        if (value >= 1 && value <= last && !pages.includes(value)) pages.push(value);
+    };
+    push(1);
+    for (let page = current - 1; page <= current + 1; page += 1) push(page);
+    push(last);
+    return pages.sort((a, b) => a - b);
+}
+
+function Chevron({ direction }) {
+    return (
+        <svg
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+        >
+            {direction === 'left' ? <path d="M15 6l-6 6 6 6" /> : <path d="M9 6l6 6-6 6" />}
+        </svg>
+    );
+}
+
+/** Pagination - docs/design.md 4.22. Tombol 36x36, aktif bg-brand-700. */
+export default function Pagination({ currentPage = 1, lastPage = 1, onPageChange = null, className = '' }) {
+    const current = Math.max(1, Number(currentPage) || 1);
+    const last = Math.max(1, Number(lastPage) || 1);
+    if (last <= 1 || typeof onPageChange !== 'function') return null;
+
+    const go = (page) => {
+        if (page < 1 || page > last || page === current) return;
+        onPageChange(page);
+    };
+
+    const base =
+        'inline-flex h-9 w-9 items-center justify-center rounded-sm text-meta transition-colors duration-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2';
+    const pages = buildPages(current, last);
+
+    return (
+        <nav aria-label="Navigasi halaman" className={cn('flex items-center justify-center gap-1', className)}>
+            <button
+                type="button"
+                onClick={() => go(current - 1)}
+                disabled={current <= 1}
+                aria-label="Halaman sebelumnya"
+                className={cn(base, 'text-slate-400 hover:bg-surface disabled:cursor-not-allowed disabled:opacity-45')}
+            >
+                <Chevron direction="left" />
+            </button>
+
+            <span className="px-2 text-meta text-ink-soft sm:hidden" aria-live="polite">
+                {current} / {last}
+            </span>
+
+            <div className="hidden items-center gap-1 sm:flex">
+                {pages.map((page, index) => {
+                    const previous = pages[index - 1];
+                    const gap = previous && page - previous > 1;
+                    return (
+                        <React.Fragment key={page}>
+                            {gap && (
+                                <span className="px-1 text-meta text-slate-400" aria-hidden="true">
+                                    ...
+                                </span>
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => go(page)}
+                                aria-current={page === current ? 'page' : undefined}
+                                aria-label={'Halaman ' + page}
+                                className={cn(
+                                    base,
+                                    page === current ? 'bg-brand-700 text-white' : 'text-ink hover:bg-surface'
+                                )}
+                            >
+                                {page}
+                            </button>
+                        </React.Fragment>
+                    );
+                })}
+            </div>
+
+            <button
+                type="button"
+                onClick={() => go(current + 1)}
+                disabled={current >= last}
+                aria-label="Halaman berikutnya"
+                className={cn(base, 'text-slate-400 hover:bg-surface disabled:cursor-not-allowed disabled:opacity-45')}
+            >
+                <Chevron direction="right" />
+            </button>
+        </nav>
+    );
+}
+
+===== Components/Toast.jsx =====
+import React, { useEffect } from 'react';
+import { cn } from '../lib/format';
+import { AlertIcon, CheckIcon, CloseIcon, SearchIcon } from './icons';
+
+const TONES = {
+    info: { bar: 'border-l-brand', icon: SearchIcon, color: 'text-brand' },
+    success: { bar: 'border-l-success', icon: CheckIcon, color: 'text-success' },
+    warning: { bar: 'border-l-warning', icon: AlertIcon, color: 'text-warning' },
+    error: { bar: 'border-l-danger', icon: AlertIcon, color: 'text-danger' },
+};
+
+/**
+ * Notifikasi mengambang — docs/komponen.md §3, design §6 (`animate-fade-up`, `z-toast`).
+ * Penumpukan maksimal 3 diatur pemanggil.
+ */
+export default function Toast({
+    tone = 'info',
+    title = null,
+    message = null,
+    duration = 4000,
+    onClose = null,
+}) {
+    const config = TONES[tone] ?? TONES.info;
+    const Icon = config.icon;
+
+    useEffect(() => {
+        if (!duration || !onClose) return undefined;
+
+        const id = window.setTimeout(onClose, duration);
+
+        return () => window.clearTimeout(id);
+    }, [duration, onClose]);
+
+    return (
+        <div
+            role={tone === 'error' ? 'alert' : 'status'}
+            className={cn(
+                'pointer-events-auto flex w-full max-w-[360px] items-start gap-3 rounded-md border border-line border-l-[3px] bg-white p-4 shadow-raised animate-fade-up',
+                config.bar
+            )}
+        >
+            <span className={cn('mt-0.5 shrink-0', config.color)} aria-hidden="true">
+                <Icon size={20} />
+            </span>
+            <div className="min-w-0 flex-1">
+                {title && <p className="text-label text-ink">{title}</p>}
+                {message && <p className="text-meta text-ink-soft">{message}</p>}
+            </div>
+            {onClose && (
+                <button
+                    type="button"
+                    onClick={onClose}
+                    aria-label="Tutup notifikasi"
+                    className="shrink-0 rounded-sm p-1 text-ink-soft transition-colors duration-hover hover:bg-surface"
+                >
+                    <CloseIcon size={16} />
+                </button>
+            )}
+        </div>
+    );
+}
+
+===== Components/FilterPanel.jsx =====
+import React, { useEffect, useState } from 'react';
+import { cn, formatNumber, rupiah } from '../lib/format';
+import BottomSheet from './BottomSheet';
+import Field from './Field';
+import Input from './Input';
+import VariantChip from './VariantChip';
+
+function toArray(value) {
+    if (Array.isArray(value)) return value.filter(Boolean);
+    if (value === null || value === undefined || value === '') return [];
+    return [value];
+}
+
+function Group({ title, children }) {
+    return (
+        <section className="border-b border-line py-4 first:pt-0 last:border-b-0">
+            <h3 className="mb-2.5 text-meta font-semibold uppercase tracking-wide text-slate-400">{title}</h3>
+            {children}
+        </section>
+    );
+}
+
+function FilterGroups({ draft, setDraft, categories, sizes }) {
+    const ukuran = toArray(draft.ukuran);
+
+    const toggleSize = (size) => {
+        const next = ukuran.includes(size) ? ukuran.filter((item) => item !== size) : [...ukuran, size];
+        setDraft({ ...draft, ukuran: next });
+    };
+
+    return (
+        <div>
+            <Group title="Kategori">
+                <div className="flex flex-col gap-2">
+                    <label className="flex items-center gap-2 text-body text-ink">
+                        <input
+                            type="radio"
+                            name="kategori"
+                            value=""
+                            checked={!draft.kategori}
+                            onChange={() => setDraft({ ...draft, kategori: '' })}
+                            className="h-4 w-4 border-line text-brand focus:ring-brand"
+                        />
+                        Semua kategori
+                    </label>
+                    {(categories || []).map((category) => (
+                        <label key={category.id ?? category.slug} className="flex items-center gap-2 text-body text-ink">
+                            <input
+                                type="radio"
+                                name="kategori"
+                                value={category.slug ?? ''}
+                                checked={draft.kategori === (category.slug ?? '')}
+                                onChange={() => setDraft({ ...draft, kategori: category.slug ?? '' })}
+                                className="h-4 w-4 border-line text-brand focus:ring-brand"
+                            />
+                            <span className="flex-1">{category.name}</span>
+                            {category.product_count !== undefined && (
+                                <span className="text-meta text-slate-400">{formatNumber(category.product_count)}</span>
+                            )}
+                        </label>
+                    ))}
+                </div>
+            </Group>
+
+            <Group title="Harga">
+                <div className="flex items-center gap-2">
+                    <Field label="Minimum" htmlFor="harga-min" className="flex-1">
+                        <Input
+                            id="harga-min"
+                            type="number"
+                            inputMode="numeric"
+                            min="0"
+                            placeholder="0"
+                            value={draft.harga_min ?? ''}
+                            onChange={(event) => setDraft({ ...draft, harga_min: event.target.value })}
+                        />
+                    </Field>
+                    <Field label="Maksimum" htmlFor="harga-max" className="flex-1">
+                        <Input
+                            id="harga-max"
+                            type="number"
+                            inputMode="numeric"
+                            min="0"
+                            placeholder="Tanpa batas"
+                            value={draft.harga_max ?? ''}
+                            onChange={(event) => setDraft({ ...draft, harga_max: event.target.value })}
+                        />
+                    </Field>
+                </div>
+                {(draft.harga_min || draft.harga_max) && (
+                    <p className="mt-2 text-meta text-slate-400">
+                        {rupiah(Number(draft.harga_min || 0)) + ' - ' + (draft.harga_max ? rupiah(Number(draft.harga_max)) : 'tanpa batas')}
+                    </p>
+                )}
+            </Group>
+
+            {sizes && sizes.length > 0 && (
+                <Group title="Ukuran">
+                    <div className="flex flex-wrap gap-2">
+                        {sizes.map((size) => (
+                            <VariantChip
+                                key={size}
+                                label={size}
+                                active={ukuran.includes(size)}
+                                onClick={() => toggleSize(size)}
+                            />
+                        ))}
+                    </div>
+                </Group>
+            )}
+        </div>
+    );
+}
+
+/**
+ * FilterPanel - docs/design.md 4.18.
+ * Sidebar sticky di desktop (langsung menerapkan), bottom sheet di mobile (Terapkan).
+ */
+export default function FilterPanel({
+    categories = [],
+    sizes = [],
+    value = {},
+    onApply = null,
+    onReset = null,
+    activeCount = 0,
+    className = '',
+}) {
+    const [draft, setDraft] = useState(value || {});
+    const [open, setOpen] = useState(false);
+
+    useEffect(() => {
+        setDraft(value || {});
+    }, [value]);
+
+    const apply = (next) => {
+        if (typeof onApply === 'function') onApply(next);
+    };
+
+    return (
+        <>
+            <aside className={cn('hidden lg:block', className)} aria-label="Filter produk">
+                <div className="sticky top-[68px] rounded-md border border-line bg-white p-4">
+                    <div className="mb-2 flex items-center justify-between">
+                        <h2 className="text-h3 text-ink">Filter</h2>
+                        {activeCount > 0 && typeof onReset === 'function' && (
+                            <button
+                                type="button"
+                                onClick={onReset}
+                                className="text-meta text-brand underline underline-offset-4"
+                            >
+                                Reset
+                            </button>
+                        )}
+                    </div>
+                    <FilterGroups
+                        draft={draft}
+                        setDraft={(next) => {
+                            setDraft(next);
+                            apply(next);
+                        }}
+                        categories={categories}
+                        sizes={sizes}
+                    />
+                </div>
+            </aside>
+
+            <button
+                type="button"
+                onClick={() => setOpen(true)}
+                className="inline-flex h-field items-center gap-2 rounded-md border border-line bg-white px-4 text-meta font-semibold text-ink lg:hidden"
+            >
+                Filter
+                {activeCount > 0 && (
+                    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-700 px-1.5 text-badge text-white">
+                        {activeCount}
+                    </span>
+                )}
+            </button>
+
+            <BottomSheet
+                open={open}
+                onClose={() => setOpen(false)}
+                title="Filter"
+                footer={
+                    <div className="flex gap-2">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const reset = {};
+                                setDraft(reset);
+                                if (typeof onReset === 'function') onReset();
+                                setOpen(false);
+                            }}
+                            className="h-field flex-1 rounded-md border border-line text-meta font-semibold text-ink"
+                        >
+                            Reset
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                apply(draft);
+                                setOpen(false);
+                            }}
+                            className="h-field flex-1 rounded-md bg-brand-700 text-meta font-semibold text-white"
+                        >
+                            Terapkan
+                        </button>
+                    </div>
+                }
+            >
+                <FilterGroups draft={draft} setDraft={setDraft} categories={categories} sizes={sizes} />
+            </BottomSheet>
+        </>
+    );
+}
+
+===== Components/SearchInput.jsx =====
+import React, { useEffect, useRef, useState } from 'react';
+import { cn } from '../lib/format';
+import { CloseIcon, SearchIcon } from './icons';
+
+/** SearchInput - docs/design.md 4.19. Debounce 300ms sebelum memanggil onChange. */
+export default function SearchInput({
+    value = '',
+    onChange = null,
+    placeholder = 'Cari produk',
+    label = 'Cari produk',
+    loading = false,
+    className = '',
+}) {
+    const [text, setText] = useState(value);
+    const mounted = useRef(false);
+
+    useEffect(() => {
+        setText(value);
+    }, [value]);
+
+    useEffect(() => {
+        if (!mounted.current) {
+            mounted.current = true;
+            return undefined;
+        }
+        const timer = window.setTimeout(() => {
+            if (typeof onChange === 'function') onChange(text.trim());
+        }, 300);
+        return () => window.clearTimeout(timer);
+    }, [text]);
+
+    return (
+        <div className={cn('relative', className)}>
+            <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true">
+                <SearchIcon width={18} height={18} />
+            </span>
+            <input
+                type="search"
+                value={text}
+                onChange={(event) => setText(event.target.value)}
+                placeholder={placeholder}
+                aria-label={label}
+                aria-busy={loading ? 'true' : undefined}
+                className="h-field w-full rounded-md border border-line bg-white pl-10 pr-10 text-body text-ink transition-colors duration-hover placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-[3px] focus:ring-brand/15"
+            />
+            {text.length > 0 && (
+                <button
+                    type="button"
+                    onClick={() => setText('')}
+                    aria-label="Bersihkan pencarian"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-1.5 text-slate-400 transition-colors duration-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                    <CloseIcon width={16} height={16} />
+                </button>
+            )}
+        </div>
+    );
+}
+
+===== Components/Field.jsx =====
+import React from 'react';
+import { cn } from '../lib/format';
+
+/**
+ * Pembungkus isian - docs/design.md 4.5.
+ * Label wajib htmlFor; hint dan galat terhubung lewat aria-describedby.
+ */
+export default function Field({
+    label,
+    htmlFor,
+    required = false,
+    hint = null,
+    error = null,
+    children,
+    className = '',
+}) {
+    const hintId = htmlFor ? htmlFor + '-hint' : undefined;
+    const errorId = htmlFor ? htmlFor + '-error' : undefined;
+
+    return (
+        <div className={cn('flex flex-col', className)}>
+            {label && (
+                <label htmlFor={htmlFor} className="mb-1.5 block text-meta font-semibold text-ink">
+                    {label}
+                    {required && (
+                        <span className="text-danger" aria-hidden="true">
+                            {' *'}
+                        </span>
+                    )}
+                </label>
+            )}
+            {children}
+            {hint && !error && (
+                <p id={hintId} className="mt-1.5 text-meta text-slate-400">
+                    {hint}
+                </p>
+            )}
+            {error && (
+                <p id={errorId} className="mt-1.5 text-meta text-danger" role="alert">
+                    {error}
+                </p>
+            )}
+        </div>
+    );
+}
+
+===== Components/Input.jsx =====
+import React from 'react';
+import { cn } from '../lib/format';
+
+const BASE =
+    'w-full h-field rounded-md border border-line bg-white px-3.5 text-body text-ink transition-colors duration-hover placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-[3px] focus:ring-brand/15 disabled:cursor-not-allowed disabled:bg-surface';
+
+/** Input - docs/design.md 4.5. Tinggi 44px (h-field). */
+export default function Input({ error = null, className = '', id = null, ...rest }) {
+    return (
+        <input
+            id={id}
+            aria-invalid={error ? 'true' : undefined}
+            aria-describedby={error && id ? id + '-error' : undefined}
+            className={cn(BASE, error ? 'border-danger' : null, className)}
+            {...rest}
+        />
+    );
+}
+
+===== Components/Select.jsx =====
+import React from 'react';
+import { cn } from '../lib/format';
+
+const BASE =
+    'w-full h-field appearance-none rounded-md border border-line bg-white pl-3.5 pr-10 text-body text-ink transition-colors duration-hover focus:border-brand focus:outline-none focus:ring-[3px] focus:ring-brand/15 disabled:cursor-not-allowed disabled:bg-surface';
+
+/** Select native bergaya h-field + chevron - docs/design.md 4.19. */
+export default function Select({ error = null, className = '', id = null, children, ...rest }) {
+    return (
+        <span className="relative block">
+            <select
+                id={id}
+                aria-invalid={error ? 'true' : undefined}
+                aria-describedby={error && id ? id + '-error' : undefined}
+                className={cn(BASE, error ? 'border-danger' : null, className)}
+                {...rest}
+            >
+                {children}
+            </select>
+            <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+            >
+                <path d="M6 9l6 6 6-6" />
+            </svg>
+        </span>
+    );
+}
+
+===== Components/Textarea.jsx =====
+import React from 'react';
+import { cn } from '../lib/format';
+
+const BASE =
+    'w-full min-h-[120px] resize-y rounded-md border border-line bg-white px-3.5 py-3 text-body text-ink transition-colors duration-hover placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-[3px] focus:ring-brand/15 disabled:cursor-not-allowed disabled:bg-surface';
+
+/** Textarea - docs/design.md 4.5 (min 120px, resize-y). */
+export default function Textarea({ error = null, className = '', id = null, ...rest }) {
+    return (
+        <textarea
+            id={id}
+            aria-invalid={error ? 'true' : undefined}
+            aria-describedby={error && id ? id + '-error' : undefined}
+            className={cn(BASE, error ? 'border-danger' : null, className)}
+            {...rest}
+        />
+    );
+}
+
+===== Components/Button.jsx =====
+import React from 'react';
+import { Link } from '@inertiajs/react';
+import { cn } from '../lib/format';
+import { SpinnerIcon } from './icons';
+
+const VARIANTS = {
+    primary: 'btn-primary',
+    secondary: 'btn-secondary',
+    ghost: 'btn-ghost',
+    danger:
+        'inline-flex items-center justify-center gap-2 h-10 px-5 rounded-sm text-label font-semibold leading-none bg-danger text-white transition-colors duration-hover hover:opacity-90 disabled:opacity-45 disabled:cursor-not-allowed',
+    link: 'inline-flex items-center gap-2 text-label text-brand underline underline-offset-4 rounded-sm',
+};
+
+const SIZES = {
+    md: '',
+    sm: 'h-10 px-4',
+};
+
+/**
+ * Tombol baku (docs/komponen.md §4.1).
+ * - `loading` menonaktifkan tombol dan menampilkan spinner (design §4.0).
+ * - `href` mengubah tombol menjadi tautan Inertia.
+ */
+export default function Button({
+    children,
+    variant = 'primary',
+    size = 'md',
+    as = 'button',
+    href = null,
+    type = 'button',
+    loading = false,
+    disabled = false,
+    fullWidth = false,
+    icon = null,
+    className = '',
+    ...rest
+}) {
+    const classes = cn(
+        VARIANTS[variant] ?? VARIANTS.primary,
+        size === 'sm' && variant !== 'link' ? SIZES.sm : null,
+        variant === 'link' && size === 'sm' ? 'text-meta' : null,
+        fullWidth ? 'w-full' : null,
+        'whitespace-nowrap',
+        className
+    );
+
+    const content = loading ? (
+        <>
+            <SpinnerIcon size={16} />
+            <span>Memproses…</span>
+        </>
+    ) : (
+        <>
+            {icon}
+            <span>{children}</span>
+        </>
+    );
+
+    if (as === 'a') {
+        return (
+            <a href={href} className={classes} {...rest}>
+                {content}
+            </a>
+        );
+    }
+
+    if (as === Link || as === 'Link' || href) {
+        return (
+            <Link href={href} className={classes} aria-busy={loading || undefined} {...rest}>
+                {content}
+            </Link>
+        );
+    }
+
+    return (
+        <button
+            type={type}
+            className={classes}
+            disabled={disabled || loading}
+            aria-busy={loading || undefined}
+            {...rest}
+        >
+            {content}
+        </button>
+    );
+}
+
+===== Components/StatusBadge.jsx =====
+import React from 'react';
+import { cn } from '../lib/format';
+
+/**
+ * Pil status — docs/design.md §4.21.
+ * Pemetaan baku status order (jangan bikin varian baru):
+ * pending → warning, dibayar/diproses/dikirim → brand, selesai → success, batal → danger.
+ * Bentuk kelas: `bg-{token}/10 text-{token}`.
+ */
+const TONES = {
+    pending: { token: 'warning', label: 'Menunggu' },
+    dibayar: { token: 'brand', label: 'Dibayar' },
+    diproses: { token: 'brand', label: 'Diproses' },
+    dikirim: { token: 'brand', label: 'Dikirim' },
+    selesai: { token: 'success', label: 'Selesai' },
+    batal: { token: 'danger', label: 'Batal' },
+};
+
+const CLASSES = {
+    brand: 'bg-brand/10 text-brand',
+    warning: 'bg-warning/10 text-warning',
+    success: 'bg-success/10 text-success',
+    danger: 'bg-danger/10 text-danger',
+    neutral: 'bg-slate-200/60 text-slate-500',
+};
+
+export default function StatusBadge({ status = null, label = null, className = '' }) {
+    const key = typeof status === 'string' ? status.trim().toLowerCase() : '';
+    const tone = TONES[key] ?? null;
+    const text = label ?? tone?.label ?? (key === '' ? '-' : status);
+
+    return (
+        <span
+            className={cn(
+                'inline-flex items-center rounded-full px-2.5 py-1 text-badge uppercase',
+                CLASSES[tone?.token ?? 'neutral'],
+                className
+            )}
+        >
+            {text}
+        </span>
+    );
+}
+
+===== Components/EmptyState.jsx =====
+import React from 'react';
+import { cn } from '../lib/format';
+import Button from './Button';
+import { ImageOffIcon } from './icons';
+
+/**
+ * Kondisi kosong — docs/komponen.md §1, docs/design.md §4.23.
+ * Tidak boleh dipakai untuk state error (pakai `ErrorState`).
+ */
+export default function EmptyState({
+    title = 'Belum ada data',
+    description = null,
+    actionLabel = null,
+    actionHref = null,
+    onAction = null,
+    icon = null,
+    className = '',
+}) {
+    return (
+        <div className={cn('flex flex-col items-center gap-3 py-12 text-center', className)}>
+            <span className="text-slate-300" aria-hidden="true">
+                {icon ?? <ImageOffIcon size={96} />}
+            </span>
+            <p className="text-h3 text-ink">{title}</p>
+            {description && <p className="max-w-sm text-meta text-slate-400">{description}</p>}
+            {actionLabel && onAction && (
+                <Button variant="secondary" onClick={onAction} className="mt-2">
+                    {actionLabel}
+                </Button>
+            )}
+            {actionLabel && !onAction && actionHref && (
+                <Button variant="secondary" href={actionHref} className="mt-2">
+                    {actionLabel}
+                </Button>
+            )}
+        </div>
+    );
+}
+
+===== Components/PageHeader.jsx =====
+import React from 'react';
+import { cn } from '../lib/format';
+import Breadcrumb from './Breadcrumb';
+
+/**
+ * Kepala halaman admin — docs/design.md §4.30.
+ * Susunan: Breadcrumb → H1 → slot aksi di kanan.
+ * Mobile: aksi turun ke bawah, selebar penuh.
+ */
+export default function PageHeader({ title = '', breadcrumb = [], actions = null, description = null, className = '' }) {
+    return (
+        <header className={cn('flex flex-col gap-3', className)}>
+            {breadcrumb.length > 0 && <Breadcrumb items={breadcrumb} />}
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                    <h1 className="text-h1 font-bold text-ink">{title}</h1>
+                    {description && <p className="mt-1 text-meta text-slate-500">{description}</p>}
+                </div>
+
+                {actions && <div className="flex flex-col gap-2 sm:flex-row sm:items-center">{actions}</div>}
+            </div>
+        </header>
+    );
+}
+
+===== lib/format.js =====
+/**
+ * Helper format bersama — kontrak: docs/komponen.md §6.
+ * Uang selalu integer rupiah dari server (PRD A13); format hanya di klien.
+ */
+
+/** Gabung kelas kondisional tanpa dependensi tambahan. */
+export const cn = (...classes) => classes.flat().filter(Boolean).join(' ');
+
+/** Integer rupiah -> "Rp149.000". Nilai kosong/tidak valid -> null (pemanggil menampilkan "-"). */
+export const rupiah = (value) => {
+    if (value === null || value === undefined || value === '') return null;
+
+    const number = Number(value);
+    if (!Number.isFinite(number)) return null;
+
+    return `Rp${Math.round(number).toLocaleString('id-ID')}`;
+};
+
+/** Angka biasa -> "1.234". Nilai kosong/tidak valid -> "0". */
+export const formatNumber = (value) => {
+    const number = Number(value);
+
+    return Number.isFinite(number) ? number.toLocaleString('id-ID') : '0';
+};
+
+/** Tanggal ISO -> "20 Okt 2026". Nilai kosong/tidak valid -> "-". */
+export const formatDate = (value) => {
+    if (!value) return '-';
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) return '-';
+
+    return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+/** Tanggal ISO -> "20 Okt 2026, 14.05". Nilai kosong/tidak valid -> "-". */
+export const formatDateTime = (value) => {
+    if (!value) return '-';
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) return '-';
+
+    return `${date.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    })}, ${date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
+};
+
+/**
+ * Kolom JSON dari pengaturan admin bisa datang sebagai array atau string JSON.
+ * Selalu kembalikan array agar map() aman.
+ */
+export const toList = (value) => {
+    if (Array.isArray(value)) return value;
+
+    if (typeof value === 'string' && value.trim() !== '') {
+        try {
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    }
+
+    return [];
+};
+
+/** Objek pengaturan bisa datang sebagai string JSON juga. */
+export const toObject = (value) => {
+    if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+
+    if (typeof value === 'string' && value.trim() !== '') {
+        try {
+            const parsed = JSON.parse(value);
+            return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+        } catch {
+            return {};
+        }
+    }
+
+    return {};
+};
+
+===== routes/admin.php 95-200 =====
+    // Produk + varian + galeri (kontrak props §12.1–§12.7).
+    Route::get('/produk', [ProductController::class, 'index'])->name('products.index');
+    Route::get('/produk/tambah', [ProductController::class, 'create'])->name('products.create');
+    Route::post('/produk', [ProductController::class, 'store'])
+        ->middleware('throttle:admin-write')
+        ->name('products.store');
+    Route::get('/produk/{product}/ubah', [ProductController::class, 'edit'])->name('products.edit');
+    Route::put('/produk/{product}', [ProductController::class, 'update'])
+        ->middleware('throttle:admin-write')
+        ->name('products.update');
+    Route::delete('/produk/{product}', [ProductController::class, 'destroy'])
+        ->middleware('throttle:admin-write')
+        ->name('products.destroy');
+    Route::get('/produk/{product}', [ProductController::class, 'show'])->name('products.show');
+
+    // Kategori (kontrak props §12.8–§12.11).
+    Route::get('/kategori', [CategoryController::class, 'index'])->name('categories.index');
+    Route::post('/kategori', [CategoryController::class, 'store'])
+        ->middleware('throttle:admin-write')
+        ->name('categories.store');
+    Route::put('/kategori/{category}', [CategoryController::class, 'update'])
+        ->middleware('throttle:admin-write')
+        ->name('categories.update');
+    Route::delete('/kategori/{category}', [CategoryController::class, 'destroy'])
+        ->middleware('throttle:admin-write')
+        ->name('categories.destroy');
+
+    // Stok varian + riwayat pergerakan (kontrak props §12.12–§12.15).
+    Route::get('/stok', [StockController::class, 'index'])->name('stocks.index');
+    Route::get('/stok/riwayat', [StockController::class, 'history'])->name('stocks.history');
+    Route::post('/stok/{variant}/masuk', [StockController::class, 'in'])
+        ->middleware('throttle:admin-write')
+        ->name('stocks.in');
+    Route::post('/stok/{variant}/keluar', [StockController::class, 'out'])
+        ->middleware('throttle:admin-write')
+        ->name('stocks.out');
+
+    // Pesanan (kontrak props §12.16–§12.18).
+    Route::get('/pesanan', [OrderController::class, 'index'])->name('orders.index');
+    Route::get('/pesanan/{order}', [OrderController::class, 'show'])->name('orders.show');
+    Route::patch('/pesanan/{order}/status', [OrderController::class, 'status'])
+        ->middleware('throttle:admin-write')
+        ->name('orders.status');
+
+    // Akun admin (kontrak props §12.19–§12.22).
+    Route::get('/akun', [AccountController::class, 'index'])->name('accounts.index');
+    Route::post('/akun', [AccountController::class, 'store'])
+        ->middleware('throttle:admin-write')
+        ->name('accounts.store');
+    Route::put('/akun/{admin}', [AccountController::class, 'update'])
+        ->middleware('throttle:admin-write')
+        ->name('accounts.update');
+    Route::delete('/akun/{admin}', [AccountController::class, 'destroy'])
+        ->middleware('throttle:admin-write')
+        ->name('accounts.destroy');
+});
+
+===== Settings/Index.jsx 200-380 (ConfirmDialog) =====
+                        </Button>
+                    ) : null}
+                    <Button type="submit" loading={processing} disabled={!dirty || processing}>
+                        {saveLabel}
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function Thumb({ src, size = 48, className = '' }) {
+    const [failed, setFailed] = useState(false);
+
+    useEffect(() => {
+        setFailed(false);
+    }, [src]);
+
+    const style = { width: `${size}px`, height: `${size}px` };
+
+    if (!src || failed) {
+        return (
+            <span
+                style={style}
+                className={cn('flex shrink-0 items-center justify-center rounded-md border border-line bg-surface text-slate-400', className)}
+            >
+                <ImageOffIcon size={18} />
+            </span>
+        );
+    }
+
+    return (
+        <img
+            src={src}
+            alt=""
+            style={style}
+            loading="lazy"
+            onError={() => setFailed(true)}
+            className={cn('shrink-0 rounded-md border border-line object-cover', className)}
+        />
+    );
+}
+
+function ImageField({
+    id,
+    label,
+    hint = null,
+    required = false,
+    accept,
+    maxKb,
+    extensions,
+    file = null,
+    currentPath = null,
+    error = null,
+    message,
+    onSelect,
+}) {
+    const [objectUrl, setObjectUrl] = useState(null);
+
+    useEffect(() => {
+        if (!file) {
+            setObjectUrl(null);
+            return undefined;
+        }
+        const url = URL.createObjectURL(file);
+        setObjectUrl(url);
+        return () => URL.revokeObjectURL(url);
+    }, [file]);
+
+    const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
+    const sizeLabel = maxKb >= 1024 ? `${Math.round(maxKb / 1024)} MB` : `${maxKb} KB`;
+
+    return (
+        <Field label={label} htmlFor={id} required={required} hint={hint} error={error}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
+                <Thumb src={objectUrl || currentPath || null} size={112} className="rounded-lg" />
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                    <input
+                        id={id}
+                        type="file"
+                        accept={accept}
+                        aria-describedby={describedBy}
+                        aria-invalid={error ? 'true' : undefined}
+                        onChange={(event) => {
+                            const picked = event.target.files && event.target.files[0] ? event.target.files[0] : null;
+                            onSelect(picked);
+                            event.target.value = '';
+                        }}
+                        className={cn(
+                            'field h-auto cursor-pointer py-2 text-meta file:mr-3 file:rounded-sm file:border-0 file:bg-surface file:px-3 file:py-1.5 file:text-meta file:font-semibold file:text-ink hover:file:bg-slate-200',
+                            error && 'field-error'
+                        )}
+                    />
+                    <p className="text-meta text-slate-400">
+                        {message} Maksimal {sizeLabel}.
+                    </p>
+                    {file ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="truncate text-meta text-ink-soft">{file.name}</span>
+                            <Button variant="ghost" size="sm" onClick={() => onSelect(null)}>
+                                Batalkan pilihan
+                            </Button>
+                        </div>
+                    ) : null}
+                </div>
+            </div>
+        </Field>
+    );
+}
+
+function ArrayRow({ children, onRemove, removeLabel }) {
+    return (
+        <div className="rounded-lg border border-line p-3">
+            <div className="flex items-start gap-2">
+                <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-2">{children}</div>
+                <IconButton label={removeLabel} onClick={onRemove} className="text-danger">
+                    <TrashIcon size={18} />
+                </IconButton>
+            </div>
+        </div>
+    );
+}
+
+function StatusCell({ active }) {
+    return (
+        <span className="inline-flex items-center gap-2 text-meta text-ink">
+            <span
+                aria-hidden="true"
+                className={cn('h-2 w-2 rounded-full', active ? 'bg-success' : 'bg-slate-300')}
+            />
+            {active ? 'Aktif' : 'Nonaktif'}
+        </span>
+    );
+}
+
+function ConfirmDialog({ open, title, description, confirmLabel, processing, onConfirm, onCancel }) {
+    return (
+        <Modal
+            open={open}
+            title={title}
+            description={description}
+            onClose={processing ? () => {} : onCancel}
+            size="md"
+            footer={
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                    <Button variant="secondary" onClick={onCancel} disabled={processing}>
+                        Batal
+                    </Button>
+                    <Button variant="danger" onClick={onConfirm} loading={processing}>
+                        {confirmLabel}
+                    </Button>
+                </div>
+            }
+        >
+            <p className="text-body text-ink-soft">Tindakan ini tidak bisa dibatalkan.</p>
+        </Modal>
+    );
+}
+
+export default function SettingsIndex({ auth = null, pengaturan = null, carousels = [], faqs = [], flash = null }) {
+    const [tab, setTab] = useState(() => readTabFromUrl());
+    const [pendingTab, setPendingTab] = useState(null);
+    const [reloading, setReloading] = useState(false);
+    const [toast, dismissToast] = useToastFromFlash(flash);
+    const [actionError, setActionError] = useState(null);
+
+    const [logoError, setLogoError] = useState(null);
+    const [faviconError, setFaviconError] = useState(null);
+    const [footerLinksError, setFooterLinksError] = useState(null);
+
+    const [carouselEditing, setCarouselEditing] = useState(null);
+    const [carouselOpen, setCarouselOpen] = useState(false);
+    const [carouselImageError, setCarouselImageError] = useState(null);
+    const [carouselPendingDelete, setCarouselPendingDelete] = useState(null);
+    const [faqEditing, setFaqEditing] = useState(null);
+    const [faqOpen, setFaqOpen] = useState(false);
+    const [faqPendingDelete, setFaqPendingDelete] = useState(null);
+    const [deleting, setDeleting] = useState(false);
+
+    const groups = useMemo(() => {
+        const source = asObject(pengaturan);
+
+===== Messages/Index.jsx 1-260 =====
+import React, { useEffect, useMemo, useState } from 'react';
+import { router, useForm } from '@inertiajs/react';
+import AdminLayout, { ADMIN_NAV } from '../../../Layouts/AdminLayout';
+import PageHeader from '../../../Components/PageHeader';
+import DataTable from '../../../Components/DataTable';
+import SearchInput from '../../../Components/SearchInput';
+import Select from '../../../Components/Select';
+import Field from '../../../Components/Field';
+import Button from '../../../Components/Button';
+import Textarea from '../../../Components/Textarea';
+import Modal from '../../../Components/Modal';
+import Pagination from '../../../Components/Pagination';
+import StatusBadge from '../../../Components/StatusBadge';
+import InlineNotice from '../../../Components/InlineNotice';
+import Toast from '../../../Components/Toast';
+import { formatDateTime, formatNumber } from '../../../lib/format';
+
+/**
+ * Pesan masuk dari formulir kontak — docs/design.md §5.12 ("Detail pesan: isi pesan,
+ * textarea balasan, tombol 'Tandai dibaca'") dan docs/kontrak-props.md §10.1–§10.3.
+ *
+ * Props server (app/Http/Controllers/Admin/MessageController.php@index):
+ *   pesan     paginator Laravel (data, links, current_page, last_page, total)
+ *   filter    { q: string|null, status: 'semua'|'belum'|'sudah' }
+ *   ringkasan { total, belum_dibaca }
+ *   flash     { success, error } — props bersama (HandleInertiaRequests).
+ *
+ * Aksi memakai URL literal routes/admin.php:
+ *   tandai dibaca -> PATCH /admin/pesan-masuk/{id}/baca  (kontrak §10.2, koreksi PATCH 20 Okt 2026)
+ *   balas         -> POST  /admin/pesan-masuk/{id}/balas (kontrak §10.3)
+ */
+
+const BREADCRUMB = [{ label: 'Dashboard', href: '/admin' }, { label: 'Pesan Masuk' }];
+
+const DEFAULT_FILTER = { q: '', status: 'semua' };
+
+/** Enum `status` mengikuti kontrak §10.1: semua | belum | sudah. */
+const STATUS_OPTIONS = [
+    { value: 'semua', label: 'Semua status' },
+    { value: 'belum', label: 'Belum dibaca' },
+    { value: 'sudah', label: 'Sudah dibaca' },
+];
+
+/**
+ * Sidebar admin: rute /admin/pesan-masuk sudah terdaftar (routes/admin.php), jadi
+ * entri "Pesan" dibuka di halaman ini — pola sama dengan Settings/Index.jsx.
+ */
+const NAV_AKTIF = ADMIN_NAV.map((item) => (item.key === 'pesan' ? { ...item, disabled: false } : item));
+
+/** Nilai server bisa null; semua teks melewati helper ini agar tidak ada "undefined" di layar. */
+const asText = (value) => {
+    if (value === null || value === undefined) return '';
+
+    return typeof value === 'string' ? value : String(value);
+};
+
+/** Angka dari server bisa string; hasil selalu >= 0 dan bukan NaN. */
+const asCount = (value) => {
+    const number = Number(value ?? 0);
+
+    return Number.isFinite(number) && number > 0 ? number : 0;
+};
+
+/** Normalisasi props `filter` dari server; nilai kosong/tak dikenal -> bawaan. */
+const normalizeFilter = (filter) => ({
+    q: typeof filter?.q === 'string' ? filter.q : '',
+    status: filter?.status === null || filter?.status === undefined ? 'semua' : String(filter.status),
+});
+
+/**
+ * Paginator Laravel dikirim datar (`current_page`, `last_page`, `total`, `data`);
+ * kontrak §10.1 menuliskannya sebagai `links` + `meta`. Keduanya dibaca supaya
+ * halaman tidak bergantung pada satu bentuk saja.
+ */
+const readPaginator = (paginator) => {
+    const source = paginator ?? {};
+    const meta = source.meta && typeof source.meta === 'object' ? source.meta : source;
+
+    return {
+        rows: Array.isArray(source.data) ? source.data : [],
+        currentPage: Math.max(1, Number(meta.current_page) || 1),
+        lastPage: Math.max(1, Number(meta.last_page) || 1),
+        total: asCount(meta.total),
+    };
+};
+
+export default function MessagesIndex({
+    auth = null,
+    pesan = null,
+    filter = null,
+    ringkasan = null,
+    flash = null,
+}) {
+    const [query, setQuery] = useState(() => normalizeFilter(filter));
+    const [navLoading, setNavLoading] = useState(false);
+    const [navError, setNavError] = useState(null);
+    const [toast, setToast] = useState(null);
+    const [busyId, setBusyId] = useState(null);
+    const [actionError, setActionError] = useState(null);
+    const [targetId, setTargetId] = useState(null);
+    const [askDiscard, setAskDiscard] = useState(false);
+
+    const form = useForm({ admin_reply: '' });
+
+    const paginator = useMemo(() => readPaginator(pesan), [pesan]);
+    const total = asCount(ringkasan?.total);
+    const belumDibaca = asCount(ringkasan?.belum_dibaca);
+
+    // Baris detail dibaca ulang dari props terbaru, jadi status baca (dan balasan)
+    // di modal ikut terbarui setelah aksi karena state halaman dipertahankan.
+    const target = useMemo(
+        () => paginator.rows.find((row) => row.id === targetId) ?? null,
+        [paginator.rows, targetId]
+    );
+
+    const filterActive = query.q.trim() !== '' || query.status !== DEFAULT_FILTER.status;
+
+    // Sinkron dari server hanya saat tidak ada permintaan berjalan supaya ketikan
+    // pengguna tidak tertimpa respons yang tertinggal.
+    useEffect(() => {
+        if (navLoading) return;
+
+        const next = normalizeFilter(filter);
+        setQuery((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
+    }, [filter, navLoading]);
+
+    useEffect(() => {
+        if (flash?.success) {
+            setToast({ tone: 'success', title: 'Berhasil', message: String(flash.success) });
+        } else if (flash?.error) {
+            setToast({ tone: 'error', title: 'Gagal', message: String(flash.error) });
+        }
+    }, [flash?.success, flash?.error]);
+
+    const load = (params) => {
+        router.get('/admin/pesan-masuk', params, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            onStart: () => {
+                setNavLoading(true);
+                setNavError(null);
+            },
+            onFinish: () => setNavLoading(false),
+            onError: () => setNavError('Gagal memuat daftar pesan. Periksa koneksi lalu coba lagi.'),
+        });
+    };
+
+    /** Parameter query yang benar-benar dikirim: nilai bawaan tidak ditulis ke URL. */
+    const paramsFor = (source, page = 1) => {
+        const params = {};
+        const q = source.q.trim();
+
+        if (q !== '') params.q = q;
+        if (source.status !== DEFAULT_FILTER.status) params.status = source.status;
+        if (page > 1) params.page = page;
+
+        return params;
+    };
+
+    const applyFilters = (overrides = {}) => {
+        const next = { ...query, ...overrides };
+        setQuery(next);
+        load(paramsFor(next));
+    };
+
+    const resetFilters = () => {
+        setQuery(DEFAULT_FILTER);
+        load({});
+    };
+
+    const changePage = (page) => load(paramsFor(query, page));
+
+    const reload = () => load(paramsFor(query, paginator.currentPage));
+
+    const openDetail = (row) => {
+        setActionError(null);
+        setAskDiscard(false);
+        form.setData('admin_reply', asText(row.admin_reply));
+        form.clearErrors();
+        setTargetId(row.id);
+    };
+
+    const closeDetail = () => {
+        setTargetId(null);
+        setAskDiscard(false);
+        form.setData('admin_reply', '');
+        form.clearErrors();
+    };
+
+    const replyDirty = target !== null && form.data.admin_reply.trim() !== asText(target.admin_reply).trim();
+
+    const requestClose = () => {
+        if (form.processing || busyId !== null) return;
+
+        if (replyDirty) {
+            setAskDiscard(true);
+
+            return;
+        }
+
+        closeDetail();
+    };
+
+    /** Throttle `admin-write` (60/menit): beri pesan yang terbaca, bukan modal galat bawaan. */
+    const onHttpException = (response) => {
+        if (response?.status === 429) {
+            setActionError({
+                message: 'Terlalu banyak aksi berturut-turut. Tunggu sebentar, lalu coba lagi.',
+                retry: null,
+            });
+
+            return false;
+        }
+
+        return undefined;
+    };
+
+    /** Tandai dibaca — wajib PATCH (kontrak §10.2, dikoreksi 20 Okt 2026). */
+    const markRead = (row) => {
+        if (busyId !== null || row.is_read) return;
+
+        setBusyId(row.id);
+        setActionError(null);
+
+        router.patch(
+            `/admin/pesan-masuk/${row.id}/baca`,
+            {},
+            {
+                preserveState: true,
+                preserveScroll: true,
+                onHttpException,
+                onFinish: () => setBusyId(null),
+                onError: () =>
+                    setActionError({
+                        message: 'Pesan gagal ditandai sudah dibaca. Periksa koneksi lalu coba lagi.',
+                        retry: () => markRead(row),
+                    }),
+            }
+        );
+    };
+
+    const submitReply = (event) => {
+        if (event) event.preventDefault();
+
+        if (target === null || form.processing) return;
+
+        setActionError(null);
+
+        form.post(`/admin/pesan-masuk/${target.id}/balas`, {
+            preserveState: true,
+            preserveScroll: true,
+            onHttpException,
+            onSuccess: () => closeDetail(),
+        });
+    };
+
+    const columns = [
+        {
+            key: 'pengirim',
+
+===== Messages/Index.jsx 261-560 =====
+            header: 'Pengirim',
+            render: (row) => (
+                <div className="max-w-[220px]">
+                    <p className="truncate font-semibold text-ink">{asText(row.name) || '-'}</p>
+                    <p className="truncate text-meta text-slate-500">{asText(row.email) || '-'}</p>
+                </div>
+            ),
+        },
+        {
+            key: 'subjek',
+            header: 'Subjek',
+            render: (row) => {
+                const subject = asText(row.subject);
+                const body = asText(row.message);
+                const reply = asText(row.admin_reply);
+
+                return (
+                    <div className="max-w-[320px] space-y-1">
+                        <p className="truncate font-semibold text-ink">
+                            {subject !== '' ? subject : 'Tanpa subjek'}
+                        </p>
+                        <p className="truncate text-meta text-ink-soft">
+                            {body !== '' ? body.replace(/\s+/g, ' ') : '-'}
+                        </p>
+                        {reply !== '' && (
+                            <p className="truncate text-meta text-slate-500">
+                                Dibalas {formatDateTime(row.replied_at)}
+                            </p>
+                        )}
+                    </div>
+                );
+            },
+        },
+        {
+            key: 'created_at',
+            header: 'Tanggal',
+            render: (row) => <span className="whitespace-nowrap">{formatDateTime(row.created_at)}</span>,
+        },
+        {
+            key: 'is_read',
+            header: 'Status baca',
+            render: (row) =>
+                row.is_read ? (
+                    <StatusBadge status="sudah dibaca" label="Sudah dibaca" className="bg-success/10 text-success" />
+                ) : (
+                    <StatusBadge status="belum dibaca" label="Belum dibaca" className="bg-warning/10 text-warning" />
+                ),
+        },
+        {
+            key: 'aksi',
+            header: 'Aksi',
+            align: 'right',
+            render: (row) => (
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Button variant="secondary" size="sm" onClick={() => openDetail(row)}>
+                        Baca detail
+                    </Button>
+                    {!row.is_read && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => markRead(row)}
+                            loading={busyId === row.id}
+                            disabled={busyId !== null && busyId !== row.id}
+                        >
+                            Tandai dibaca
+                        </Button>
+                    )}
+                </div>
+            ),
+        },
+    ];
+
+    const replyText = target ? asText(target.admin_reply) : '';
+
+    return (
+        <AdminLayout auth={auth?.admin ?? null} nav={NAV_AKTIF} title="Pesan Masuk">
+            <div className="flex flex-col gap-6">
+                <PageHeader title="Pesan Masuk" breadcrumb={BREADCRUMB} />
+
+                <p className="text-meta text-slate-500">
+                    Total {formatNumber(total)} pesan · {formatNumber(belumDibaca)} belum dibaca
+                </p>
+
+                {actionError && (
+                    <InlineNotice tone="error" title="Aksi gagal" onDismiss={() => setActionError(null)}>
+                        <p>{actionError.message}</p>
+                        {actionError.retry && (
+                            <Button variant="secondary" size="sm" className="mt-3" onClick={actionError.retry}>
+                                Coba lagi
+                            </Button>
+                        )}
+                    </InlineNotice>
+                )}
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                    <SearchInput
+                        className="w-full sm:max-w-sm"
+                        value={query.q}
+                        onChange={(value) => applyFilters({ q: value })}
+                        placeholder="Cari nama, subjek, atau email"
+                        label="Cari pesan"
+                        loading={navLoading}
+                    />
+
+                    <Field label="Status baca" htmlFor="filter-status" className="w-full sm:w-48">
+                        <Select
+                            id="filter-status"
+                            value={query.status}
+                            onChange={(event) => applyFilters({ status: event.target.value })}
+                        >
+                            {STATUS_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </Select>
+                    </Field>
+
+                    {filterActive && (
+                        <Button variant="secondary" onClick={resetFilters}>
+                            Reset filter
+                        </Button>
+                    )}
+                </div>
+
+                <div className="flex flex-col gap-3">
+                    <DataTable
+                        caption="Daftar pesan masuk dari formulir kontak"
+                        columns={columns}
+                        rows={paginator.rows}
+                        loading={navLoading}
+                        error={navError}
+                        onRetry={reload}
+                        emptyTitle={filterActive ? 'Tidak ada pesan yang cocok' : 'Belum ada pesan'}
+                        emptyDescription={
+                            filterActive
+                                ? 'Ubah kata kunci atau filter untuk melihat pesan lain.'
+                                : 'Pesan dari formulir kontak akan tampil di sini.'
+                        }
+                        emptyActionLabel={filterActive ? 'Reset filter' : null}
+                        emptyActionHref={filterActive ? '/admin/pesan-masuk' : null}
+                    />
+
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-meta text-slate-500">
+                            {paginator.rows.length > 0
+                                ? `Menampilkan ${formatNumber(paginator.rows.length)} dari ${formatNumber(
+                                      paginator.total
+                                  )} pesan`
+                                : 'Tidak ada pesan untuk ditampilkan.'}
+                        </p>
+                        <Pagination
+                            currentPage={paginator.currentPage}
+                            lastPage={paginator.lastPage}
+                            onPageChange={changePage}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <Modal
+                open={target !== null}
+                onClose={requestClose}
+                title="Detail pesan"
+                description={
+                    target
+                        ? `${asText(target.name) || 'Tanpa nama'} · ${asText(target.email) || 'Email tidak tersedia'}`
+                        : null
+                }
+                size="lg"
+                footer={
+                    askDiscard ? (
+                        <>
+                            <p className="mr-auto self-center text-meta text-ink-soft">
+                                Balasan belum tersimpan. Buang perubahan?
+                            </p>
+                            <Button variant="secondary" onClick={() => setAskDiscard(false)}>
+                                Lanjut mengedit
+                            </Button>
+                            <Button variant="danger" onClick={closeDetail}>
+                                Buang
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            <Button
+                                variant="secondary"
+                                onClick={requestClose}
+                                disabled={form.processing || busyId !== null}
+                            >
+                                Tutup
+                            </Button>
+                            {target && !target.is_read && (
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => markRead(target)}
+                                    loading={busyId === target.id}
+                                    disabled={busyId !== null && busyId !== target.id}
+                                >
+                                    Tandai dibaca
+                                </Button>
+                            )}
+                            <Button
+                                variant="primary"
+                                onClick={() => submitReply(null)}
+                                loading={form.processing}
+                                disabled={!replyDirty || busyId !== null}
+                            >
+                                Kirim balasan
+                            </Button>
+                        </>
+                    )
+                }
+            >
+                {target && (
+                    <form className="flex flex-col gap-4" onSubmit={submitReply}>
+                        <div className="rounded-md bg-surface p-4">
+                            <p className="text-badge uppercase text-slate-500">Isi pesan</p>
+                            <p className="mt-1 text-h3 text-ink">{asText(target.subject) || 'Tanpa subjek'}</p>
+
+                            <dl className="mt-3 grid gap-x-6 gap-y-1 text-meta text-ink-soft sm:grid-cols-2">
+                                <div className="flex gap-2">
+                                    <dt className="shrink-0 text-slate-500">Email</dt>
+                                    <dd className="min-w-0 break-all">{asText(target.email) || '-'}</dd>
+                                </div>
+                                <div className="flex gap-2">
+                                    <dt className="shrink-0 text-slate-500">Telepon</dt>
+                                    <dd>{asText(target.phone) || '-'}</dd>
+                                </div>
+                                <div className="flex gap-2 sm:col-span-2">
+                                    <dt className="shrink-0 text-slate-500">Diterima</dt>
+                                    <dd>{formatDateTime(target.created_at)}</dd>
+                                </div>
+                            </dl>
+
+                            <p className="mt-3 whitespace-pre-line text-body text-ink-soft">
+                                {asText(target.message) || '-'}
+                            </p>
+                        </div>
+
+                        {replyText !== '' && (
+                            <div className="border-l-[3px] border-accent-500 bg-surface p-3">
+                                <p className="text-badge uppercase text-slate-500">Balasan toko</p>
+                                <p className="mt-1 whitespace-pre-line text-meta text-ink-soft">{replyText}</p>
+                                <p className="mt-1 text-meta text-slate-400">
+                                    {formatDateTime(target.replied_at)}
+                                </p>
+                            </div>
+                        )}
+
+                        <Field
+                            label="Balasan"
+                            htmlFor="admin_reply"
+                            required
+                            hint="Maksimal 2000 karakter. Balasan dikirim ke email pengirim."
+                            error={form.errors.admin_reply ?? null}
+                        >
+                            <Textarea
+                                id="admin_reply"
+                                name="admin_reply"
+                                rows={5}
+                                maxLength={2000}
+                                value={form.data.admin_reply}
+                                error={form.errors.admin_reply ?? null}
+                                onChange={(event) => form.setData('admin_reply', event.target.value)}
+                                placeholder="Tulis balasan untuk pengirim"
+                            />
+                        </Field>
+                    </form>
+                )}
+            </Modal>
+
+            {toast && (
+                <div className="pointer-events-none fixed bottom-4 right-4 z-toast flex w-full max-w-[360px]">
+                    <Toast
+                        tone={toast.tone}
+                        title={toast.title}
+                        message={toast.message}
+                        onClose={() => setToast(null)}
+                    />
+                </div>
+            )}
+        </AdminLayout>
+    );
+}
+
+===== Reviews/Index.jsx 1-140 (pola filter+toast) =====
+import React, { useEffect, useMemo, useState } from 'react';
+import { router, useForm } from '@inertiajs/react';
+import AdminLayout from '../../../Layouts/AdminLayout';
+import PageHeader from '../../../Components/PageHeader';
+import DataTable from '../../../Components/DataTable';
+import SearchInput from '../../../Components/SearchInput';
+import Select from '../../../Components/Select';
+import Field from '../../../Components/Field';
+import Button from '../../../Components/Button';
+import Textarea from '../../../Components/Textarea';
+import Modal from '../../../Components/Modal';
+import Pagination from '../../../Components/Pagination';
+import RatingSummary from '../../../Components/RatingSummary';
+import StatusBadge from '../../../Components/StatusBadge';
+import StarRating from '../../../Components/StarRating';
+import InlineNotice from '../../../Components/InlineNotice';
+import Toast from '../../../Components/Toast';
+import { formatDateTime, formatNumber } from '../../../lib/format';
+
+/**
+ * Moderasi penilaian produk — docs/design.md §5.12 dan docs/kontrak-props.md §10.4-§10.6.
+ * Props server: `ulasan` (paginator), `filter` (q, rating, visibilitas), `ringkasan`.
+ * Aksi memakai URL literal routes/admin.php:
+ * balas -> POST /admin/penilaian/{id}/balas, visibilitas -> PATCH /admin/penilaian/{id}/tampil.
+ */
+
+const BREADCRUMB = [{ label: 'Dashboard', href: '/admin' }, { label: 'Penilaian' }];
+
+const DEFAULT_FILTER = { q: '', rating: 'semua', visibilitas: 'semua' };
+
+const RATING_OPTIONS = [
+    { value: 'semua', label: 'Semua rating' },
+    { value: '5', label: '5 bintang' },
+    { value: '4', label: '4 bintang' },
+    { value: '3', label: '3 bintang' },
+    { value: '2', label: '2 bintang' },
+    { value: '1', label: '1 bintang' },
+];
+
+const VISIBILITY_OPTIONS = [
+    { value: 'semua', label: 'Semua status' },
+    { value: 'tampil', label: 'Tampil' },
+    { value: 'sembunyi', label: 'Sembunyi' },
+];
+
+/** Normalisasi props `filter` dari server; nilai kosong/tak dikenal -> bawaan. */
+const normalizeFilter = (filter) => ({
+    q: typeof filter?.q === 'string' ? filter.q : '',
+    rating: filter?.rating === null || filter?.rating === undefined ? 'semua' : String(filter.rating),
+    visibilitas:
+        filter?.visibilitas === null || filter?.visibilitas === undefined
+            ? 'semua'
+            : String(filter.visibilitas),
+});
+
+/**
+ * Paginator Laravel dikirim datar (`current_page`, `last_page`, `total`, `data`).
+ * Kontrak §10.4 menulis bentuk `meta`; keduanya dibaca agar halaman tidak
+ * bergantung pada satu bentuk saja.
+ */
+const readPaginator = (paginator) => {
+    const source = paginator ?? {};
+    const meta = source.meta && typeof source.meta === 'object' ? source.meta : source;
+
+    return {
+        rows: Array.isArray(source.data) ? source.data : [],
+        currentPage: Math.max(1, Number(meta.current_page) || 1),
+        lastPage: Math.max(1, Number(meta.last_page) || 1),
+        total: Math.max(0, Number(meta.total) || 0),
+    };
+};
+
+export default function ReviewsIndex({
+    auth = null,
+    ulasan = null,
+    filter = null,
+    ringkasan = null,
+    flash = null,
+}) {
+    const [query, setQuery] = useState(() => normalizeFilter(filter));
+    const [navLoading, setNavLoading] = useState(false);
+    const [navError, setNavError] = useState(null);
+    const [toast, setToast] = useState(null);
+    const [busyId, setBusyId] = useState(null);
+    const [actionError, setActionError] = useState(null);
+    const [target, setTarget] = useState(null);
+    const [askDiscard, setAskDiscard] = useState(false);
+
+    const form = useForm({ admin_reply: '' });
+
+    const paginator = useMemo(() => readPaginator(ulasan), [ulasan]);
+    const average = Number(ringkasan?.rating_avg ?? 0) || 0;
+    const count = Number(ringkasan?.rating_count ?? 0) || 0;
+    const distribution = ringkasan?.distribusi ?? null;
+
+    const filterActive =
+        query.q.trim() !== '' ||
+        query.rating !== DEFAULT_FILTER.rating ||
+        query.visibilitas !== DEFAULT_FILTER.visibilitas;
+
+    // Sinkron dari server hanya saat tidak ada permintaan berjalan supaya
+    // ketikan pengguna tidak tertimpa respons yang tertinggal.
+    useEffect(() => {
+        if (navLoading) return;
+
+        const next = normalizeFilter(filter);
+        setQuery((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
+    }, [filter, navLoading]);
+
+    useEffect(() => {
+        if (flash?.success) {
+            setToast({ tone: 'success', title: 'Berhasil', message: String(flash.success) });
+        } else if (flash?.error) {
+            setToast({ tone: 'error', title: 'Gagal', message: String(flash.error) });
+        }
+    }, [flash?.success, flash?.error]);
+
+    const load = (params) => {
+        router.get('/admin/penilaian', params, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            onStart: () => {
+                setNavLoading(true);
+                setNavError(null);
+            },
+            onFinish: () => setNavLoading(false),
+            onError: () => setNavError('Gagal memuat daftar ulasan. Periksa koneksi lalu coba lagi.'),
+        });
+    };
+
+    const paramsFor = (source, page = 1) => {
+        const params = {};
+        const q = source.q.trim();
+
+        if (q !== '') params.q = q;
+        if (source.rating !== DEFAULT_FILTER.rating) params.rating = source.rating;
+        if (source.visibilitas !== DEFAULT_FILTER.visibilitas) params.visibilitas = source.visibilitas;
+        if (page > 1) params.page = page;
+
+ 2022 78149 tmp/bundel-konteks7-t_e5149746.txt

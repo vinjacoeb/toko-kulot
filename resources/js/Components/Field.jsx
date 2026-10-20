@@ -31,12 +31,12 @@ export default function Field({
             )}
             {children}
             {hint && !error && (
-                <p id={hintId} className="mt-1.5 text-meta text-slate-400">
+                <p id={hintId} className="mt-1.5 text-meta text-slate-500">
                     {hint}
                 </p>
             )}
             {error && (
-                <p id={errorId} className="mt-1.5 text-meta text-danger" role="alert">
+                <p id={errorId} className="mt-1.5 text-meta text-danger-strong" role="alert">
                     {error}
                 </p>
             )}

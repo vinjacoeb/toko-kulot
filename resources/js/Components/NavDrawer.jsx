@@ -48,7 +48,7 @@ export default function NavDrawer({ open = false, nav = [], onClose, title = 'Me
                 )}
             >
                 <div className="flex h-header items-center justify-between border-b border-line px-4">
-                    <span className="text-badge uppercase text-slate-400">{title}</span>
+                    <span className="text-badge uppercase text-slate-500">{title}</span>
                     <button
                         type="button"
                         onClick={onClose}

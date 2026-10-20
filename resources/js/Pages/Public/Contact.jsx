@@ -245,7 +245,7 @@ export default function Contact({ settings = null, cartCount = 0, user = null, f
                                     className="h-map w-full rounded-md border border-line"
                                 />
                             ) : (
-                                <div className="flex h-map w-full items-center justify-center rounded-md border border-line bg-surface p-4 text-center text-meta text-slate-400">
+                                <div className="flex h-map w-full items-center justify-center rounded-md border border-line bg-surface p-4 text-center text-meta text-slate-600">
                                     {mapBroken ? 'Peta gagal dimuat. Gunakan alamat di atas.' : 'Peta belum tersedia.'}
                                 </div>
                             )}

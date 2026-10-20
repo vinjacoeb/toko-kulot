@@ -1,0 +1,148 @@
+# Bukti UIUX — kartu t_5fcdbae3
+Tugas: catat deviasi D8 (kolom cari topbar shell admin §5.10 tidak dibangun, keputusan t_b5de72e3) di docs/design.md
+Assignee: uiux | Lingkungan: repo lokal C:/Users/LENOVO/Downloads/toko-kulot | Tanggal: 20 Okt 2026
+Tanpa perubahan kode. Berkas yang diubah hanya docs/design.md.
+
+## 1. grep -n "D8" docs/design.md
+
+```
+15:| 2.1 | 20 Okt 2026 | **Kartu QA `t_8cd61512` (kontras badge)**: token baru `success-strong`/`warning-strong`/`danger-strong` (tangga 800) + aturan kontras teks state (§2.1); §2.5/§2.6 diperbarui (**55 token**); §4.21 aturan tone badge diganti dari `bg-{token}/10 text-{token}` → `bg-{token}/10 text-{token}-strong` (semua tone ≥ 5,33:1); §9 baris 1/11 + baris 19; §11.4 temuan kontras non-badge (T1–T6); §5.10 catatan deviasi + §11.3 **D8** — kolom `⌕ cari` topbar admin tidak dibangun, jalur pencarian = toolbar §5.12 (keputusan `t_b5de72e3`) |
+646:- Catatan deviasi **D8**: kolom `⌕ cari` pada sketsa topbar di atas **tidak dibangun** — jalur pencarian admin adalah toolbar per halaman daftar (§5.12). Keputusan techlead kartu `t_b5de72e3`, rincian bukti di §11.3 D8; tidak ada state "cari" di §5.10.
+847:| D8 | Kolom `⌕ cari` pada sketsa topbar shell admin (§5.10) **tidak dibangun**; jalur pencarian admin = toolbar per halaman daftar (§5.12) | PRD §5.2 = daftar tetap rute admin tanpa endpoint pencarian (`docs/PRD.md:139-170`); `grep -in "search"` dan `grep -in "cari"` pada `resources/js/Layouts/AdminLayout.jsx:168-221` → 0 hasil keduanya (diverifikasi ulang 20 Okt 2026); §5.10 hanya punya state `default`/`collapsed`/`drawer-open` | **Diterima sebagai deviasi, keputusan `t_b5de72e3`, dicatat di `docs/pertanyaan-pemilik.md` §4 T3** |
+```
+
+## 2. sed -n '587,612p' docs/design.md (rentang bukti yang diminta kartu)
+
+Catatan nomor baris: kartu menyebut `docs/design.md:591` (sketsa) dan `:610` (state) — itu nomor pada v2.0 (817 baris).
+Setelah v2.1 (kartu t_8cd61512) berkas jadi 875 baris, sehingga pada nomor v2.1 sketsa topbar = baris 626 dan baris State = 645.
+Karena itu rentang 587-612 yang diminta di bawah menampilkan §5.6-§5.8; bukti §5.10 ada di bagian 4.
+
+```
+- Ringkasan kanan (`OrderSummary`, sticky 320px): Subtotal, Ongkir, **Total**, "Lanjut ke Pembayaran", catatan "Pembayaran QRIS".
+- Empty: ikon keranjang + "Keranjang masih kosong" + "Mulai Belanja".
+- State: `loading` (skeleton 3 baris), `empty`, `error`, `updating` (baris `aria-busy`, total dihitung optimistis), `stock-changed` (`InlineNotice` warning + qty disesuaikan), `guest` (CTA checkout → arahkan login, keranjang tetap tampil).
+
+### 5.7 `/checkout`
+
+- Dua kolom: form 60% + `OrderSummary` sticky 40%.
+- Form: Data Penerima (nama, telepon, email), Alamat (alamat, kota, kode pos), Catatan, metode pembayaran (kartu QRIS terpilih, pilihan lain `disabled`).
+- State: `idle` `submitting` (cegah double submit) `error-field` `error-payment` (`InlineNotice` + ulangi, order tidak dobel) `cart-empty` (redirect ke keranjang + notice).
+
+### 5.8 `/checkout/{order}/bayar` & `/selesai`
+
+- Bayar: `QrisPanel` terpusat (`max-w-qris` 480px), instruksi 3 langkah bernomor, "Cek Status" (polling 5s).
+- Selesai: centang hijau 64px, "Pesanan diterima", kode order, ringkasan, lalu kartu penilaian per produk:
+
+```
+┌────────────────────────────────────────┐
+│ [gambar 64] Nama Produk · Varian        │
+│ Seberapa puas kamu?                     │
+│   ★  ★  ★  ★  ★   (32px, interaktif)   │
+│ ┌────────────────────────────────────┐ │
+│ │ Tulis komentarmu…          (120px) │ │
+│ └────────────────────────────────────┘ │
+│ [Kirim Penilaian]                       │
+└────────────────────────────────────────┘
+```
+```
+
+## 3. Jumlah baris akhir berkas
+
+```
+$ wc -l docs/design.md
+877 docs/design.md
+```
+
+## 4. Konteks §5.10 (catatan D8 tepat setelah baris State)
+
+```
+$ sed -n '622,648p' docs/design.md
+### 5.10 Admin — shell
+
+```
+┌──────────┬──────────────────────────────────────────┐
+│ SIDEBAR  │ TOPBAR  ⌕ cari   [Avatar ▾]              │  h-topbar 64px
+│ 240px    ├──────────────────────────────────────────┤
+│ Logo     │ H1 halaman + breadcrumb                  │
+│ ──────── │ ┌──────────────────────────────────────┐ │
+│ Dashboard│ │ konten                               │ │
+│ Produk   │ │                                      │ │
+│ Kategori │ └──────────────────────────────────────┘ │
+│ Stok     │                                          │
+│ Pesanan  │                                          │
+│ Pesan    │                                          │
+│ Penilaian│                                          │
+│ Pengaturan                                          │
+│ Akun     │                                          │
+└──────────┴──────────────────────────────────────────┘
+```
+
+- Sidebar `bg-brand-700`, item aktif `bg-white/10 border-l-[3px] border-accent-500`, ikon 18px, label `text-meta`, tinggi item 44px.
+- Mobile: sidebar jadi drawer (`z-drawer`), topbar menampilkan hamburger.
+- Konten: kartu putih `rounded-xl border border-line p-6`.
+- State: `default` `collapsed` (opsional desktop) `drawer-open` (mobile).
+- Catatan deviasi **D8**: kolom `⌕ cari` pada sketsa topbar di atas **tidak dibangun** — jalur pencarian admin adalah toolbar per halaman daftar (§5.12). Keputusan techlead kartu `t_b5de72e3`, rincian bukti di §11.3 D8; tidak ada state "cari" di §5.10.
+
+### 5.11 Admin — `/admin` Dashboard
+```
+
+## 5. Konteks tabel §11.3 (baris D8 di akhir tabel)
+
+```
+$ sed -n '847,855p' docs/design.md
+| D8 | Kolom `⌕ cari` pada sketsa topbar shell admin (§5.10) **tidak dibangun**; jalur pencarian admin = toolbar per halaman daftar (§5.12) | PRD §5.2 = daftar tetap rute admin tanpa endpoint pencarian (`docs/PRD.md:139-170`); `grep -in "search"` dan `grep -in "cari"` pada `resources/js/Layouts/AdminLayout.jsx:168-221` → 0 hasil keduanya (diverifikasi ulang 20 Okt 2026); §5.10 hanya punya state `default`/`collapsed`/`drawer-open` | **Diterima sebagai deviasi, keputusan `t_b5de72e3`, dicatat di `docs/pertanyaan-pemilik.md` §4 T3** |
+
+---
+
+### 11.4 Temuan kontras di luar badge (terukur 20 Okt 2026, kartu `t_8cd61512`)
+
+Dihitung dengan metode yang sama seperti badge. Kartu UIUX ini **tidak** mengubah komponen non-badge; temuan diteruskan
+sebagai kartu frontend terpisah.
+
+```
+
+## 6. Konteks riwayat revisi v2.1
+
+```
+$ sed -n '9,16p' docs/design.md
+## Riwayat Revisi
+
+| Versi | Tanggal | Perubahan |
+|---|---|---|
+| 1.0 | 20 Okt 2026 | Capture awal Erigo: 9 bagian, 433 baris, token masih naratif (belum ada peta ke config) |
+| 2.0 | 20 Okt 2026 | **K3 final**: §2.5 peta token → `tailwind.config.js`, §2.6 aturan pemakaian, §4 diperluas ke 31 komponen + matriks state, §5 mencakup seluruh rute PRD §5 (termasuk halaman error & sub-halaman admin), §9 checklist dengan bukti, §10 traceability PRD ↔ desain, §11 log drift D1–D7 |
+| 2.1 | 20 Okt 2026 | **Kartu QA `t_8cd61512` (kontras badge)**: token baru `success-strong`/`warning-strong`/`danger-strong` (tangga 800) + aturan kontras teks state (§2.1); §2.5/§2.6 diperbarui (**55 token**); §4.21 aturan tone badge diganti dari `bg-{token}/10 text-{token}` → `bg-{token}/10 text-{token}-strong` (semua tone ≥ 5,33:1); §9 baris 1/11 + baris 19; §11.4 temuan kontras non-badge (T1–T6); §5.10 catatan deviasi + §11.3 **D8** — kolom `⌕ cari` topbar admin tidak dibangun, jalur pencarian = toolbar §5.12 (keputusan `t_b5de72e3`) |
+
+```
+
+## 7. Verifikasi klaim bukti D8 (dijalankan ulang, bukan dikutip)
+
+```
+$ grep -in "search" resources/js/Layouts/AdminLayout.jsx   (0 hasil = exit 1)
+(0 hasil, exit 1)
+$ grep -in "cari" resources/js/Layouts/AdminLayout.jsx     (0 hasil = exit 1)
+(0 hasil, exit 1)
+$ awk 'NR>=139 && NR<=172' docs/PRD.md | grep -in "search|cari"
+(0 hasil, exit 1)
+```
+
+## 8. Batas kerja (yang TIDAK disentuh)
+
+Tiga suntingan, masing-masing satu hunk (dilaporkan per patch):
+1. §11.3 — baris D8 baru setelah D7
+2. §5.10 — satu baris catatan setelah baris State
+3. Riwayat Revisi — tambahan ringkas pada baris v2.1
+Tidak menyentuh: §4.21, §5.12, §9 checklist, §11.4, sketsa maupun teks spesifikasi lain di §5.10, serta seluruh berkas kode.
+Baris akhir yang berubah: D8 di §11.3 baris 847, catatan §5.10 di baris 646, ringkasan riwayat revisi di baris 15.
+Baris lain = hasil v2.1 dari kartu t_8cd61512 (bukan perubahan kartu ini).
+Jumlah hunk per berkas pada run ini: 3 (md5 di bawah untuk re-cek independen).
+
+```
+$ md5sum docs/design.md
+7d96d1df7e85a38a25036081ee439c0b *docs/design.md
+```
+
+## 9. Belum diuji (jujur, tanpa klaim)
+
+Perilaku nyata topbar admin (klik, fokus, 360-1280 px) dan pencarian toolbar §5.12 di browser TIDAK diuji kartu ini
+(tidak ada server dinyalakan; kartu ini hanya dokumentasi). Tidak ada klaim uji visual di dokumen.

@@ -1,0 +1,37 @@
+=== Button.jsx rest/spread ===
+23: * - `href` mengubah tombol menjadi tautan Inertia.
+27:    variant = 'primary',
+30:    href = null,
+37:    ...rest
+40:        VARIANTS[variant] ?? VARIANTS.primary,
+41:        size === 'sm' && variant !== 'link' ? SIZES.sm : null,
+42:        variant === 'link' && size === 'sm' ? 'text-meta' : null,
+62:            <a href={href} className={classes} {...rest}>
+68:    if (as === Link || as === 'Link' || href) {
+70:            <Link href={href} className={classes} aria-busy={loading || undefined} {...rest}>
+81:            aria-busy={loading || undefined}
+82:            {...rest}
+
+=== format.js exports ===
+7:export const cn = (...classes) => classes.flat().filter(Boolean).join(' ');
+10:export const rupiah = (value) => {
+20:export const formatNumber = (value) => {
+27:export const formatDate = (value) => {
+38:export const formatDateTime = (value) => {
+56:export const toList = (value) => {
+72:export const toObject = (value) => {
+
+=== DataTable align/column keys ===
+33:        column.align === 'right' ? 'text-right' : column.align === 'center' ? 'text-center' : 'text-left';
+36:        if (!sort || sort.key !== column.key) return 'none';
+72:                                    const isSorted = sort && sort.key === column.key;
+73:                                    const sortable = Boolean(onSort && column.sortable !== false);
+77:                                            key={column.key}
+78:                                            scope="col"
+79:                                            aria-sort={isSorted ? sortState(column) : undefined}
+88:                                                    onClick={() => onSort(column.key)}
+94:                                                    {column.header}
+100:                                                column.header
+123:                                                key={column.key}
+124:                                                className={cn('px-4 align-middle text-ink', cellAlign(column))}
+126:                                                {column.render ? column.render(row, index) : (row?.[column.key] ?? '-')}

@@ -1,0 +1,627 @@
+
+   PASS  Tests\Unit\Models\ProductPricingTest
+  ✓ harga eceran dipakai di bawah minimum grosir                                                                 5.09s  
+  ✓ batas minimum grosir tepat di qty min                                                                        0.07s  
+  ✓ tanpa harga grosir selalu eceran                                                                             0.07s  
+  ✓ minimum grosir nol atau kosong tidak aktif                                                                   0.06s  
+  ✓ harga coret hanya bermakna bila di atas harga jual                                                           0.07s  
+
+   PASS  Tests\Unit\Services\MidtransServiceTest
+  ✓ pemetaan status midtrans ke status pembayaran                                                                0.13s  
+  ✓ status midtrans tidak dikenal diabaikan                                                                      0.07s  
+  ✓ mode fake aktif saat server key kosong                                                                       0.06s  
+  ✓ mode fake mengikuti flag konfigurasi                                                                         0.07s  
+  ✓ signature valid diterima                                                                                     0.06s  
+  ✓ signature salah ditolak                                                                                      0.06s  
+  ✓ signature dengan field tidak lengkap ditolak                                                                 0.06s  
+  ✓ tanpa server key dan tanpa mode fake notifikasi ditolak                                                      0.07s  
+  ✓ mode fake menerima notifikasi lokal                                                                          0.07s  
+
+   PASS  Tests\Unit\Services\SettingServiceTest
+  ✓ teks disimpan dan dibaca kembali                                                                             3.14s  
+  ✓ nilai kosong dibaca sebagai null                                                                             0.06s  
+  ✓ nilai cadangan dipakai hanya bila key belum ada                                                              0.07s  
+  ✓ ongkir disimpan sebagai integer tanpa desimal                                                                0.07s  
+  ✓ ongkir negatif dijepit ke nol                                                                                0.07s  
+  ✓ bendera boolean dibaca sebagai boolean                                                                       0.06s  
+  ✓ nilai json di encode dan decode                                                                              0.06s  
+  ✓ key di luar daftar putih ditolak                                                                             0.25s  
+  ✓ put many rollback bila ada key tidak sah                                                                     0.44s  
+  ✓ grouped membagi tujuh grup dan menampung key luar daftar                                                     0.15s  
+  ✓ key tidak dikenal tidak bisa ditulis                                                                         0.06s  
+
+   PASS  Tests\Unit\Services\StockServiceLabelTest
+  ✓ label ukuran dan warna                                                                                       0.07s  
+  ✓ label hanya ukuran                                                                                           0.05s  
+  ✓ label tanpa ukuran memakai sku                                                                               0.06s  
+  ✓ label tanpa varian disebut produk                                                                            0.05s  
+
+   PASS  Tests\Unit\Support\VariantSizeTest
+  ✓ rank mengikuti urutan baku                                                                                   0.11s  
+  ✓ rank tidak peka huruf besar kecil dan spasi                                                                  0.07s  
+  ✓ ukuran di luar daftar baku dapat peringkat terakhir                                                          0.07s  
+  ✓ sort mengurutkan baku lalu abjad untuk yang tidak dikenal                                                    0.06s  
+  ✓ sort membuang nilai kosong dan duplikat                                                                      0.05s  
+  ✓ sort daftar kosong aman                                                                                      0.06s  
+
+   PASS  Tests\Feature\Admin\AdminDashboardTest
+  ✓ dashboard menampilkan stats sesuai kontrak                                                                   3.41s  
+  ✓ revenue total hanya menghitung order masuk akuntansi                                                         0.11s  
+  ✓ products active hanya menghitung produk tayang                                                               0.08s  
+
+   PASS  Tests\Feature\Admin\AdminInboxTest
+  ✓ daftar pesan menampilkan ringkasan belum dibaca                                                              0.18s  
+  ✓ filter status belum dibaca                                                                                   0.10s  
+  ✓ tandai pesan sudah dibaca                                                                                    0.24s  
+  ✓ balas pesan menyimpan balasan dan menandai dibaca                                                            1.85s  
+  ✓ balas pesan wajib isi                                                                                        0.09s  
+  ✓ daftar ulasan menampilkan ringkasan rating                                                                   0.14s  
+  ✓ balas ulasan menyimpan balasan                                                                               0.11s  
+  ✓ visibilitas disembunyikan menghitung ulang rating produk                                                     0.12s  
+  ✓ visibilitas tanpa body membalik nilai                                                                        0.08s  
+  ✓ tamu tidak boleh membuka pesan masuk                                                                         0.06s  
+
+   FAIL  Tests\Feature\Admin\AdminRouteAccessTest
+  ⨯ tamu diarahkan ke login admin                                                                                1.17s  
+  ⨯ pembeli tidak bisa menembus panel admin                                                                      0.42s  
+  ✓ terdapat rute admin yang diuji                                                                               0.17s  
+  ⨯ admin aktif dapat membuka seluruh rute get admin                                                            10.43s  
+  ✓ form login admin tampil untuk tamu                                                                           0.10s  
+  ✓ form login admin untuk admin yang sudah masuk                                                                0.11s  
+
+   PASS  Tests\Feature\Admin\AdminSettingTest
+  ✓ halaman pengaturan menampilkan tujuh grup                                                                    2.07s  
+  ✓ simpan pengaturan umum                                                                                       0.09s  
+  ✓ key pengaturan di luar whitelist diabaikan                                                                   0.10s  
+  ✓ logo diunggah menyimpan path storage                                                                         1.08s  
+  ✓ unggahan bukan gambar ditolak                                                                                0.14s  
+  ✓ simpan konten landing                                                                                        0.14s  
+  ✓ landing hero wajib judul                                                                                     0.20s  
+  ✓ simpan carousel dengan gambar                                                                                0.15s  
+  ✓ carousel tanpa gambar ditolak                                                                                0.13s  
+  ✓ perbarui dan hapus carousel                                                                                  0.14s  
+  ✓ crud faq                                                                                                     0.14s  
+  ✓ faq wajib pertanyaan dan jawaban                                                                             0.10s  
+  ✓ admin nonaktif tidak bisa menyimpan pengaturan                                                               0.19s  
+
+   PASS  Tests\Feature\Auth\AdminAuthTest
+  ✓ halaman masuk admin tampil                                                                                   0.11s  
+  ✓ admin bisa masuk dan membuka dashboard                                                                       0.24s  
+  ✓ kredensial admin salah ditolak                                                                               0.45s  
+  ✓ pembeli tidak boleh masuk lewat login admin                                                                  0.30s  
+  ✓ admin nonaktif tidak bisa masuk                                                                              0.09s  
+  ✓ admin nonaktif yang sudah masuk langsung dikeluarkan                                                         0.07s  
+  ✓ tamu diarahkan ke login admin                                                                                0.08s  
+  ✓ pembeli tidak boleh membuka panel admin                                                                      0.08s  
+  ✓ percobaan masuk admin dibatasi setelah lima kali                                                             1.40s  
+  ✓ admin bisa keluar                                                                                            0.08s  
+  ✓ keluar sebagai admin tidak menghapus sesi pembeli                                                            0.10s  
+  ✓ admin yang sudah masuk diarahkan dari halaman login                                                          0.08s  
+
+   PASS  Tests\Feature\Auth\LoginTest
+  ✓ halaman masuk tampil                                                                                         0.12s  
+  ✓ pembeli bisa masuk                                                                                           0.10s  
+  ✓ kata sandi salah ditolak dengan pesan umum                                                                   0.29s  
+  ✓ email tidak terdaftar ditolak dengan pesan umum                                                              0.28s  
+  ✓ akun admin tidak boleh masuk lewat login pembeli                                                             0.08s  
+  ✓ percobaan masuk dibatasi setelah lima kali                                                                   1.14s  
+  ✓ pembeli bisa keluar                                                                                          0.07s  
+  ✓ keluar sebagai pembeli tidak menghapus sesi admin                                                            0.08s  
+  ✓ pembeli yang sudah masuk diarahkan dari halaman masuk                                                        0.07s  
+
+   PASS  Tests\Feature\Auth\PasswordResetTest
+  ✓ halaman lupa sandi tampil                                                                                    0.07s  
+  ✓ permintaan reset mengirim tautan dan menyimpan token                                                         3.73s  
+  ✓ email tidak terdaftar dibalas netral                                                                         0.36s  
+  ✓ email tidak valid ditolak                                                                                    0.21s  
+  ✓ halaman reset sandi membawa token dan email                                                                  0.11s  
+  ✓ reset sandi dengan token valid berhasil                                                                      0.18s  
+  ✓ reset sandi dengan token palsu ditolak                                                                       0.32s  
+  ✓ reset sandi konfirmasi tidak cocok ditolak                                                                   0.10s  
+
+   PASS  Tests\Feature\Auth\RegistrationTest
+  ✓ halaman daftar tampil                                                                                        0.10s  
+  ✓ pembeli bisa mendaftar dan langsung masuk                                                                    0.10s  
+  ✓ email duplikat ditolak                                                                                       0.10s  
+  ✓ konfirmasi kata sandi harus cocok                                                                            0.09s  
+  ✓ syarat dan ketentuan wajib disetujui                                                                         0.09s  
+  ✓ nomor whatsapp tidak valid ditolak                                                                           0.09s  
+  ✓ kata sandi kurang dari delapan karakter ditolak                                                              0.09s  
+  ✓ pembeli yang sudah masuk diarahkan dari halaman daftar                                                       0.09s  
+
+   PASS  Tests\Feature\Catalog\CatalogIndexTest
+  ✓ paginator mengirim dua belas produk per halaman                                                              0.15s  
+  ✓ halaman kedua mengirim sisa produk                                                                           0.12s  
+  ✓ produk tidak aktif tidak muncul                                                                              0.10s  
+  ✓ filter kategori hanya mengirim produk kategori itu                                                           0.12s  
+  ✓ slug kategori tidak sah diabaikan bukan galat                                                                0.13s  
+  ✓ filter ukuran memakai varian aktif saja                                                                      0.11s  
+  ✓ filter harga ditukar bila min lebih besar dari max                                                           0.09s  
+  ✓ harga bukan angka diabaikan                                                                                  0.10s  
+  ✓ urut harga asc dan desc                                                                                      0.12s  
+  ✓ urut tidak dikenal kembali ke terbaru                                                                        0.12s  
+  ✓ urut terlaris memakai qty pesanan yang tidak dibatalkan                                                      0.08s  
+  ✓ pencarian q mencocokkan nama dan sku serta mengabaikan wildcard                                              0.14s  
+  ✓ q dipotong seratus karakter                                                                                  0.09s  
+  ✓ kategori tanpa produk aktif tidak dikirim dan ukuran urut baku                                               0.09s  
+  ✓ kartu produk memuat compare price dan varian aktif                                                           0.08s  
+
+   PASS  Tests\Feature\Catalog\CatalogShowTest
+  ✓ detail mengirim key khusus detail dan varian urut ukuran baku                                                0.13s  
+  ✓ detail hanya mengirim ulasan yang tampil                                                                     0.10s  
+  ✓ related maks empat produk dari kategori sama                                                                 0.11s  
+  ✓ produk tidak aktif dianggap tidak ada                                                                        0.10s  
+  ✓ slug tidak dikenal memberi halaman 404 dengan pesan                                                          0.11s  
+  ✓ slug angka dibaca sebagai id produk                                                                          0.10s  
+  ✓ slug angka tidak sesuai id tetap 404                                                                         0.10s  
+
+   PASS  Tests\Feature\Catalog\ContactPageTest
+  ✓ halaman kontak dapat dibuka tanpa login                                                                      0.11s  
+  ✓ halaman kontak memuat props bersama                                                                          0.08s  
+
+   PASS  Tests\Feature\Checkout\CartTest
+  ✓ tamu bisa menambah produk ke keranjang                                                                       0.10s  
+  ✓ harga grosir dipakai saat qty mencapai minimum                                                               0.10s  
+  ✓ qty melebihi stok ditolak dengan pesan                                                                       0.09s  
+  ✓ produk tanpa varian dipilih ditolak                                                                          0.10s  
+  ✓ item keranjang milik sesi lain tidak bisa diubah                                                             0.13s  
+  ✓ qty disesuaikan bila stok menipis                                                                            0.14s  
+  ✓ item dihapus dari keranjang                                                                                  0.14s  
+
+   PASS  Tests\Feature\Checkout\CheckoutTest
+  ✓ checkout membuat pesanan memotong stok dan tagihan qris                                                      0.37s  
+  ✓ checkout dengan keranjang kosong kembali ke keranjang                                                        0.11s  
+  ✓ checkout menolak stok yang sudah habis                                                                       0.16s  
+  ✓ validasi formulir checkout mengembalikan galat                                                               0.15s  
+  ✓ notifikasi settlement menandai pesanan dibayar                                                               0.28s  
+  ✓ notifikasi settlement idempoten                                                                              0.18s  
+  ✓ notifikasi expire mengembalikan stok dan membatalkan pesanan                                                 0.24s  
+  ✓ notifikasi dengan signature salah ditolak                                                                    0.23s  
+  ✓ notifikasi dengan nominal tidak cocok ditolak                                                                0.26s  
+  ✓ pesanan orang lain tidak bisa dibuka                                                                         0.21s  
+  ✓ tamu diarahkan ke login sebelum checkout                                                                     0.14s  
+  ✓ halaman bayar menampilkan qr string dan batas waktu                                                          0.21s  
+  ✓ halaman selesai menolak pesanan yang belum dibayar                                                           0.17s  
+  ✓ halaman selesai tampil setelah dibayar                                                                       0.21s  
+
+   WARN  Tests\Feature\Contract\RouteContractTest
+  ✓ rute publik prd 5 1 terdaftar semua                                                                          0.07s  
+  ✓ rute admin inti prd 5 2 terdaftar semua                                                                      0.06s  
+  ✓ metode http rute publik sesuai prd                                                                           0.07s  
+  … metode http rute admin sesuai prd → admin.messages.read terdaftar POST — PRD §5.2 baris 157: PATCH; docs/ko… 0.16s  
+  ✓ rute publik tidak wajib login                                                                                0.12s  
+
+   PASS  Tests\Feature\Database\FreshMigrationSeedTest
+  ✓ migrate fresh seed berhasil                                                                                  6.70s  
+  ✓ seeder mengisi data contoh untuk alur utama                                                                  6.84s  
+  ✓ seeder dapat dijalankan dua kali tanpa duplikasi                                                            12.27s  
+  ✓ struktur tabel wajib prd 6 tersedia                                                                          6.68s  
+
+   PASS  Tests\Feature\Messages\ContactMessageTest
+  ✓ pesan kontak tersimpan sebagai belum dibaca                                                                  0.17s  
+  ✓ honeypot terisi tidak menyimpan pesan                                                                        0.09s  
+  ✓ validasi menolak email dan pesan kosong                                                                      0.08s  
+  ✓ batas laju tiga pesan per menit per ip                                                                       0.12s  
+
+   PASS  Tests\Feature\Public\HomePageTest
+  ✓ beranda tampil dengan props kontrak                                                                          0.14s  
+  ✓ beranda tanpa data tetap 200 dengan daftar kosong                                                            0.10s  
+  ✓ faq beranda dibatasi enam pertanyaan                                                                         0.11s  
+  ✓ jumlah produk unggulan mengikuti pengaturan                                                                  0.09s  
+  ✓ batas produk unggulan dijepit antara satu dan dua puluh empat                                                0.12s  
+  ✓ beranda memuat props bersama                                                                                 0.11s  
+
+   PASS  Tests\Feature\Reviews\ReviewSubmitTest
+  ✓ ulasan tersimpan setelah pembayaran berhasil                                                                 0.12s  
+  ✓ ulasan ditolak bila pesanan belum dibayar                                                                    0.11s  
+  ✓ pesanan milik pembeli lain tidak bisa dinilai                                                                0.11s  
+  ✓ produk di luar pesanan ditolak                                                                               0.12s  
+  ✓ ulasan ganda untuk produk yang sama ditolak                                                                  0.13s  
+  ✓ rating harus antara satu sampai lima                                                                         0.14s  
+  ✓ tamu diarahkan ke login                                                                                      0.08s  
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Admin\AdminRouteAccessTest > tamu diarahkan ke login admin                                     
+  Rute admin yang tidak mengarahkan tamu ke login:
+admin.stocks.in [POST /admin/stok/1/masuk] → 404
+admin.stocks.out [POST /admin/stok/1/keluar] → 404
+admin.accounts.update [PUT /admin/akun/1] → 404
+admin.accounts.destroy [DELETE /admin/akun/1] → 404
+Failed asserting that two arrays are identical.
+--- Expected
++++ Actual
+@@ @@
+-Array &0 []
++Array &0 [
++    0 => 'admin.stocks.in [POST /admin/stok/1/masuk] → 404',
++    1 => 'admin.stocks.out [POST /admin/stok/1/keluar] → 404',
++    2 => 'admin.accounts.update [PUT /admin/akun/1] → 404',
++    3 => 'admin.accounts.destroy [DELETE /admin/akun/1] → 404',
++]
+
+  at tests\Feature\Admin\AdminRouteAccessTest.php:142
+    138▕                 $pelanggaran[] = sprintf('%s [%s %s] → %d', $rute['name'], $rute['method'], $rute['uri'], $respons->getStatusCode());
+    139▕             }
+    140▕         }
+    141▕ 
+  ➜ 142▕         $this->assertSame([], $pelanggaran, "Rute admin yang tidak mengarahkan tamu ke login:\n".implode("\n", $pelanggaran));
+    143▕     }
+    144▕ 
+    145▕     public function test_pembeli_tidak_bisa_menembus_panel_admin(): void
+    146▕     {
+
+  1   tests\Feature\Admin\AdminRouteAccessTest.php:142
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Admin\AdminRouteAccessTest > pembeli tidak bisa menembus panel admin                           
+  Rute admin yang bisa ditembus pembeli:
+admin.stocks.in [POST /admin/stok/1/masuk] → 404
+admin.stocks.out [POST /admin/stok/1/keluar] → 404
+admin.accounts.update [PUT /admin/akun/1] → 404
+admin.accounts.destroy [DELETE /admin/akun/1] → 404
+Failed asserting that two arrays are identical.
+--- Expected
++++ Actual
+@@ @@
+-Array &0 []
++Array &0 [
++    0 => 'admin.stocks.in [POST /admin/stok/1/masuk] → 404',
++    1 => 'admin.stocks.out [POST /admin/stok/1/keluar] → 404',
++    2 => 'admin.accounts.update [PUT /admin/akun/1] → 404',
++    3 => 'admin.accounts.destroy [DELETE /admin/akun/1] → 404',
++]
+
+  at tests\Feature\Admin\AdminRouteAccessTest.php:158
+    154▕                 $pelanggaran[] = sprintf('%s [%s %s] → %d', $rute['name'], $rute['method'], $rute['uri'], $respons->getStatusCode());
+    155▕             }
+    156▕         }
+    157▕ 
+  ➜ 158▕         $this->assertSame([], $pelanggaran, "Rute admin yang bisa ditembus pembeli:\n".implode("\n", $pelanggaran));
+    159▕     }
+    160▕ 
+    161▕     public function test_terdapat_rute_admin_yang_diuji(): void
+    162▕     {
+
+  1   tests\Feature\Admin\AdminRouteAccessTest.php:158
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Admin\AdminRouteAccessTest > admin aktif dapat membuka seluruh rute get admin                  
+  Rute admin yang gagal dibuka admin aktif:
+admin.stocks.index [GET /admin/stok] → 500
+admin.stocks.history [GET /admin/stok/riwayat] → 500
+Failed asserting that two arrays are identical.
+--- Expected
++++ Actual
+@@ @@
+-Array &0 []
++Array &0 [
++    0 => 'admin.stocks.index [GET /admin/stok] → 500',
++    1 => 'admin.stocks.history [GET /admin/stok/riwayat] → 500',
++]
+
+  at tests\Feature\Admin\AdminRouteAccessTest.php:189
+    185▕                 $pelanggaran[] = sprintf('%s [GET %s] → %d', $rute['name'], $rute['uri'], $status);
+    186▕             }
+    187▕         }
+    188▕ 
+  ➜ 189▕         $this->assertSame([], $pelanggaran, "Rute admin yang gagal dibuka admin aktif:\n".implode("\n", $pelanggaran));
+    190▕     }
+    191▕ 
+    192▕     public function test_form_login_admin_tampil_untuk_tamu(): void
+    193▕     {
+
+  1   tests\Feature\Admin\AdminRouteAccessTest.php:189
+
+
+  Tests:    3 failed, 1 incomplete, 171 passed (996 assertions)
+  Duration: 100.20s
+
+
+===== ULANGAN (RUN 2) 2026-10-20 14:32:44 +0700 — setelah rute admin bertambah; DB uji tetap sqlite :memory: =====
+
+   PASS  Tests\Unit\Models\ProductPricingTest
+  ✓ harga eceran dipakai di bawah minimum grosir                                                                 0.86s  
+  ✓ batas minimum grosir tepat di qty min                                                                        0.08s  
+  ✓ tanpa harga grosir selalu eceran                                                                             0.07s  
+  ✓ minimum grosir nol atau kosong tidak aktif                                                                   0.07s  
+  ✓ harga coret hanya bermakna bila di atas harga jual                                                           0.08s  
+
+   PASS  Tests\Unit\Services\MidtransServiceTest
+  ✓ pemetaan status midtrans ke status pembayaran                                                                0.10s  
+  ✓ status midtrans tidak dikenal diabaikan                                                                      0.11s  
+  ✓ mode fake aktif saat server key kosong                                                                       0.07s  
+  ✓ mode fake mengikuti flag konfigurasi                                                                         0.08s  
+  ✓ signature valid diterima                                                                                     0.07s  
+  ✓ signature salah ditolak                                                                                      0.06s  
+  ✓ signature dengan field tidak lengkap ditolak                                                                 0.07s  
+  ✓ tanpa server key dan tanpa mode fake notifikasi ditolak                                                      0.07s  
+  ✓ mode fake menerima notifikasi lokal                                                                          0.07s  
+
+   PASS  Tests\Unit\Services\SettingServiceTest
+  ✓ teks disimpan dan dibaca kembali                                                                             0.76s  
+  ✓ nilai kosong dibaca sebagai null                                                                             0.08s  
+  ✓ nilai cadangan dipakai hanya bila key belum ada                                                              0.07s  
+  ✓ ongkir disimpan sebagai integer tanpa desimal                                                                0.07s  
+  ✓ ongkir negatif dijepit ke nol                                                                                0.05s  
+  ✓ bendera boolean dibaca sebagai boolean                                                                       0.07s  
+  ✓ nilai json di encode dan decode                                                                              0.07s  
+  ✓ key di luar daftar putih ditolak                                                                             0.10s  
+  ✓ put many rollback bila ada key tidak sah                                                                     0.08s  
+  ✓ grouped membagi tujuh grup dan menampung key luar daftar                                                     0.08s  
+  ✓ key tidak dikenal tidak bisa ditulis                                                                         0.06s  
+
+   PASS  Tests\Unit\Services\StockServiceLabelTest
+  ✓ label ukuran dan warna                                                                                       0.07s  
+  ✓ label hanya ukuran                                                                                           0.05s  
+  ✓ label tanpa ukuran memakai sku                                                                               0.06s  
+  ✓ label tanpa varian disebut produk                                                                            0.07s  
+
+   PASS  Tests\Unit\Support\VariantSizeTest
+  ✓ rank mengikuti urutan baku                                                                                   0.07s  
+  ✓ rank tidak peka huruf besar kecil dan spasi                                                                  0.06s  
+  ✓ ukuran di luar daftar baku dapat peringkat terakhir                                                          0.07s  
+  ✓ sort mengurutkan baku lalu abjad untuk yang tidak dikenal                                                    0.06s  
+  ✓ sort membuang nilai kosong dan duplikat                                                                      0.06s  
+  ✓ sort daftar kosong aman                                                                                      0.06s  
+
+   PASS  Tests\Feature\Admin\AdminDashboardTest
+  ✓ dashboard menampilkan stats sesuai kontrak                                                                   0.39s  
+  ✓ revenue total hanya menghitung order masuk akuntansi                                                         0.11s  
+  ✓ products active hanya menghitung produk tayang                                                               0.10s  
+
+   PASS  Tests\Feature\Admin\AdminInboxTest
+  ✓ daftar pesan menampilkan ringkasan belum dibaca                                                              0.13s  
+  ✓ filter status belum dibaca                                                                                   0.10s  
+  ✓ tandai pesan sudah dibaca                                                                                    0.10s  
+  ✓ balas pesan menyimpan balasan dan menandai dibaca                                                            0.26s  
+  ✓ balas pesan wajib isi                                                                                        0.11s  
+  ✓ daftar ulasan menampilkan ringkasan rating                                                                   0.13s  
+  ✓ balas ulasan menyimpan balasan                                                                               0.10s  
+  ✓ visibilitas disembunyikan menghitung ulang rating produk                                                     0.11s  
+  ✓ visibilitas tanpa body membalik nilai                                                                        0.10s  
+  ✓ tamu tidak boleh membuka pesan masuk                                                                         0.09s  
+
+   PASS  Tests\Feature\Admin\AdminMasterDataTest
+  ✓ daftar produk memakai paginator dan membaca filter                                                           0.14s  
+  ✓ tambah produk membuat varian dan riwayat stok awal                                                           0.12s  
+  ✓ tambah produk menolak input tidak valid                                                                      0.10s  
+  ✓ tambah produk menolak sku ganda                                                                              0.10s  
+  ✓ kategori terpakai tidak bisa dihapus                                                                         0.10s  
+  ✓ stok masuk dan keluar mencatat pergerakan                                                                    0.11s  
+  ✓ stok keluar ditolak bila melebihi stok dan qty di bawah satu                                                 0.09s  
+  ✓ riwayat stok menampilkan pergerakan masuk dan keluar                                                         0.12s  
+
+   FAIL  Tests\Feature\Admin\AdminRouteAccessTest
+  ⨯ tamu diarahkan ke login admin                                                                                0.44s  
+  ⨯ pembeli tidak bisa menembus panel admin                                                                      0.33s  
+  ✓ terdapat rute admin yang diuji                                                                               0.08s  
+  ✓ admin aktif dapat membuka seluruh rute get admin                                                             0.31s  
+  ✓ form login admin tampil untuk tamu                                                                           0.07s  
+  ✓ form login admin untuk admin yang sudah masuk                                                                0.09s  
+
+   PASS  Tests\Feature\Admin\AdminSalesTest
+  ✓ daftar dan detail pesanan menampilkan langkah status berikut                                                 0.12s  
+  ✓ ubah status menolak transisi tidak sah                                                                       0.12s  
+  ✓ pembatalan mengembalikan stok dan mencatat riwayat                                                           0.12s  
+  ✓ pesanan final tidak bisa diubah lagi                                                                         0.11s  
+  ✓ daftar akun menandai akun sendiri                                                                            0.10s  
+  ✓ akun tidak bisa menonaktifkan diri sendiri                                                                   0.09s  
+  ✓ tambah akun admin dan tolak email ganda                                                                      0.11s  
+
+   PASS  Tests\Feature\Admin\AdminSettingTest
+  ✓ halaman pengaturan menampilkan tujuh grup                                                                    0.17s  
+  ✓ simpan pengaturan umum                                                                                       0.10s  
+  ✓ key pengaturan di luar whitelist diabaikan                                                                   0.09s  
+  ✓ logo diunggah menyimpan path storage                                                                         0.17s  
+  ✓ unggahan bukan gambar ditolak                                                                                0.12s  
+  ✓ simpan konten landing                                                                                        0.11s  
+  ✓ landing hero wajib judul                                                                                     0.14s  
+  ✓ simpan carousel dengan gambar                                                                                0.13s  
+  ✓ carousel tanpa gambar ditolak                                                                                0.08s  
+  ✓ perbarui dan hapus carousel                                                                                  0.11s  
+  ✓ crud faq                                                                                                     0.11s  
+  ✓ faq wajib pertanyaan dan jawaban                                                                             0.10s  
+  ✓ admin nonaktif tidak bisa menyimpan pengaturan                                                               0.09s  
+
+   PASS  Tests\Feature\Auth\AdminAuthTest
+  ✓ halaman masuk admin tampil                                                                                   0.13s  
+  ✓ admin bisa masuk dan membuka dashboard                                                                       0.13s  
+  ✓ kredensial admin salah ditolak                                                                               0.32s  
+  ✓ pembeli tidak boleh masuk lewat login admin                                                                  0.31s  
+  ✓ admin nonaktif tidak bisa masuk                                                                              0.12s  
+  ✓ admin nonaktif yang sudah masuk langsung dikeluarkan                                                         0.11s  
+  ✓ tamu diarahkan ke login admin                                                                                0.10s  
+  ✓ pembeli tidak boleh membuka panel admin                                                                      0.10s  
+  ✓ percobaan masuk admin dibatasi setelah lima kali                                                             1.25s  
+  ✓ admin bisa keluar                                                                                            0.08s  
+  ✓ keluar sebagai admin tidak menghapus sesi pembeli                                                            0.09s  
+  ✓ admin yang sudah masuk diarahkan dari halaman login                                                          0.08s  
+
+   PASS  Tests\Feature\Auth\LoginTest
+  ✓ halaman masuk tampil                                                                                         0.11s  
+  ✓ pembeli bisa masuk                                                                                           0.09s  
+  ✓ kata sandi salah ditolak dengan pesan umum                                                                   0.28s  
+  ✓ email tidak terdaftar ditolak dengan pesan umum                                                              0.27s  
+  ✓ akun admin tidak boleh masuk lewat login pembeli                                                             0.08s  
+  ✓ percobaan masuk dibatasi setelah lima kali                                                                   1.14s  
+  ✓ pembeli bisa keluar                                                                                          0.08s  
+  ✓ keluar sebagai pembeli tidak menghapus sesi admin                                                            0.09s  
+  ✓ pembeli yang sudah masuk diarahkan dari halaman masuk                                                        0.07s  
+
+   PASS  Tests\Feature\Auth\PasswordResetTest
+  ✓ halaman lupa sandi tampil                                                                                    0.09s  
+  ✓ permintaan reset mengirim tautan dan menyimpan token                                                         0.34s  
+  ✓ email tidak terdaftar dibalas netral                                                                         0.38s  
+  ✓ email tidak valid ditolak                                                                                    0.14s  
+  ✓ halaman reset sandi membawa token dan email                                                                  0.09s  
+  ✓ reset sandi dengan token valid berhasil                                                                      0.12s  
+  ✓ reset sandi dengan token palsu ditolak                                                                       0.30s  
+  ✓ reset sandi konfirmasi tidak cocok ditolak                                                                   0.09s  
+
+   PASS  Tests\Feature\Auth\RegistrationTest
+  ✓ halaman daftar tampil                                                                                        0.11s  
+  ✓ pembeli bisa mendaftar dan langsung masuk                                                                    0.10s  
+  ✓ email duplikat ditolak                                                                                       0.10s  
+  ✓ konfirmasi kata sandi harus cocok                                                                            0.09s  
+  ✓ syarat dan ketentuan wajib disetujui                                                                         0.10s  
+  ✓ nomor whatsapp tidak valid ditolak                                                                           0.10s  
+  ✓ kata sandi kurang dari delapan karakter ditolak                                                              0.10s  
+  ✓ pembeli yang sudah masuk diarahkan dari halaman daftar                                                       0.10s  
+
+   PASS  Tests\Feature\Catalog\CatalogIndexTest
+  ✓ paginator mengirim dua belas produk per halaman                                                              0.15s  
+  ✓ halaman kedua mengirim sisa produk                                                                           0.12s  
+  ✓ produk tidak aktif tidak muncul                                                                              0.11s  
+  ✓ filter kategori hanya mengirim produk kategori itu                                                           0.10s  
+  ✓ slug kategori tidak sah diabaikan bukan galat                                                                0.10s  
+  ✓ filter ukuran memakai varian aktif saja                                                                      0.12s  
+  ✓ filter harga ditukar bila min lebih besar dari max                                                           0.11s  
+  ✓ harga bukan angka diabaikan                                                                                  0.10s  
+  ✓ urut harga asc dan desc                                                                                      0.12s  
+  ✓ urut tidak dikenal kembali ke terbaru                                                                        0.11s  
+  ✓ urut terlaris memakai qty pesanan yang tidak dibatalkan                                                      0.10s  
+  ✓ pencarian q mencocokkan nama dan sku serta mengabaikan wildcard                                              0.11s  
+  ✓ q dipotong seratus karakter                                                                                  0.09s  
+  ✓ kategori tanpa produk aktif tidak dikirim dan ukuran urut baku                                               0.09s  
+  ✓ kartu produk memuat compare price dan varian aktif                                                           0.08s  
+
+   PASS  Tests\Feature\Catalog\CatalogShowTest
+  ✓ detail mengirim key khusus detail dan varian urut ukuran baku                                                0.13s  
+  ✓ detail hanya mengirim ulasan yang tampil                                                                     0.12s  
+  ✓ related maks empat produk dari kategori sama                                                                 0.12s  
+  ✓ produk tidak aktif dianggap tidak ada                                                                        0.07s  
+  ✓ slug tidak dikenal memberi halaman 404 dengan pesan                                                          0.08s  
+  ✓ slug angka dibaca sebagai id produk                                                                          0.09s  
+  ✓ slug angka tidak sesuai id tetap 404                                                                         0.09s  
+
+   PASS  Tests\Feature\Catalog\ContactPageTest
+  ✓ halaman kontak dapat dibuka tanpa login                                                                      0.09s  
+  ✓ halaman kontak memuat props bersama                                                                          0.08s  
+
+   PASS  Tests\Feature\Checkout\CartTest
+  ✓ tamu bisa menambah produk ke keranjang                                                                       0.10s  
+  ✓ harga grosir dipakai saat qty mencapai minimum                                                               0.10s  
+  ✓ qty melebihi stok ditolak dengan pesan                                                                       0.09s  
+  ✓ produk tanpa varian dipilih ditolak                                                                          0.09s  
+  ✓ item keranjang milik sesi lain tidak bisa diubah                                                             0.12s  
+  ✓ qty disesuaikan bila stok menipis                                                                            0.11s  
+  ✓ item dihapus dari keranjang                                                                                  0.11s  
+
+   PASS  Tests\Feature\Checkout\CheckoutTest
+  ✓ checkout membuat pesanan memotong stok dan tagihan qris                                                      0.18s  
+  ✓ checkout dengan keranjang kosong kembali ke keranjang                                                        0.14s  
+  ✓ checkout menolak stok yang sudah habis                                                                       0.16s  
+  ✓ validasi formulir checkout mengembalikan galat                                                               0.15s  
+  ✓ notifikasi settlement menandai pesanan dibayar                                                               0.21s  
+  ✓ notifikasi settlement idempoten                                                                              0.18s  
+  ✓ notifikasi expire mengembalikan stok dan membatalkan pesanan                                                 0.17s  
+  ✓ notifikasi dengan signature salah ditolak                                                                    0.24s  
+  ✓ notifikasi dengan nominal tidak cocok ditolak                                                                0.18s  
+  ✓ pesanan orang lain tidak bisa dibuka                                                                         0.22s  
+  ✓ tamu diarahkan ke login sebelum checkout                                                                     0.13s  
+  ✓ halaman bayar menampilkan qr string dan batas waktu                                                          0.19s  
+  ✓ halaman selesai menolak pesanan yang belum dibayar                                                           0.16s  
+  ✓ halaman selesai tampil setelah dibayar                                                                       0.18s  
+
+   WARN  Tests\Feature\Contract\RouteContractTest
+  ✓ rute publik prd 5 1 terdaftar semua                                                                          0.12s  
+  ✓ rute admin inti prd 5 2 terdaftar semua                                                                      0.08s  
+  ✓ metode http rute publik sesuai prd                                                                           0.06s  
+  … metode http rute admin sesuai prd → admin.messages.read terdaftar POST — PRD §5.2 baris 157: PATCH; docs/ko… 0.07s  
+  ✓ rute publik tidak wajib login                                                                                0.12s  
+
+   PASS  Tests\Feature\Database\FreshMigrationSeedTest
+  ✓ migrate fresh seed berhasil                                                                                  7.11s  
+  ✓ seeder mengisi data contoh untuk alur utama                                                                  7.30s  
+  ✓ seeder dapat dijalankan dua kali tanpa duplikasi                                                            13.78s  
+  ✓ struktur tabel wajib prd 6 tersedia                                                                          7.21s  
+
+   PASS  Tests\Feature\Messages\ContactMessageTest
+  ✓ pesan kontak tersimpan sebagai belum dibaca                                                                  0.12s  
+  ✓ honeypot terisi tidak menyimpan pesan                                                                        0.09s  
+  ✓ validasi menolak email dan pesan kosong                                                                      0.09s  
+  ✓ batas laju tiga pesan per menit per ip                                                                       0.11s  
+
+   PASS  Tests\Feature\Public\HomePageTest
+  ✓ beranda tampil dengan props kontrak                                                                          0.12s  
+  ✓ beranda tanpa data tetap 200 dengan daftar kosong                                                            0.09s  
+  ✓ faq beranda dibatasi enam pertanyaan                                                                         0.14s  
+  ✓ jumlah produk unggulan mengikuti pengaturan                                                                  0.14s  
+  ✓ batas produk unggulan dijepit antara satu dan dua puluh empat                                                0.14s  
+  ✓ beranda memuat props bersama                                                                                 0.13s  
+
+   PASS  Tests\Feature\Reviews\ReviewSubmitTest
+  ✓ ulasan tersimpan setelah pembayaran berhasil                                                                 0.14s  
+  ✓ ulasan ditolak bila pesanan belum dibayar                                                                    0.12s  
+  ✓ pesanan milik pembeli lain tidak bisa dinilai                                                                0.12s  
+  ✓ produk di luar pesanan ditolak                                                                               0.15s  
+  ✓ ulasan ganda untuk produk yang sama ditolak                                                                  0.16s  
+  ✓ rating harus antara satu sampai lima                                                                         0.12s  
+  ✓ tamu diarahkan ke login                                                                                      0.11s  
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Admin\AdminRouteAccessTest > tamu diarahkan ke login admin                                     
+  Rute admin yang tidak mengarahkan tamu ke login:
+admin.stocks.in [POST /admin/stok/1/masuk] → 404
+admin.stocks.out [POST /admin/stok/1/keluar] → 404
+admin.accounts.update [PUT /admin/akun/1] → 404
+admin.accounts.destroy [DELETE /admin/akun/1] → 404
+Failed asserting that two arrays are identical.
+--- Expected
++++ Actual
+@@ @@
+-Array &0 []
++Array &0 [
++    0 => 'admin.stocks.in [POST /admin/stok/1/masuk] → 404',
++    1 => 'admin.stocks.out [POST /admin/stok/1/keluar] → 404',
++    2 => 'admin.accounts.update [PUT /admin/akun/1] → 404',
++    3 => 'admin.accounts.destroy [DELETE /admin/akun/1] → 404',
++]
+
+  at tests\Feature\Admin\AdminRouteAccessTest.php:142
+    138▕ 
+    139▕     public function test_tamu_diarahkan_ke_login_admin(): void
+    140▕     {
+    141▕         $pelanggaran = [];
+  ➜ 142▕ 
+    143▕         foreach ($this->ruteAdmin() as $rute) {
+    144▕             $respons = $this->json($rute['method'], $rute['uri']);
+    145▕ 
+    146▕             if (! $this->diarahkanKeLogin($respons)) {
+
+  1   tests\Feature\Admin\AdminRouteAccessTest.php:142
+
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────  
+   FAILED  Tests\Feature\Admin\AdminRouteAccessTest > pembeli tidak bisa menembus panel admin                           
+  Rute admin yang bisa ditembus pembeli:
+admin.stocks.in [POST /admin/stok/1/masuk] → 404
+admin.stocks.out [POST /admin/stok/1/keluar] → 404
+admin.accounts.update [PUT /admin/akun/1] → 404
+admin.accounts.destroy [DELETE /admin/akun/1] → 404
+Failed asserting that two arrays are identical.
+--- Expected
++++ Actual
+@@ @@
+-Array &0 []
++Array &0 [
++    0 => 'admin.stocks.in [POST /admin/stok/1/masuk] → 404',
++    1 => 'admin.stocks.out [POST /admin/stok/1/keluar] → 404',
++    2 => 'admin.accounts.update [PUT /admin/akun/1] → 404',
++    3 => 'admin.accounts.destroy [DELETE /admin/akun/1] → 404',
++]
+
+  at tests\Feature\Admin\AdminRouteAccessTest.php:158
+    154▕     public function test_pembeli_tidak_bisa_menembus_panel_admin(): void
+    155▕     {
+    156▕         $pembeli = User::factory()->create();
+    157▕         $pelanggaran = [];
+  ➜ 158▕ 
+    159▕         foreach ($this->ruteAdmin() as $rute) {
+    160▕             $respons = $this->actingAs($pembeli, 'web')->json($rute['method'], $rute['uri']);
+    161▕ 
+    162▕             if (! $this->diarahkanKeLogin($respons)) {
+
+  1   tests\Feature\Admin\AdminRouteAccessTest.php:158
+
+
+  Tests:    2 failed, 1 incomplete, 187 passed (1111 assertions)
+  Duration: 62.85s
+

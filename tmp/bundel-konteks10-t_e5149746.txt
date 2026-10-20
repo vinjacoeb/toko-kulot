@@ -1,0 +1,849 @@
+
+===== A. Field.jsx =====
+import React from 'react';
+import { cn } from '../lib/format';
+
+/**
+ * Pembungkus isian - docs/design.md 4.5.
+ * Label wajib htmlFor; hint dan galat terhubung lewat aria-describedby.
+ */
+export default function Field({
+    label,
+    htmlFor,
+    required = false,
+    hint = null,
+    error = null,
+    children,
+    className = '',
+}) {
+    const hintId = htmlFor ? htmlFor + '-hint' : undefined;
+    const errorId = htmlFor ? htmlFor + '-error' : undefined;
+
+    return (
+        <div className={cn('flex flex-col', className)}>
+            {label && (
+                <label htmlFor={htmlFor} className="mb-1.5 block text-meta font-semibold text-ink">
+                    {label}
+                    {required && (
+                        <span className="text-danger" aria-hidden="true">
+                            {' *'}
+                        </span>
+                    )}
+                </label>
+            )}
+            {children}
+            {hint && !error && (
+                <p id={hintId} className="mt-1.5 text-meta text-slate-400">
+                    {hint}
+                </p>
+            )}
+            {error && (
+                <p id={errorId} className="mt-1.5 text-meta text-danger" role="alert">
+                    {error}
+                </p>
+            )}
+        </div>
+    );
+}
+
+===== B. Input.jsx =====
+import React from 'react';
+import { cn } from '../lib/format';
+
+const BASE =
+    'w-full h-field rounded-md border border-line bg-white px-3.5 text-body text-ink transition-colors duration-hover placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-[3px] focus:ring-brand/15 disabled:cursor-not-allowed disabled:bg-surface';
+
+/** Input - docs/design.md 4.5. Tinggi 44px (h-field). */
+export default function Input({ error = null, className = '', id = null, ...rest }) {
+    return (
+        <input
+            id={id}
+            aria-invalid={error ? 'true' : undefined}
+            aria-describedby={error && id ? id + '-error' : undefined}
+            className={cn(BASE, error ? 'border-danger' : null, className)}
+            {...rest}
+        />
+    );
+}
+
+===== C. Select.jsx =====
+import React from 'react';
+import { cn } from '../lib/format';
+
+const BASE =
+    'w-full h-field appearance-none rounded-md border border-line bg-white pl-3.5 pr-10 text-body text-ink transition-colors duration-hover focus:border-brand focus:outline-none focus:ring-[3px] focus:ring-brand/15 disabled:cursor-not-allowed disabled:bg-surface';
+
+/** Select native bergaya h-field + chevron - docs/design.md 4.19. */
+export default function Select({ error = null, className = '', id = null, children, ...rest }) {
+    return (
+        <span className="relative block">
+            <select
+                id={id}
+                aria-invalid={error ? 'true' : undefined}
+                aria-describedby={error && id ? id + '-error' : undefined}
+                className={cn(BASE, error ? 'border-danger' : null, className)}
+                {...rest}
+            >
+                {children}
+            </select>
+            <svg
+                viewBox="0 0 24 24"
+                width="16"
+                height="16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+            >
+                <path d="M6 9l6 6 6-6" />
+            </svg>
+        </span>
+    );
+}
+
+===== D. Textarea.jsx =====
+import React from 'react';
+import { cn } from '../lib/format';
+
+const BASE =
+    'w-full min-h-[120px] resize-y rounded-md border border-line bg-white px-3.5 py-3 text-body text-ink transition-colors duration-hover placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-[3px] focus:ring-brand/15 disabled:cursor-not-allowed disabled:bg-surface';
+
+/** Textarea - docs/design.md 4.5 (min 120px, resize-y). */
+export default function Textarea({ error = null, className = '', id = null, ...rest }) {
+    return (
+        <textarea
+            id={id}
+            aria-invalid={error ? 'true' : undefined}
+            aria-describedby={error && id ? id + '-error' : undefined}
+            className={cn(BASE, error ? 'border-danger' : null, className)}
+            {...rest}
+        />
+    );
+}
+
+===== E. Button.jsx =====
+import React from 'react';
+import { Link } from '@inertiajs/react';
+import { cn } from '../lib/format';
+import { SpinnerIcon } from './icons';
+
+const VARIANTS = {
+    primary: 'btn-primary',
+    secondary: 'btn-secondary',
+    ghost: 'btn-ghost',
+    danger:
+        'inline-flex items-center justify-center gap-2 h-10 px-5 rounded-sm text-label font-semibold leading-none bg-danger text-white transition-colors duration-hover hover:opacity-90 disabled:opacity-45 disabled:cursor-not-allowed',
+    link: 'inline-flex items-center gap-2 text-label text-brand underline underline-offset-4 rounded-sm',
+};
+
+const SIZES = {
+    md: '',
+    sm: 'h-10 px-4',
+};
+
+/**
+ * Tombol baku (docs/komponen.md §4.1).
+ * - `loading` menonaktifkan tombol dan menampilkan spinner (design §4.0).
+ * - `href` mengubah tombol menjadi tautan Inertia.
+ */
+export default function Button({
+    children,
+    variant = 'primary',
+    size = 'md',
+    as = 'button',
+    href = null,
+    type = 'button',
+    loading = false,
+    disabled = false,
+    fullWidth = false,
+    icon = null,
+    className = '',
+    ...rest
+}) {
+    const classes = cn(
+        VARIANTS[variant] ?? VARIANTS.primary,
+        size === 'sm' && variant !== 'link' ? SIZES.sm : null,
+        variant === 'link' && size === 'sm' ? 'text-meta' : null,
+        fullWidth ? 'w-full' : null,
+        'whitespace-nowrap',
+        className
+    );
+
+    const content = loading ? (
+        <>
+            <SpinnerIcon size={16} />
+            <span>Memproses…</span>
+        </>
+    ) : (
+        <>
+            {icon}
+            <span>{children}</span>
+        </>
+    );
+
+    if (as === 'a') {
+        return (
+            <a href={href} className={classes} {...rest}>
+                {content}
+            </a>
+        );
+    }
+
+    if (as === Link || as === 'Link' || href) {
+        return (
+            <Link href={href} className={classes} aria-busy={loading || undefined} {...rest}>
+                {content}
+            </Link>
+        );
+    }
+
+    return (
+        <button
+            type={type}
+            className={classes}
+            disabled={disabled || loading}
+            aria-busy={loading || undefined}
+            {...rest}
+        >
+            {content}
+        </button>
+    );
+}
+
+===== F. SearchInput.jsx =====
+import React, { useEffect, useRef, useState } from 'react';
+import { cn } from '../lib/format';
+import { CloseIcon, SearchIcon } from './icons';
+
+/** SearchInput - docs/design.md 4.19. Debounce 300ms sebelum memanggil onChange. */
+export default function SearchInput({
+    value = '',
+    onChange = null,
+    placeholder = 'Cari produk',
+    label = 'Cari produk',
+    loading = false,
+    className = '',
+}) {
+    const [text, setText] = useState(value);
+    const mounted = useRef(false);
+
+    useEffect(() => {
+        setText(value);
+    }, [value]);
+
+    useEffect(() => {
+        if (!mounted.current) {
+            mounted.current = true;
+            return undefined;
+        }
+        const timer = window.setTimeout(() => {
+            if (typeof onChange === 'function') onChange(text.trim());
+        }, 300);
+        return () => window.clearTimeout(timer);
+    }, [text]);
+
+    return (
+        <div className={cn('relative', className)}>
+            <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true">
+                <SearchIcon width={18} height={18} />
+            </span>
+            <input
+                type="search"
+                value={text}
+                onChange={(event) => setText(event.target.value)}
+                placeholder={placeholder}
+                aria-label={label}
+                aria-busy={loading ? 'true' : undefined}
+                className="h-field w-full rounded-md border border-line bg-white pl-10 pr-10 text-body text-ink transition-colors duration-hover placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-[3px] focus:ring-brand/15"
+            />
+            {text.length > 0 && (
+                <button
+                    type="button"
+                    onClick={() => setText('')}
+                    aria-label="Bersihkan pencarian"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-1.5 text-slate-400 transition-colors duration-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                    <CloseIcon width={16} height={16} />
+                </button>
+            )}
+        </div>
+    );
+}
+
+===== G. FilterPanel.jsx =====
+import React, { useEffect, useState } from 'react';
+import { cn, formatNumber, rupiah } from '../lib/format';
+import BottomSheet from './BottomSheet';
+import Field from './Field';
+import Input from './Input';
+import VariantChip from './VariantChip';
+
+function toArray(value) {
+    if (Array.isArray(value)) return value.filter(Boolean);
+    if (value === null || value === undefined || value === '') return [];
+    return [value];
+}
+
+function Group({ title, children }) {
+    return (
+        <section className="border-b border-line py-4 first:pt-0 last:border-b-0">
+            <h3 className="mb-2.5 text-meta font-semibold uppercase tracking-wide text-slate-400">{title}</h3>
+            {children}
+        </section>
+    );
+}
+
+function FilterGroups({ draft, setDraft, categories, sizes }) {
+    const ukuran = toArray(draft.ukuran);
+
+    const toggleSize = (size) => {
+        const next = ukuran.includes(size) ? ukuran.filter((item) => item !== size) : [...ukuran, size];
+        setDraft({ ...draft, ukuran: next });
+    };
+
+    return (
+        <div>
+            <Group title="Kategori">
+                <div className="flex flex-col gap-2">
+                    <label className="flex items-center gap-2 text-body text-ink">
+                        <input
+                            type="radio"
+                            name="kategori"
+                            value=""
+                            checked={!draft.kategori}
+                            onChange={() => setDraft({ ...draft, kategori: '' })}
+                            className="h-4 w-4 border-line text-brand focus:ring-brand"
+                        />
+                        Semua kategori
+                    </label>
+                    {(categories || []).map((category) => (
+                        <label key={category.id ?? category.slug} className="flex items-center gap-2 text-body text-ink">
+                            <input
+                                type="radio"
+                                name="kategori"
+                                value={category.slug ?? ''}
+                                checked={draft.kategori === (category.slug ?? '')}
+                                onChange={() => setDraft({ ...draft, kategori: category.slug ?? '' })}
+                                className="h-4 w-4 border-line text-brand focus:ring-brand"
+                            />
+                            <span className="flex-1">{category.name}</span>
+                            {category.product_count !== undefined && (
+                                <span className="text-meta text-slate-400">{formatNumber(category.product_count)}</span>
+                            )}
+                        </label>
+                    ))}
+                </div>
+            </Group>
+
+            <Group title="Harga">
+                <div className="flex items-center gap-2">
+                    <Field label="Minimum" htmlFor="harga-min" className="flex-1">
+                        <Input
+                            id="harga-min"
+                            type="number"
+                            inputMode="numeric"
+                            min="0"
+                            placeholder="0"
+                            value={draft.harga_min ?? ''}
+                            onChange={(event) => setDraft({ ...draft, harga_min: event.target.value })}
+                        />
+                    </Field>
+                    <Field label="Maksimum" htmlFor="harga-max" className="flex-1">
+                        <Input
+                            id="harga-max"
+                            type="number"
+                            inputMode="numeric"
+                            min="0"
+                            placeholder="Tanpa batas"
+                            value={draft.harga_max ?? ''}
+                            onChange={(event) => setDraft({ ...draft, harga_max: event.target.value })}
+                        />
+                    </Field>
+                </div>
+                {(draft.harga_min || draft.harga_max) && (
+                    <p className="mt-2 text-meta text-slate-400">
+                        {rupiah(Number(draft.harga_min || 0)) + ' - ' + (draft.harga_max ? rupiah(Number(draft.harga_max)) : 'tanpa batas')}
+                    </p>
+                )}
+            </Group>
+
+            {sizes && sizes.length > 0 && (
+                <Group title="Ukuran">
+                    <div className="flex flex-wrap gap-2">
+                        {sizes.map((size) => (
+                            <VariantChip
+                                key={size}
+                                label={size}
+                                active={ukuran.includes(size)}
+                                onClick={() => toggleSize(size)}
+                            />
+                        ))}
+                    </div>
+                </Group>
+            )}
+        </div>
+    );
+}
+
+/**
+ * FilterPanel - docs/design.md 4.18.
+ * Sidebar sticky di desktop (langsung menerapkan), bottom sheet di mobile (Terapkan).
+ */
+export default function FilterPanel({
+    categories = [],
+    sizes = [],
+    value = {},
+    onApply = null,
+    onReset = null,
+    activeCount = 0,
+    className = '',
+}) {
+    const [draft, setDraft] = useState(value || {});
+    const [open, setOpen] = useState(false);
+
+    useEffect(() => {
+        setDraft(value || {});
+    }, [value]);
+
+    const apply = (next) => {
+        if (typeof onApply === 'function') onApply(next);
+    };
+
+    return (
+        <>
+            <aside className={cn('hidden lg:block', className)} aria-label="Filter produk">
+                <div className="sticky top-[68px] rounded-md border border-line bg-white p-4">
+                    <div className="mb-2 flex items-center justify-between">
+                        <h2 className="text-h3 text-ink">Filter</h2>
+                        {activeCount > 0 && typeof onReset === 'function' && (
+                            <button
+                                type="button"
+                                onClick={onReset}
+                                className="text-meta text-brand underline underline-offset-4"
+                            >
+                                Reset
+                            </button>
+                        )}
+                    </div>
+                    <FilterGroups
+                        draft={draft}
+                        setDraft={(next) => {
+                            setDraft(next);
+                            apply(next);
+                        }}
+                        categories={categories}
+                        sizes={sizes}
+                    />
+                </div>
+            </aside>
+
+            <button
+                type="button"
+                onClick={() => setOpen(true)}
+                className="inline-flex h-field items-center gap-2 rounded-md border border-line bg-white px-4 text-meta font-semibold text-ink lg:hidden"
+            >
+                Filter
+                {activeCount > 0 && (
+                    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-700 px-1.5 text-badge text-white">
+                        {activeCount}
+                    </span>
+                )}
+            </button>
+
+            <BottomSheet
+                open={open}
+                onClose={() => setOpen(false)}
+                title="Filter"
+                footer={
+                    <div className="flex gap-2">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const reset = {};
+                                setDraft(reset);
+                                if (typeof onReset === 'function') onReset();
+                                setOpen(false);
+                            }}
+                            className="h-field flex-1 rounded-md border border-line text-meta font-semibold text-ink"
+                        >
+                            Reset
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                apply(draft);
+                                setOpen(false);
+                            }}
+                            className="h-field flex-1 rounded-md bg-brand-700 text-meta font-semibold text-white"
+                        >
+                            Terapkan
+                        </button>
+                    </div>
+                }
+            >
+                <FilterGroups draft={draft} setDraft={setDraft} categories={categories} sizes={sizes} />
+            </BottomSheet>
+        </>
+    );
+}
+
+===== H. StatusBadge.jsx =====
+import React from 'react';
+import { cn } from '../lib/format';
+
+/**
+ * Pil status — docs/design.md §4.21.
+ * Pemetaan baku status order (jangan bikin varian baru):
+ * pending → warning, dibayar/diproses/dikirim → brand, selesai → success, batal → danger;
+ * status di luar daftar (mis. "Sudah dibaca" §5.12, arsip) → neutral.
+ * Bentuk kelas §4.21 v2.1: `bg-{token}/10 text-{token}-strong` — teks badge selalu < 24px
+ * (`text-badge`) sehingga ambangnya 4,5:1, dan token dasar `warning`/`success` hanya 2,86:1/2,96:1
+ * di atas tint-nya. `brand` tetap `bg-brand/10 text-brand` (9,35:1); `neutral` `bg-slate-200/60
+ * text-slate-600` (6,17:1).
+ */
+const TONES = {
+    pending: { token: 'warning', label: 'Menunggu' },
+    dibayar: { token: 'brand', label: 'Dibayar' },
+    diproses: { token: 'brand', label: 'Diproses' },
+    dikirim: { token: 'brand', label: 'Dikirim' },
+    selesai: { token: 'success', label: 'Selesai' },
+    batal: { token: 'danger', label: 'Batal' },
+};
+
+const CLASSES = {
+    brand: 'bg-brand/10 text-brand',
+    warning: 'bg-warning/10 text-warning-strong',
+    success: 'bg-success/10 text-success-strong',
+    danger: 'bg-danger/10 text-danger-strong',
+    neutral: 'bg-slate-200/60 text-slate-600',
+};
+
+export default function StatusBadge({ status = null, label = null, className = '' }) {
+    const key = typeof status === 'string' ? status.trim().toLowerCase() : '';
+    const tone = TONES[key] ?? null;
+    const text = label ?? tone?.label ?? (key === '' ? '-' : status);
+
+    return (
+        <span
+            className={cn(
+                'inline-flex items-center rounded-full px-2.5 py-1 text-badge uppercase',
+                CLASSES[tone?.token ?? 'neutral'],
+                className
+            )}
+        >
+            {text}
+        </span>
+    );
+}
+
+===== I. PageHeader.jsx =====
+import React from 'react';
+import { cn } from '../lib/format';
+import Breadcrumb from './Breadcrumb';
+
+/**
+ * Kepala halaman admin — docs/design.md §4.30.
+ * Susunan: Breadcrumb → H1 → slot aksi di kanan.
+ * Mobile: aksi turun ke bawah, selebar penuh.
+ */
+export default function PageHeader({ title = '', breadcrumb = [], actions = null, description = null, className = '' }) {
+    return (
+        <header className={cn('flex flex-col gap-3', className)}>
+            {breadcrumb.length > 0 && <Breadcrumb items={breadcrumb} />}
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                    <h1 className="text-h1 font-bold text-ink">{title}</h1>
+                    {description && <p className="mt-1 text-meta text-slate-500">{description}</p>}
+                </div>
+
+                {actions && <div className="flex flex-col gap-2 sm:flex-row sm:items-center">{actions}</div>}
+            </div>
+        </header>
+    );
+}
+
+===== J. EmptyState.jsx =====
+import React from 'react';
+import { cn } from '../lib/format';
+import Button from './Button';
+import { ImageOffIcon } from './icons';
+
+/**
+ * Kondisi kosong — docs/komponen.md §1, docs/design.md §4.23.
+ * Tidak boleh dipakai untuk state error (pakai `ErrorState`).
+ */
+export default function EmptyState({
+    title = 'Belum ada data',
+    description = null,
+    actionLabel = null,
+    actionHref = null,
+    onAction = null,
+    icon = null,
+    className = '',
+}) {
+    return (
+        <div className={cn('flex flex-col items-center gap-3 py-12 text-center', className)}>
+            <span className="text-slate-300" aria-hidden="true">
+                {icon ?? <ImageOffIcon size={96} />}
+            </span>
+            <p className="text-h3 text-ink">{title}</p>
+            {description && <p className="max-w-sm text-meta text-slate-400">{description}</p>}
+            {actionLabel && onAction && (
+                <Button variant="secondary" onClick={onAction} className="mt-2">
+                    {actionLabel}
+                </Button>
+            )}
+            {actionLabel && !onAction && actionHref && (
+                <Button variant="secondary" href={actionHref} className="mt-2">
+                    {actionLabel}
+                </Button>
+            )}
+        </div>
+    );
+}
+
+===== K. ErrorState.jsx =====
+import React from 'react';
+import { cn } from '../lib/format';
+import Button from './Button';
+import { AlertIcon } from './icons';
+
+/**
+ * Kondisi gagal — docs/design.md §4.23. Selalu dirender di dalam layout,
+ * header/footer tetap tampil; menyediakan "Coba lagi" + tautan bantuan.
+ */
+export default function ErrorState({
+    title = 'Gagal memuat data',
+    description = 'Periksa koneksi Anda lalu coba lagi.',
+    onRetry = null,
+    supportHref = '/kontak-kami',
+    retryLabel = 'Coba lagi',
+    supportLabel = 'Hubungi kami',
+    className = '',
+}) {
+    return (
+        <div
+            role="alert"
+            className={cn('flex flex-col items-center gap-3 py-12 text-center', className)}
+        >
+            <span className="text-danger" aria-hidden="true">
+                <AlertIcon size={48} />
+            </span>
+            <p className="text-h3 text-ink">{title}</p>
+            {description && <p className="max-w-sm text-meta text-slate-400">{description}</p>}
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
+                {onRetry && (
+                    <Button variant="primary" onClick={onRetry}>
+                        {retryLabel}
+                    </Button>
+                )}
+                {supportHref && (
+                    <Button variant="secondary" href={supportHref}>
+                        {supportLabel}
+                    </Button>
+                )}
+            </div>
+        </div>
+    );
+}
+
+===== L. format.js exports + hooks.js exports =====
+resources/js/lib/format.js:7:export const cn = (...classes) => classes.flat().filter(Boolean).join(' ');
+resources/js/lib/format.js:10:export const rupiah = (value) => {
+resources/js/lib/format.js:20:export const formatNumber = (value) => {
+resources/js/lib/format.js:27:export const formatDate = (value) => {
+resources/js/lib/format.js:38:export const formatDateTime = (value) => {
+resources/js/lib/format.js:56:export const toList = (value) => {
+resources/js/lib/format.js:72:export const toObject = (value) => {
+resources/js/lib/hooks.js:4:export function useScrolled(threshold = 8) {
+resources/js/lib/hooks.js:20:export function usePrefersReducedMotion() {
+resources/js/lib/hooks.js:37:export function useDocumentVisible() {
+resources/js/lib/hooks.js:57:export function useLoadingTimeout(loading, timeoutMs = 10000) {
+resources/js/lib/hooks.js:75:export function useBodyScrollLock(active) {
+resources/js/lib/hooks.js:92:export function useFocusTrap(ref, active) {
+
+===== M. impor Messages/Reviews/Settings + kategori/akun stub saat ini =====
+import React, { useEffect, useMemo, useState } from 'react';
+import { router, useForm } from '@inertiajs/react';
+import AdminLayout, { ADMIN_NAV } from '../../../Layouts/AdminLayout';
+import PageHeader from '../../../Components/PageHeader';
+import DataTable from '../../../Components/DataTable';
+import SearchInput from '../../../Components/SearchInput';
+import Select from '../../../Components/Select';
+import Field from '../../../Components/Field';
+import Button from '../../../Components/Button';
+import Textarea from '../../../Components/Textarea';
+import Modal from '../../../Components/Modal';
+import Pagination from '../../../Components/Pagination';
+import StatusBadge from '../../../Components/StatusBadge';
+import InlineNotice from '../../../Components/InlineNotice';
+import Toast from '../../../Components/Toast';
+import { formatDateTime, formatNumber } from '../../../lib/format';
+
+/**
+ * Pesan masuk dari formulir kontak — docs/design.md §5.12 ("Detail pesan: isi pesan,
+ * textarea balasan, tombol 'Tandai dibaca'") dan docs/kontrak-props.md §10.1–§10.3.
+ *
+ * Props server (app/Http/Controllers/Admin/MessageController.php@index):
+ *   pesan     paginator Laravel (data, links, current_page, last_page, total)
+ *   filter    { q: string|null, status: 'semua'|'belum'|'sudah' }
+ *   ringkasan { total, belum_dibaca }
+ *   flash     { success, error } — props bersama (HandleInertiaRequests).
+ *
+ * Aksi memakai URL literal routes/admin.php:
+ *   tandai dibaca -> PATCH /admin/pesan-masuk/{id}/baca  (kontrak §10.2, koreksi PATCH 20 Okt 2026)
+ *   balas         -> POST  /admin/pesan-masuk/{id}/balas (kontrak §10.3)
+ */
+
+const BREADCRUMB = [{ label: 'Dashboard', href: '/admin' }, { label: 'Pesan Masuk' }];
+
+const DEFAULT_FILTER = { q: '', status: 'semua' };
+
+/** Enum `status` mengikuti kontrak §10.1: semua | belum | sudah. */
+const STATUS_OPTIONS = [
+    { value: 'semua', label: 'Semua status' },
+    { value: 'belum', label: 'Belum dibaca' },
+--- Reviews ---
+import React, { useEffect, useMemo, useState } from 'react';
+import { router, useForm } from '@inertiajs/react';
+import AdminLayout from '../../../Layouts/AdminLayout';
+import PageHeader from '../../../Components/PageHeader';
+import DataTable from '../../../Components/DataTable';
+import SearchInput from '../../../Components/SearchInput';
+import Select from '../../../Components/Select';
+import Field from '../../../Components/Field';
+import Button from '../../../Components/Button';
+import Textarea from '../../../Components/Textarea';
+import Modal from '../../../Components/Modal';
+import Pagination from '../../../Components/Pagination';
+import RatingSummary from '../../../Components/RatingSummary';
+import StatusBadge from '../../../Components/StatusBadge';
+import StarRating from '../../../Components/StarRating';
+import InlineNotice from '../../../Components/InlineNotice';
+import Toast from '../../../Components/Toast';
+import { formatDateTime, formatNumber } from '../../../lib/format';
+
+/**
+ * Moderasi penilaian produk — docs/design.md §5.12 dan docs/kontrak-props.md §10.4-§10.6.
+ * Props server: `ulasan` (paginator), `filter` (q, rating, visibilitas), `ringkasan`.
+ * Aksi memakai URL literal routes/admin.php:
+ * balas -> POST /admin/penilaian/{id}/balas, visibilitas -> PATCH /admin/penilaian/{id}/tampil.
+ */
+
+const BREADCRUMB = [{ label: 'Dashboard', href: '/admin' }, { label: 'Penilaian' }];
+
+const DEFAULT_FILTER = { q: '', rating: 'semua', visibilitas: 'semua' };
+
+const RATING_OPTIONS = [
+    { value: 'semua', label: 'Semua rating' },
+    { value: '5', label: '5 bintang' },
+    { value: '4', label: '4 bintang' },
+    { value: '3', label: '3 bintang' },
+    { value: '2', label: '2 bintang' },
+    { value: '1', label: '1 bintang' },
+];
+
+const VISIBILITY_OPTIONS = [
+--- Settings ---
+import React, { useEffect, useMemo, useState } from 'react';
+import { router, useForm } from '@inertiajs/react';
+import AdminLayout, { ADMIN_NAV } from '../../../Layouts/AdminLayout';
+import PageHeader from '../../../Components/PageHeader';
+import Field from '../../../Components/Field';
+import Input from '../../../Components/Input';
+import Select from '../../../Components/Select';
+import Textarea from '../../../Components/Textarea';
+import Button from '../../../Components/Button';
+import Modal from '../../../Components/Modal';
+import Toast from '../../../Components/Toast';
+import InlineNotice from '../../../Components/InlineNotice';
+import EmptyState from '../../../Components/EmptyState';
+import ErrorState from '../../../Components/ErrorState';
+import DataTable from '../../../Components/DataTable';
+import IconButton from '../../../Components/IconButton';
+import Skeleton from '../../../Components/Skeleton';
+import { ImageOffIcon, SOCIAL_ICONS, TRUST_ICONS, TrashIcon } from '../../../Components/icons';
+import { cn, rupiah } from '../../../lib/format';
+
+/**
+ * Pengaturan toko — docs/design.md §5.13, docs/kontrak-props.md §10.7–§10.11.
+ * Sembilan tab: Umum · Landing · Carousel · FAQ · Header · Footer · Kontak · SEO · Pembayaran.
+ * Setiap tab memakai form sendiri, tombol "Simpan" sticky di bawah, dan pratinjau gambar 1:1.
+ * Semua URL di bawah ini literal dari kontrak (tanpa Ziggy/route()).
+ */
+const SETTINGS_URL = '/admin/pengaturan';
+const LANDING_URL = '/admin/pengaturan/landing';
+const CAROUSEL_URL = '/admin/pengaturan/carousel';
+const FAQ_URL = '/admin/pengaturan/faq';
+
+const BREADCRUMB = [{ label: 'Dashboard', href: '/admin' }, { label: 'Pengaturan' }];
+
+const TABS = [
+    { key: 'umum', label: 'Umum' },
+    { key: 'landing', label: 'Landing' },
+    { key: 'carousel', label: 'Carousel' },
+    { key: 'faq', label: 'FAQ' },
+    { key: 'header', label: 'Header' },
+    { key: 'footer', label: 'Footer' },
+--- Stub Categories ---
+import React from 'react';
+import AdminLayout from '../../../Layouts/AdminLayout';
+import PageHeader from '../../../Components/PageHeader';
+import DataTable from '../../../Components/DataTable';
+import Button from '../../../Components/Button';
+
+export default function Index({ categories = [], loading = false, error = null }) {
+    const columns = [
+        { key: 'name', header: 'Nama Kategori', render: (row) => row.name },
+        { key: 'slug', header: 'Slug', render: (row) => row.slug },
+        { key: 'product_count', header: 'Jumlah Produk', render: (row) => row.product_count },
+    ];
+
+    return (
+        <AdminLayout title="Kategori">
+            <PageHeader title="Kategori">
+                <Button href="/admin/kategori/tambah">Tambah Kategori</Button>
+            </PageHeader>
+            <DataTable
+                columns={columns}
+                rows={categories}
+                loading={loading}
+                error={error}
+            />
+        </AdminLayout>
+    );
+}
+--- Stub Accounts ---
+import React from 'react';
+import AdminLayout from '../../../Layouts/AdminLayout';
+import PageHeader from '../../../Components/PageHeader';
+import DataTable from '../../../Components/DataTable';
+import Button from '../../../Components/Button';
+
+export default function Index({ accounts = [], loading = false, error = null }) {
+    const columns = [
+        { key: 'name', header: 'Nama', render: (row) => row.name },
+        { key: 'email', header: 'Email', render: (row) => row.email },
+        { key: 'role', header: 'Role', render: (row) => row.role },
+        { key: 'status', header: 'Status', render: (row) => row.status },
+    ];
+
+    return (
+        <AdminLayout title="Akun Admin">
+            <PageHeader title="Akun Admin">
+                <Button href="/admin/akun/tambah">Tambah Admin</Button>
+            </PageHeader>
+            <DataTable
+                columns={columns}
+                rows={accounts}
+                loading={loading}
+                error={error}
+            />
+        </AdminLayout>
+    );
+}
+  848 32506 tmp/bundel-konteks10-t_e5149746.txt

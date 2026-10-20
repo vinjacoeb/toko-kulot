@@ -1,0 +1,687 @@
+
+===== A. Messages/Index.jsx dengan nomor baris =====
+     1	import React, { useEffect, useMemo, useState } from 'react';
+     2	import { router, useForm } from '@inertiajs/react';
+     3	import AdminLayout, { ADMIN_NAV } from '../../../Layouts/AdminLayout';
+     4	import PageHeader from '../../../Components/PageHeader';
+     5	import DataTable from '../../../Components/DataTable';
+     6	import SearchInput from '../../../Components/SearchInput';
+     7	import Select from '../../../Components/Select';
+     8	import Field from '../../../Components/Field';
+     9	import Button from '../../../Components/Button';
+    10	import Textarea from '../../../Components/Textarea';
+    11	import Modal from '../../../Components/Modal';
+    12	import Pagination from '../../../Components/Pagination';
+    13	import StatusBadge from '../../../Components/StatusBadge';
+    14	import InlineNotice from '../../../Components/InlineNotice';
+    15	import Toast from '../../../Components/Toast';
+    16	import { formatDateTime, formatNumber } from '../../../lib/format';
+    17	
+    18	/**
+    19	 * Pesan masuk dari formulir kontak — docs/design.md §5.12 ("Detail pesan: isi pesan,
+    20	 * textarea balasan, tombol 'Tandai dibaca'") dan docs/kontrak-props.md §10.1–§10.3.
+    21	 *
+    22	 * Props server (app/Http/Controllers/Admin/MessageController.php@index):
+    23	 *   pesan     paginator Laravel (data, links, current_page, last_page, total)
+    24	 *   filter    { q: string|null, status: 'semua'|'belum'|'sudah' }
+    25	 *   ringkasan { total, belum_dibaca }
+    26	 *   flash     { success, error } — props bersama (HandleInertiaRequests).
+    27	 *
+    28	 * Aksi memakai URL literal routes/admin.php:
+    29	 *   tandai dibaca -> PATCH /admin/pesan-masuk/{id}/baca  (kontrak §10.2, koreksi PATCH 20 Okt 2026)
+    30	 *   balas         -> POST  /admin/pesan-masuk/{id}/balas (kontrak §10.3)
+    31	 */
+    32	
+    33	const BREADCRUMB = [{ label: 'Dashboard', href: '/admin' }, { label: 'Pesan Masuk' }];
+    34	
+    35	const DEFAULT_FILTER = { q: '', status: 'semua' };
+    36	
+    37	/** Enum `status` mengikuti kontrak §10.1: semua | belum | sudah. */
+    38	const STATUS_OPTIONS = [
+    39	    { value: 'semua', label: 'Semua status' },
+    40	    { value: 'belum', label: 'Belum dibaca' },
+    41	    { value: 'sudah', label: 'Sudah dibaca' },
+    42	];
+    43	
+    44	/**
+    45	 * Sidebar admin: rute /admin/pesan-masuk sudah terdaftar (routes/admin.php), jadi
+    46	 * entri "Pesan" dibuka di halaman ini — pola sama dengan Settings/Index.jsx.
+    47	 */
+    48	const NAV_AKTIF = ADMIN_NAV.map((item) => (item.key === 'pesan' ? { ...item, disabled: false } : item));
+    49	
+    50	/** Nilai server bisa null; semua teks melewati helper ini agar tidak ada "undefined" di layar. */
+    51	const asText = (value) => {
+    52	    if (value === null || value === undefined) return '';
+    53	
+    54	    return typeof value === 'string' ? value : String(value);
+    55	};
+    56	
+    57	/** Angka dari server bisa string; hasil selalu >= 0 dan bukan NaN. */
+    58	const asCount = (value) => {
+    59	    const number = Number(value ?? 0);
+    60	
+    61	    return Number.isFinite(number) && number > 0 ? number : 0;
+    62	};
+    63	
+    64	/** Normalisasi props `filter` dari server; nilai kosong/tak dikenal -> bawaan. */
+    65	const normalizeFilter = (filter) => ({
+    66	    q: typeof filter?.q === 'string' ? filter.q : '',
+    67	    status: filter?.status === null || filter?.status === undefined ? 'semua' : String(filter.status),
+    68	});
+    69	
+    70	/**
+    71	 * Paginator Laravel dikirim datar (`current_page`, `last_page`, `total`, `data`);
+    72	 * kontrak §10.1 menuliskannya sebagai `links` + `meta`. Keduanya dibaca supaya
+    73	 * halaman tidak bergantung pada satu bentuk saja.
+    74	 */
+    75	const readPaginator = (paginator) => {
+    76	    const source = paginator ?? {};
+    77	    const meta = source.meta && typeof source.meta === 'object' ? source.meta : source;
+    78	
+    79	    return {
+    80	        rows: Array.isArray(source.data) ? source.data : [],
+    81	        currentPage: Math.max(1, Number(meta.current_page) || 1),
+    82	        lastPage: Math.max(1, Number(meta.last_page) || 1),
+    83	        total: asCount(meta.total),
+    84	    };
+    85	};
+    86	
+    87	export default function MessagesIndex({
+    88	    auth = null,
+    89	    pesan = null,
+    90	    filter = null,
+    91	    ringkasan = null,
+    92	    flash = null,
+    93	}) {
+    94	    const [query, setQuery] = useState(() => normalizeFilter(filter));
+    95	    const [navLoading, setNavLoading] = useState(false);
+    96	    const [navError, setNavError] = useState(null);
+    97	    const [toast, setToast] = useState(null);
+    98	    const [busyId, setBusyId] = useState(null);
+    99	    const [actionError, setActionError] = useState(null);
+   100	    const [targetId, setTargetId] = useState(null);
+   101	    const [askDiscard, setAskDiscard] = useState(false);
+   102	
+   103	    const form = useForm({ admin_reply: '' });
+   104	
+   105	    const paginator = useMemo(() => readPaginator(pesan), [pesan]);
+   106	    const total = asCount(ringkasan?.total);
+   107	    const belumDibaca = asCount(ringkasan?.belum_dibaca);
+   108	
+   109	    // Baris detail dibaca ulang dari props terbaru, jadi status baca (dan balasan)
+   110	    // di modal ikut terbarui setelah aksi karena state halaman dipertahankan.
+   111	    const target = useMemo(
+   112	        () => paginator.rows.find((row) => row.id === targetId) ?? null,
+   113	        [paginator.rows, targetId]
+   114	    );
+   115	
+   116	    const filterActive = query.q.trim() !== '' || query.status !== DEFAULT_FILTER.status;
+   117	
+   118	    // Sinkron dari server hanya saat tidak ada permintaan berjalan supaya ketikan
+   119	    // pengguna tidak tertimpa respons yang tertinggal.
+   120	    useEffect(() => {
+   121	        if (navLoading) return;
+   122	
+   123	        const next = normalizeFilter(filter);
+   124	        setQuery((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
+   125	    }, [filter, navLoading]);
+   126	
+   127	    useEffect(() => {
+   128	        if (flash?.success) {
+   129	            setToast({ tone: 'success', title: 'Berhasil', message: String(flash.success) });
+   130	        } else if (flash?.error) {
+   131	            setToast({ tone: 'error', title: 'Gagal', message: String(flash.error) });
+   132	        }
+   133	    }, [flash?.success, flash?.error]);
+   134	
+   135	    const load = (params) => {
+   136	        router.get('/admin/pesan-masuk', params, {
+   137	            preserveState: true,
+   138	            preserveScroll: true,
+   139	            replace: true,
+   140	            onStart: () => {
+   141	                setNavLoading(true);
+   142	                setNavError(null);
+   143	            },
+   144	            onFinish: () => setNavLoading(false),
+   145	            onError: () => setNavError('Gagal memuat daftar pesan. Periksa koneksi lalu coba lagi.'),
+   146	        });
+   147	    };
+   148	
+   149	    /** Parameter query yang benar-benar dikirim: nilai bawaan tidak ditulis ke URL. */
+   150	    const paramsFor = (source, page = 1) => {
+   151	        const params = {};
+   152	        const q = source.q.trim();
+   153	
+   154	        if (q !== '') params.q = q;
+   155	        if (source.status !== DEFAULT_FILTER.status) params.status = source.status;
+   156	        if (page > 1) params.page = page;
+   157	
+   158	        return params;
+   159	    };
+   160	
+   161	    const applyFilters = (overrides = {}) => {
+   162	        const next = { ...query, ...overrides };
+   163	        setQuery(next);
+   164	        load(paramsFor(next));
+   165	    };
+   166	
+   167	    const resetFilters = () => {
+   168	        setQuery(DEFAULT_FILTER);
+   169	        load({});
+   170	    };
+   171	
+   172	    const changePage = (page) => load(paramsFor(query, page));
+   173	
+   174	    const reload = () => load(paramsFor(query, paginator.currentPage));
+   175	
+   176	    const openDetail = (row) => {
+   177	        setActionError(null);
+   178	        setAskDiscard(false);
+   179	        form.setData('admin_reply', asText(row.admin_reply));
+   180	        form.clearErrors();
+   181	        setTargetId(row.id);
+   182	    };
+   183	
+   184	    const closeDetail = () => {
+   185	        setTargetId(null);
+   186	        setAskDiscard(false);
+   187	        form.setData('admin_reply', '');
+   188	        form.clearErrors();
+   189	    };
+   190	
+   191	    const replyDirty = target !== null && form.data.admin_reply.trim() !== asText(target.admin_reply).trim();
+   192	
+   193	    const requestClose = () => {
+   194	        if (form.processing || busyId !== null) return;
+   195	
+   196	        if (replyDirty) {
+   197	            setAskDiscard(true);
+   198	
+   199	            return;
+   200	        }
+   201	
+   202	        closeDetail();
+   203	    };
+   204	
+   205	    /** Throttle `admin-write` (60/menit): beri pesan yang terbaca, bukan modal galat bawaan. */
+   206	    const onHttpException = (response) => {
+   207	        if (response?.status === 429) {
+   208	            setActionError({
+   209	                message: 'Terlalu banyak aksi berturut-turut. Tunggu sebentar, lalu coba lagi.',
+   210	                retry: null,
+   211	            });
+   212	
+   213	            return false;
+   214	        }
+   215	
+   216	        return undefined;
+   217	    };
+   218	
+   219	    /** Tandai dibaca — wajib PATCH (kontrak §10.2, dikoreksi 20 Okt 2026). */
+   220	    const markRead = (row) => {
+   221	        if (busyId !== null || row.is_read) return;
+   222	
+   223	        setBusyId(row.id);
+   224	        setActionError(null);
+   225	
+   226	        router.patch(
+   227	            `/admin/pesan-masuk/${row.id}/baca`,
+   228	            {},
+   229	            {
+   230	                preserveState: true,
+   231	                preserveScroll: true,
+   232	                onHttpException,
+   233	                onFinish: () => setBusyId(null),
+   234	                onError: () =>
+   235	                    setActionError({
+   236	                        message: 'Pesan gagal ditandai sudah dibaca. Periksa koneksi lalu coba lagi.',
+   237	                        retry: () => markRead(row),
+   238	                    }),
+   239	            }
+   240	        );
+   241	    };
+   242	
+   243	    const submitReply = (event) => {
+   244	        if (event) event.preventDefault();
+   245	
+   246	        if (target === null || form.processing) return;
+   247	
+   248	        setActionError(null);
+   249	
+   250	        form.post(`/admin/pesan-masuk/${target.id}/balas`, {
+   251	            preserveState: true,
+   252	            preserveScroll: true,
+   253	            onHttpException,
+   254	            onSuccess: () => closeDetail(),
+   255	        });
+   256	    };
+   257	
+   258	    const columns = [
+   259	        {
+   260	            key: 'pengirim',
+   261	            header: 'Pengirim',
+   262	            render: (row) => (
+   263	                <div className="max-w-[220px]">
+   264	                    <p className="truncate font-semibold text-ink">{asText(row.name) || '-'}</p>
+   265	                    <p className="truncate text-meta text-slate-500">{asText(row.email) || '-'}</p>
+   266	                </div>
+   267	            ),
+   268	        },
+   269	        {
+   270	            key: 'subjek',
+   271	            header: 'Subjek',
+   272	            render: (row) => {
+   273	                const subject = asText(row.subject);
+   274	                const body = asText(row.message);
+   275	                const reply = asText(row.admin_reply);
+   276	
+   277	                return (
+   278	                    <div className="max-w-[320px] space-y-1">
+   279	                        <p className="truncate font-semibold text-ink">
+   280	                            {subject !== '' ? subject : 'Tanpa subjek'}
+   281	                        </p>
+   282	                        <p className="truncate text-meta text-ink-soft">
+   283	                            {body !== '' ? body.replace(/\s+/g, ' ') : '-'}
+   284	                        </p>
+   285	                        {reply !== '' && (
+   286	                            <p className="truncate text-meta text-slate-500">
+   287	                                Dibalas {formatDateTime(row.replied_at)}
+   288	                            </p>
+   289	                        )}
+   290	                    </div>
+   291	                );
+   292	            },
+   293	        },
+   294	        {
+   295	            key: 'created_at',
+   296	            header: 'Tanggal',
+   297	            render: (row) => <span className="whitespace-nowrap">{formatDateTime(row.created_at)}</span>,
+   298	        },
+   299	        {
+   300	            key: 'is_read',
+   301	            header: 'Status baca',
+   302	            render: (row) =>
+   303	                row.is_read ? (
+   304	                    <StatusBadge status="sudah dibaca" label="Sudah dibaca" className="bg-success/10 text-success-strong" />
+   305	                ) : (
+   306	                    <StatusBadge status="belum dibaca" label="Belum dibaca" className="bg-warning/10 text-warning-strong" />
+   307	                ),
+   308	        },
+   309	        {
+   310	            key: 'aksi',
+   311	            header: 'Aksi',
+   312	            align: 'right',
+   313	            render: (row) => (
+   314	                <div className="flex flex-wrap items-center justify-end gap-2">
+   315	                    <Button variant="secondary" size="sm" onClick={() => openDetail(row)}>
+   316	                        Baca detail
+   317	                    </Button>
+   318	                    {!row.is_read && (
+   319	                        <Button
+   320	                            variant="ghost"
+   321	                            size="sm"
+   322	                            onClick={() => markRead(row)}
+   323	                            loading={busyId === row.id}
+   324	                            disabled={busyId !== null && busyId !== row.id}
+   325	                        >
+   326	                            Tandai dibaca
+   327	                        </Button>
+   328	                    )}
+   329	                </div>
+   330	            ),
+   331	        },
+   332	    ];
+   333	
+   334	    const replyText = target ? asText(target.admin_reply) : '';
+   335	
+   336	    return (
+   337	        <AdminLayout auth={auth?.admin ?? null} nav={NAV_AKTIF} title="Pesan Masuk">
+   338	            <div className="flex flex-col gap-6">
+   339	                <PageHeader title="Pesan Masuk" breadcrumb={BREADCRUMB} />
+   340	
+   341	                <p className="text-meta text-slate-500">
+   342	                    Total {formatNumber(total)} pesan · {formatNumber(belumDibaca)} belum dibaca
+   343	                </p>
+   344	
+   345	                {actionError && (
+   346	                    <InlineNotice tone="error" title="Aksi gagal" onDismiss={() => setActionError(null)}>
+   347	                        <p>{actionError.message}</p>
+   348	                        {actionError.retry && (
+   349	                            <Button variant="secondary" size="sm" className="mt-3" onClick={actionError.retry}>
+   350	                                Coba lagi
+   351	                            </Button>
+   352	                        )}
+   353	                    </InlineNotice>
+   354	                )}
+   355	
+   356	                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+   357	                    <SearchInput
+   358	                        className="w-full sm:max-w-sm"
+   359	                        value={query.q}
+   360	                        onChange={(value) => applyFilters({ q: value })}
+   361	                        placeholder="Cari nama, subjek, atau email"
+   362	                        label="Cari pesan"
+   363	                        loading={navLoading}
+   364	                    />
+   365	
+   366	                    <Field label="Status baca" htmlFor="filter-status" className="w-full sm:w-48">
+   367	                        <Select
+   368	                            id="filter-status"
+   369	                            value={query.status}
+   370	                            onChange={(event) => applyFilters({ status: event.target.value })}
+   371	                        >
+   372	                            {STATUS_OPTIONS.map((option) => (
+   373	                                <option key={option.value} value={option.value}>
+   374	                                    {option.label}
+   375	                                </option>
+   376	                            ))}
+   377	                        </Select>
+   378	                    </Field>
+   379	
+   380	                    {filterActive && (
+   381	                        <Button variant="secondary" onClick={resetFilters}>
+   382	                            Reset filter
+   383	                        </Button>
+   384	                    )}
+   385	                </div>
+   386	
+   387	                <div className="flex flex-col gap-3">
+   388	                    <DataTable
+   389	                        caption="Daftar pesan masuk dari formulir kontak"
+   390	                        columns={columns}
+   391	                        rows={paginator.rows}
+   392	                        loading={navLoading}
+   393	                        error={navError}
+   394	                        onRetry={reload}
+   395	                        emptyTitle={filterActive ? 'Tidak ada pesan yang cocok' : 'Belum ada pesan'}
+   396	                        emptyDescription={
+   397	                            filterActive
+   398	                                ? 'Ubah kata kunci atau filter untuk melihat pesan lain.'
+   399	                                : 'Pesan dari formulir kontak akan tampil di sini.'
+   400	                        }
+   401	                        emptyActionLabel={filterActive ? 'Reset filter' : null}
+   402	                        emptyActionHref={filterActive ? '/admin/pesan-masuk' : null}
+   403	                    />
+   404	
+   405	                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   406	                        <p className="text-meta text-slate-500">
+   407	                            {paginator.rows.length > 0
+   408	                                ? `Menampilkan ${formatNumber(paginator.rows.length)} dari ${formatNumber(
+   409	                                      paginator.total
+   410	                                  )} pesan`
+   411	                                : 'Tidak ada pesan untuk ditampilkan.'}
+   412	                        </p>
+   413	                        <Pagination
+   414	                            currentPage={paginator.currentPage}
+   415	                            lastPage={paginator.lastPage}
+   416	                            onPageChange={changePage}
+   417	                        />
+   418	                    </div>
+   419	                </div>
+   420	            </div>
+   421	
+   422	            <Modal
+   423	                open={target !== null}
+   424	                onClose={requestClose}
+   425	                title="Detail pesan"
+   426	                description={
+   427	                    target
+   428	                        ? `${asText(target.name) || 'Tanpa nama'} · ${asText(target.email) || 'Email tidak tersedia'}`
+   429	                        : null
+   430	                }
+   431	                size="lg"
+   432	                footer={
+   433	                    askDiscard ? (
+   434	                        <>
+   435	                            <p className="mr-auto self-center text-meta text-ink-soft">
+   436	                                Balasan belum tersimpan. Buang perubahan?
+   437	                            </p>
+   438	                            <Button variant="secondary" onClick={() => setAskDiscard(false)}>
+   439	                                Lanjut mengedit
+   440	                            </Button>
+   441	                            <Button variant="danger" onClick={closeDetail}>
+   442	                                Buang
+   443	                            </Button>
+   444	                        </>
+   445	                    ) : (
+   446	                        <>
+   447	                            <Button
+   448	                                variant="secondary"
+   449	                                onClick={requestClose}
+   450	                                disabled={form.processing || busyId !== null}
+   451	                            >
+   452	                                Tutup
+   453	                            </Button>
+   454	                            {target && !target.is_read && (
+   455	                                <Button
+   456	                                    variant="ghost"
+   457	                                    onClick={() => markRead(target)}
+   458	                                    loading={busyId === target.id}
+   459	                                    disabled={busyId !== null && busyId !== target.id}
+   460	                                >
+   461	                                    Tandai dibaca
+   462	                                </Button>
+   463	                            )}
+   464	                            <Button
+   465	                                variant="primary"
+   466	                                onClick={() => submitReply(null)}
+   467	                                loading={form.processing}
+   468	                                disabled={!replyDirty || busyId !== null}
+   469	                            >
+   470	                                Kirim balasan
+   471	                            </Button>
+   472	                        </>
+   473	                    )
+   474	                }
+   475	            >
+   476	                {target && (
+   477	                    <form className="flex flex-col gap-4" onSubmit={submitReply}>
+   478	                        <div className="rounded-md bg-surface p-4">
+   479	                            <p className="text-badge uppercase text-slate-500">Isi pesan</p>
+   480	                            <p className="mt-1 text-h3 text-ink">{asText(target.subject) || 'Tanpa subjek'}</p>
+   481	
+   482	                            <dl className="mt-3 grid gap-x-6 gap-y-1 text-meta text-ink-soft sm:grid-cols-2">
+   483	                                <div className="flex gap-2">
+   484	                                    <dt className="shrink-0 text-slate-500">Email</dt>
+   485	                                    <dd className="min-w-0 break-all">{asText(target.email) || '-'}</dd>
+   486	                                </div>
+   487	                                <div className="flex gap-2">
+   488	                                    <dt className="shrink-0 text-slate-500">Telepon</dt>
+   489	                                    <dd>{asText(target.phone) || '-'}</dd>
+   490	                                </div>
+   491	                                <div className="flex gap-2 sm:col-span-2">
+   492	                                    <dt className="shrink-0 text-slate-500">Diterima</dt>
+   493	                                    <dd>{formatDateTime(target.created_at)}</dd>
+   494	                                </div>
+   495	                            </dl>
+   496	
+   497	                            <p className="mt-3 whitespace-pre-line text-body text-ink-soft">
+   498	                                {asText(target.message) || '-'}
+   499	                            </p>
+   500	                        </div>
+   501	
+   502	                        {replyText !== '' && (
+   503	                            <div className="border-l-[3px] border-accent-500 bg-surface p-3">
+   504	                                <p className="text-badge uppercase text-slate-500">Balasan toko</p>
+   505	                                <p className="mt-1 whitespace-pre-line text-meta text-ink-soft">{replyText}</p>
+   506	                                <p className="mt-1 text-meta text-slate-500">
+   507	                                    {formatDateTime(target.replied_at)}
+   508	                                </p>
+   509	                            </div>
+   510	                        )}
+   511	
+   512	                        <Field
+   513	                            label="Balasan"
+   514	                            htmlFor="admin_reply"
+   515	                            required
+   516	                            hint="Maksimal 2000 karakter. Balasan dikirim ke email pengirim."
+   517	                            error={form.errors.admin_reply ?? null}
+   518	                        >
+   519	                            <Textarea
+   520	                                id="admin_reply"
+   521	                                name="admin_reply"
+   522	                                rows={5}
+   523	                                maxLength={2000}
+   524	                                value={form.data.admin_reply}
+   525	                                error={form.errors.admin_reply ?? null}
+   526	                                onChange={(event) => form.setData('admin_reply', event.target.value)}
+   527	                                placeholder="Tulis balasan untuk pengirim"
+   528	                            />
+   529	                        </Field>
+   530	                    </form>
+   531	                )}
+   532	            </Modal>
+   533	
+   534	            {toast && (
+   535	                <div className="pointer-events-none fixed bottom-4 right-4 z-toast flex w-full max-w-[360px]">
+   536	                    <Toast
+   537	                        tone={toast.tone}
+   538	                        title={toast.title}
+   539	                        message={toast.message}
+   540	                        onClose={() => setToast(null)}
+   541	                    />
+   542	                </div>
+   543	            )}
+   544	        </AdminLayout>
+   545	    );
+   546	}
+
+===== B. tailwind zIndex =====
+156:            zIndex: {
+157-                header: '40',
+158-                drawer: '50',
+159-                modal: '60',
+160-                toast: '70',
+161-            },
+162-            keyframes: {
+163-                'fade-up': {
+164-                    '0%': { opacity: '0', transform: 'translateY(8px)' },
+165-                    '100%': { opacity: '1', transform: 'translateY(0)' },
+166-                },
+167-                'drawer-in': {
+168-                    '0%': { transform: 'translateX(-100%)' },
+169-                    '100%': { transform: 'translateX(0)' },
+170-                },
+171-                'modal-in': {
+172-                    '0%': { opacity: '0', transform: 'scale(.96)' },
+173-                    '100%': { opacity: '1', transform: 'scale(1)' },
+174-                },
+175-            },
+176-            animation: {
+177-                'fade-up': 'fade-up 180ms ease-out',
+178-                'drawer-in': 'drawer-in 250ms ease-in-out',
+179-                'modal-in': 'modal-in 200ms cubic-bezier(.2,.8,.2,1)',
+180-                'pulse-slow': 'pulse 1.5s cubic-bezier(0.4,0,0.6,1) infinite',
+181-            },
+
+===== C. tailwind shadows/modal/badge util yang mungkin dipakai =====
+37:                accent: {
+110:            maxWidth: {
+114:                modal: '480px',
+115:                modalLg: '720px',
+147:                toast: '180ms',
+159:                modal: '60',
+160:                toast: '70',
+171:                'modal-in': {
+179:                'modal-in': 'modal-in 200ms cubic-bezier(.2,.8,.2,1)',
+
+===== D. Pages/Admin isi =====
+resources/js/Pages/Admin:
+Accounts
+Categories
+Dashboard.jsx
+Login.jsx
+Messages
+Orders
+Products
+Reviews
+Settings
+Stocks
+
+resources/js/Pages/Admin/Accounts:
+Index.jsx
+
+resources/js/Pages/Admin/Categories:
+Index.jsx
+
+resources/js/Pages/Admin/Messages:
+Index.jsx
+
+resources/js/Pages/Admin/Orders:
+Index.jsx
+
+resources/js/Pages/Admin/Products:
+Index.jsx
+
+resources/js/Pages/Admin/Reviews:
+Index.jsx
+
+resources/js/Pages/Admin/Settings:
+Index.jsx
+
+resources/js/Pages/Admin/Stocks:
+Index.jsx
+
+===== E. ekor docs/catatan-frontend.md =====
+### Verifikasi (bukti mentah: `docs/bukti-frontend-t_acd5fc8e.txt`)
+- `npm run build` → exit 0 (20-10-2026 15:11). Sweep `tmp/cek-komponen-tanpa-import.py` (80 berkas; hanya `app.jsx: App`, false positive parameter `setup`) dan `tmp/cek-bundel-identifier-bebas.py` (49 chunk) → bersih.
+- Harness render statis fixture: `node tmp/verify-auth-render.bundle.mjs` → **42/42 lulus** (kontrak §6 + design §5.5 termasuk panel brand, maks 3 bullet, skip link).
+- Harness render statis **settings asli** server (`tmp/verify-auth-real.bundle.mjs`) → **21/21 lulus**: nama toko, tagline, 3 bullet pertama dari `trust_strip` nyata, item ke-4 tidak tampil, `settings` null → nama bawaan, `trust_strip` kosong → tanpa bullet, tidak ada `NaN`/`undefined`.
+- Browser CDP (server dev pemilik, stub tidak dipakai): 4 rute × 3 viewport (360/768/1280) → h1 render, `overflow=0`, **0 galat console**; kirim form tiap rute (payload kosong/palsu) → pesan validasi server tampil (`role="alert"`), 0 galat console.
+- Panel brand di halaman hidup: 1280px menampilkan nama toko, tagline, dan 3 bullet dari data server (`bullet_terlihat=True`); 768/360px bullet disembunyikan dengan panel header 160px — sesuai §5.5.
+- Smoke HTTP `bash tmp/smoke-auth-http.sh` → `docs/bukti-smoke-auth-http.txt`; `php artisan test tests/Feature/Auth tests/Feature/Contract` dengan `PHP_INI_SCAN_DIR` scratch → exit 0.
+- Belum diuji: pembaca layar nyata, zoom 200%, dan perilaku 429/rate-limit pada form login (framework menampilkan modal galat bawaan; §5.5 tidak mengaturnya — aturan "pesan tunggu" ada di §5.9 admin).
+
+### Catatan koordinasi
+- Pukul 15:06 sebuah `npm run build` bersamaan (kartu `t_5a330224`) sempat menghapus `public/build/manifest.json` selama beberapa detik sehingga satu putaran smoke menampilkan `ViteManifestNotFoundException` di semua rute; setelah build selesai (15:06) semua rute normal kembali. Bukan cacat aplikasi, tetapi urutan build penutup sebaiknya dijalankan setelah kartu frontend ini `done`.
+
+## Kartu t_099c813c — CTA "Tambah produk" pada empty state grafik penjualan dashboard
+
+### Rencana ringkas
+- Berkas baru: tidak ada. Berkas diubah: `resources/js/Pages/Admin/Dashboard.jsx` (2 prop pada `ChartCard`), `docs/catatan-frontend.md` (known issue CTA dicabut) + berkas bukti baru.
+- Komponen dipakai ulang: `ChartCard` → `EmptyState` → `Button` (`href` → `<a class="btn-secondary">`, design §4.0/§406). Tidak ada komponen, kartu, atau microcopy baru di luar instruksi kartu.
+- State UI: empty grafik (judul `Belum ada penjualan` + CTA), loading (skeleton, tanpa CTA), ada data (grafik, tanpa CTA), error halaman (`ErrorState` + "Coba lagi", perilaku lama tidak berubah).
+
+### Validasi tiga arah
+- PRD/brief vs desain: design §5.11 mensyaratkan empty dashboard `"Belum ada penjualan" + CTA tambah produk`; §406 `EmptyState` menyediakan slot aksi. Terpenuhi lewat prop `emptyActionLabel`/`emptyActionHref` yang sudah ada di `ChartCard` — tidak ada fitur atau teks di luar kartu.
+- Desain vs kontrak: rute tujuan `GET /admin/produk/tambah` → `admin.products.create` (`routes/admin.php:97`, terverifikasi `php artisan route:list --path=admin/produk/tambah`). URL ditulis literal (`/admin/produk/tambah`), tanpa Ziggy/`route()`. Label CTA persis dari design: `Tambah produk`.
+- Kelayakan teknis: `ChartCard` sudah menerima `emptyActionLabel`/`emptyActionHref` dan meneruskannya ke `EmptyState`, jadi cukup 2 baris di halaman; verifikasi memakai harness esbuild + `react-dom/server` (`tmp/verify-dashboard-cta.mjs`) mengikuti pola kartu admin sebelumnya.
+
+### Verifikasi (bukti mentah: `docs/bukti-frontend-t_099c813c.txt`)
+- `npm run build` → exit 0 (20-10-2026 15:24, 714 modul, `assets/Dashboard-Bke4Do0V.js` 11,61 kB).
+- Harness render statis `node tmp/build-dashboard-cta-check.mjs && node tmp/verify-dashboard-cta.bundle.mjs` → **45/45 lulus, 0 gagal**: CTA muncul tepat 1× dan menunjuk `/admin/produk/tambah` pada 3 bentuk data kosong (`sales_14d=[]`, 14 hari bernilai 0, nilai `"0"` berupa string), TIDAK muncul saat ada data maupun saat loading, tanpa `NaN`/`undefined`/teks placeholder, dan empty state blok lain (stok kritis, pesanan, ulasan) tidak ikut berubah.
+- Sweep `tmp/cek-komponen-tanpa-import.py .` (80 berkas; hanya `app.jsx: App`, false positive parameter `setup`) dan `tmp/cek-bundel-identifier-bebas.py public/build/assets public/build` (49 chunk) → bersih.
+- Rute + HTTP smoke: `curl` `GET /admin/produk/tambah` dan `GET /admin/produk` → `302 Found` (diarahkan ke login admin karena tidak ada sesi), bukan `404`; server pemilik tetap utuh, tidak ada kredensial admin yang dipakai.
+- Belum diuji: klik CTA di browser sungguhan setelah login admin (butuh sesi pemilik) dan tampilan visual/responsif nyata; aksesibilitas keyboard + zoom 200% belum diverifikasi manual.
+
+### Temuan lanjutan (di luar lingkup kartu)
+- ~~`Dashboard.jsx` tidak meneruskan prop `error` halaman ke `ChartCard`~~ **SELESAI** (kartu `t_8bca0661`, 20-10-2026 15:32): `resources/js/Pages/Admin/Dashboard.jsx` kini meneruskan `error={error}` dan `onRetry={reload}` ke `ChartCard`; blok grafik menampilkan `ErrorState` ("Gagal memuat grafik" + "Coba lagi"), bukan empty state + CTA. Koreksi catatan lama: yang tampil saat galat hanyalah `ErrorState` ringkasan halaman (seksi KPI justru disembunyikan), sedangkan blok grafik tetap empty state + CTA. Bukti `docs/bukti-frontend-t_8bca0661.txt` + kontrol negatif `docs/bukti-kontrol-negatif-t_8bca0661.txt`.
+
+## Kartu t_8bca0661 — error per blok: `ChartCard` dashboard menerima `error`/`onRetry`
+
+### Rencana ringkas
+- Berkas baru: tidak ada. Berkas diubah: `resources/js/Pages/Admin/Dashboard.jsx` (2 prop baru pada `<ChartCard>`: `error={error}`, `onRetry={reload}`), `tmp/verify-dashboard-cta.mjs` (assert state error per blok), `docs/catatan-frontend.md` + dua berkas bukti.
+- Komponen dipakai ulang: `ChartCard` sudah punya cabang `error`/`onRetry` (`ChartCard.jsx:37-38,136-143`) yang meneruskan ke `ErrorState` (`Gagal memuat grafik` + tombol "Coba lagi" memakai `onRetry`); tidak ada komponen, teks, rute, atau blok baru.
+- State UI disentuh: hanya state `error` blok grafik. Empty/loading/ada-data/empty blok lain tidak diubah (dijaga oleh assert regresi di harness).
+
+### Validasi tiga arah
+- PRD/brief vs desain: design §5.11 mensyaratkan state dashboard `error` **per blok** ("satu blok gagal tidak menjatuhkan halaman"); sebelumnya galat halaman menyamar sebagai data kosong di blok grafik → bentrok. Diperbaiki hanya lewat prop yang sudah ada; microcopy galat (`Gagal memuat grafik`, `Coba lagi`) berasal dari `ChartCard`/`ErrorState`, bukan teks baru.
+- Desain vs kontrak: prop halaman `error` (string|null) dan `loading` sudah jadi asumsi kontrak yang tercatat di `docs/catatan-frontend.md` (K13, props dashboard); `reload` = `router.reload()` (Inertia, tanpa rute/endpoint baru). `docs/kontrak-props.md` §6.13 masih hanya memuat `stats` (DRAFT) — dashboard belum menerima props lanjutan dari controller; harness bekerja terhadap bentuk kontrak yang diasumsikan, bukan integrasi server.
+- Kelayakan teknis: tanpa perubahan resolver, layout, atau dependensi; `ChartCard` sudah menangani `error`/`onRetry`, jadi 2 baris di halaman cukup. Diuji ulang lewat harness esbuild + `react-dom/server` yang sudah ada (tanpa paket baru).
+
+### Verifikasi (bukti mentah: `docs/bukti-frontend-t_8bca0661.txt`)
+- Harness `node tmp/build-dashboard-cta-check.mjs && node tmp/verify-dashboard-cta.bundle.mjs` → **exit 0, 54/54 lulus, 0 gagal** (sebelumnya 45/45). Assert baru memeriksa blok grafik terisolasi: menampilkan `Gagal memuat grafik` + pesan galat apa adanya + "Coba lagi"; "Coba lagi" tampil **2×** (ringkasan halaman + blok grafik, membuktikan `onRetry` sampai); judul empty `Belum ada penjualan` TIDAK tampil, CTA `Tambah produk` 0×, grafik tidak digambar, tidak ada tautan sisa di blok grafik.
+- **Kontrol negatif** (`docs/bukti-kontrol-negatif-t_8bca0661.txt`): dengan dua baris itu dilepas sementara, harness **exit 1, 47/54 lulus, 7 gagal** — persis gejala kartu (blok grafik = empty state + CTA saat galat). Jadi assert baru benar-benar menangkap regresi.
+- Regresi state lain tetap terjaga: empty grafik (3 bentuk data kosong) tetap punya CTA `Tambah produk` → `/admin/produk/tambah`; ada data tetap menggambar grafik; loading tetap skeleton; empty state blok lain (stok kritis, pesanan, ulasan) dan tombol "Muat ulang" tidak berubah; tanpa `NaN`/`undefined`/teks placeholder.
+- `npm run build` → exit 0 (20-10-2026 15:32, 714 modul, `assets/Dashboard-0VyyIrCJ.js` 11,63 kB).
+- Sweep `tmp/cek-komponen-tanpa-import.py .` (80 berkas; hanya `app.jsx: App`, false positive parameter `setup`) dan `tmp/cek-bundel-identifier-bebas.py public/build/assets public/build` (49 chunk) → bersih (exit 0).
+- Belum diuji: **klik nyata di browser belum diuji, butuh browser** — server/kredensial milik pemilik, agent tidak menyalakan server. Yang belum tercakup: tampilan visual blok grafik pada state galat (tinggi/komposisi `ErrorState` di dalam kartu), responsif 360/768/1024/1280, keyboard/tab ke "Coba lagi", zoom 200%, kontras.
+  Instruksi aman untuk pemilik: dengan sesi admin aktif, buka `http://127.0.0.1:8000/admin`; bila props `error` terisi (mis. putuskan koneksi saat `router.reload()`), blok "Penjualan 14 hari" harus menampilkan "Gagal memuat grafik" + tombol "Coba lagi", bukan "Belum ada penjualan" + "Tambah produk".
+
+### Temuan lanjutan (di luar lingkup kartu ini)
+- Tiga blok dashboard lain (`Stok kritis`, `Pesanan terbaru`, `Ulasan terbaru`) masih menampilkan empty state masing-masing saat prop `error` halaman terisi — kelas bug yang sama dengan kartu ini, tetapi kartu ini melarang mengubah blok lain. Terbukti di markup harness (blok grafik sudah galat, tiga blok itu tetap "Stok aman"/"Belum ada pesanan"/"Belum ada ulasan"). Kartu lanjutan dibuat: **`t_950a38ca`** (frontenddeveloper, gated oleh kartu ini).
+- `docs/kontrak-props.md` §6.13 masih hanya memuat `stats`; props `sales_14d`, `low_stock`, `recent_orders`, `recent_reviews`, `updated_at`, `loading`, `error` belum ditulis backend (status DRAFT). Tidak ada fetch di klien, halaman memakai nilai bawaan aman — tetap tercatat sebagai ketidakcocokan kontrak untuk Tech Lead.
+- **Status commit (R8 "satu kartu satu commit"):** kartu ini belum membuat commit. Seluruh modul admin (`resources/js/Pages/**`) belum pernah masuk git — `git status --short` menunjukkan 172 untracked + 31 modified dari banyak kartu sekaligus, dan `git cat-file -e HEAD:resources/js/Pages/Admin/Dashboard.jsx` → tidak ada di HEAD. File `Dashboard.jsx` adalah berkas bersama (isi utamanya hasil kartu K11/K13 dan `t_099c813c`), jadi commit sebagian akan melanggar R8. Diputuskan tidak commit dan dicatat untuk keputusan Tech Lead: commit per kartu atau satu commit konsolidasi modul admin.
+
+  686 39171 tmp/pola-messages-t_e5149746.txt

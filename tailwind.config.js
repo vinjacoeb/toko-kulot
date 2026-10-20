@@ -53,6 +53,12 @@ export default {
                 success: '#16A34A',
                 warning: '#D97706',
                 danger: '#DC2626',
+                // §2.1 varian teks gelap (tangga palette 800) — aturan tone badge §4.21
+                // dan aturan kontras teks state §2.1 (kartu t_8cd61512). Hanya untuk TEKS < 24px;
+                // token dasar tetap dipakai untuk ikon/garis/latar tint.
+                'success-strong': '#166534',
+                'warning-strong': '#92400E',
+                'danger-strong': '#991B1B',
             },
             // §2.2 Tipografi — fluid, nilai mobile (360px) → desktop (1300px)
             fontFamily: {

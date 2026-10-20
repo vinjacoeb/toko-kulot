@@ -1,0 +1,539 @@
+== Bukti frontend — kartu t_950a38ca ==
+Tiga blok dashboard admin (Stok kritis, Pesanan terbaru, Ulasan terbaru) meneruskan
+state galat halaman + onRetry ke ErrorState, jadi galat tidak lagi menyamar sebagai
+data kosong (design §5.11 'error per blok'; design §442 judul baku 'Gagal memuat data').
+Waktu: 2026-10-20 15:44:27 SEAST
+Berkas diubah: resources/js/Pages/Admin/Dashboard.jsx, tmp/verify-dashboard-cta.mjs,
+               tmp/kontrol-negatif-t_950a38ca.py, tmp/bukti-t_950a38ca.sh, docs/catatan-frontend.md
+sha256 resources/js/Pages/Admin/Dashboard.jsx: b6edd0374dc1b483f89e93886063924e6754fd8b5b7edb7cf28627c16cea6c69
+
+== 1. Perubahan pada Dashboard.jsx (tiga blok, tanpa komponen/teks/rute baru) ==
+$ sed -n "177,190p;218,229p;231,243p" resources/js/Pages/Admin/Dashboard.jsx
+                    <section
+                        aria-label="Stok kritis"
+                        className="flex flex-col gap-4 rounded-lg border border-line bg-white p-6"
+                    >
+                        <h2 className="text-label font-semibold text-ink">Stok kritis</h2>
+
+                        {error ? (
+                            <ErrorState
+                                description={typeof error === 'string' ? error : 'Periksa koneksi Anda lalu coba lagi.'}
+                                onRetry={reload}
+                                supportHref={null}
+                                className="py-6"
+                            />
+                        ) : stockRows.length === 0 ? (
+                <section aria-label="Pesanan terbaru" className="flex flex-col gap-3">
+                    <h2 className="text-label font-semibold text-ink">Pesanan terbaru</h2>
+                    <DataTable
+                        columns={orderColumns}
+                        rows={orderRows}
+                        loading={loading}
+                        error={error}
+                        onRetry={reload}
+                        emptyTitle="Belum ada pesanan"
+                        emptyDescription="Pesanan masuk akan tampil di sini."
+                    />
+                </section>
+                <section aria-label="Ulasan terbaru" className="flex flex-col gap-3">
+                    <h2 className="text-label font-semibold text-ink">Ulasan terbaru</h2>
+
+                    {error ? (
+                        <div className="rounded-lg border border-line bg-white">
+                            <ErrorState
+                                description={typeof error === 'string' ? error : 'Periksa koneksi Anda lalu coba lagi.'}
+                                onRetry={reload}
+                                supportHref={null}
+                                className="py-8"
+                            />
+                        </div>
+                    ) : reviewRows.length === 0 ? (
+
+== 2. Komponen yang dipakai ulang (sudah ada, tidak diubah) ==
+$ grep -n "error = null\|onRetry\|Gagal memuat data\|Gagal memuat grafik" resources/js/Components/ErrorState.jsx resources/js/Components/DataTable.jsx resources/js/Components/ChartCard.jsx
+resources/js/Components/ErrorState.jsx:11:    title = 'Gagal memuat data',
+resources/js/Components/ErrorState.jsx:13:    onRetry = null,
+resources/js/Components/ErrorState.jsx:30:                {onRetry && (
+resources/js/Components/ErrorState.jsx:31:                    <Button variant="primary" onClick={onRetry}>
+resources/js/Components/DataTable.jsx:17:    error = null,
+resources/js/Components/DataTable.jsx:22:    onRetry = null,
+resources/js/Components/DataTable.jsx:44:                    title="Gagal memuat data"
+resources/js/Components/DataTable.jsx:46:                    onRetry={onRetry}
+resources/js/Components/ChartCard.jsx:37:    error = null,
+resources/js/Components/ChartCard.jsx:38:    onRetry = null,
+resources/js/Components/ChartCard.jsx:138:                    title="Gagal memuat grafik"
+resources/js/Components/ChartCard.jsx:140:                    onRetry={onRetry}
+
+== 3. Harness render statis (assert baru untuk tiga blok) ==
+$ node tmp/build-dashboard-cta-check.mjs && node tmp/verify-dashboard-cta.bundle.mjs
+bundel harness siap: tmp/verify-dashboard-cta.bundle.mjs
+Harness Dashboard admin — CTA empty state grafik penjualan (t_099c813c)
+Design §5.11: empty = "Belum ada penjualan" + CTA tambah produk.
+
+1. State empty grafik
+
+   (a) sales_14d = []
+  ok   judul empty "Belum ada penjualan" tampil
+  ok   CTA "Tambah produk" muncul tepat 1 kali di grafik
+  ok   CTA menunjuk /admin/produk/tambah
+  ok   CTA memakai tombol variant secondary (design §406 EmptyState)
+  ok   lihat juga pemeriksaan anchor (atribut href mentah)
+  ok   grafik tidak digambar saat tidak ada data
+  ok   empty (a): tidak ada NaN di markup
+  ok   empty (a): tidak ada undefined di markup
+  ok   empty (a): tidak ada teks placeholder
+
+   (b) sales_14d = 14 hari semua total 0
+  ok   judul empty "Belum ada penjualan" tampil
+  ok   CTA "Tambah produk" muncul tepat 1 kali
+  ok   CTA menunjuk /admin/produk/tambah
+  ok   grafik tidak digambar saat semua nol
+  ok   empty (b): tidak ada NaN di markup
+  ok   empty (b): tidak ada undefined di markup
+  ok   empty (b): tidak ada teks placeholder
+
+   (c) sales_14d = 14 hari total "0" (string dari server)
+  ok   judul empty "Belum ada penjualan" tampil
+  ok   CTA "Tambah produk" muncul tepat 1 kali
+  ok   empty (c): tidak ada NaN di markup
+  ok   empty (c): tidak ada undefined di markup
+  ok   empty (c): tidak ada teks placeholder
+
+2. State ada data (CTA tidak boleh tampil)
+
+   sales_14d = 14 hari dengan penjualan
+  ok   judul empty tidak tampil saat ada data
+  ok   CTA "Tambah produk" TIDAK tampil saat ada data
+  ok   grafik digambar saat ada data
+  ok   label ringkasan sumbu tampil
+  ok   ada data: tidak ada NaN di markup
+  ok   ada data: tidak ada undefined di markup
+  ok   ada data: tidak ada teks placeholder
+
+3. State loading (skeleton, belum ada CTA)
+
+   loading = true
+  ok   CTA "Tambah produk" TIDAK tampil saat loading
+  ok   judul empty tidak tampil saat loading
+  ok   loading: tidak ada NaN di markup
+  ok   loading: tidak ada undefined di markup
+  ok   loading: tidak ada teks placeholder
+
+4. State error halaman — error per blok (design §5.11, kartu t_8bca0661 + t_950a38ca)
+
+   error = "koneksi gagal"
+  ok   galat tampil sebagai ErrorState di dalam layout
+  ok   pesan galat dari server ditampilkan apa adanya
+  ok   blok grafik dapat diisolasi dari markup untuk diperiksa
+  ok   blok grafik menampilkan galat sendiri, bukan empty state
+  ok   pesan galat halaman tampil juga di blok grafik
+  ok   blok grafik punya aksi "Coba lagi" (onRetry diteruskan)
+  ok   "Coba lagi" tampil 5 kali: ringkasan halaman + 4 blok (grafik, stok kritis, pesanan, ulasan)
+  ok   kelima aksi "Coba lagi" dirender sebagai tombol (bukan tautan)
+  ok   tidak ada "Coba lagi" berbentuk tautan tanpa aksi
+  ok   tiga blok (stok kritis, pesanan terbaru, ulasan terbaru) memakai judul galat baku "Gagal memuat data" (design §442)
+  ok   judul empty "Belum ada penjualan" TIDAK tampil saat galat
+  ok   CTA "Tambah produk" TIDAK tampil saat galat (galat bukan data kosong)
+  ok   grafik tidak digambar saat galat
+  ok   blok grafik pada state galat tidak menyisakan tautan CTA/empty
+  ok   tidak ada grafik kosong yang menyesatkan di blok grafik
+  ok   error: tidak ada NaN di markup
+  ok   error: tidak ada undefined di markup
+  ok   error: tidak ada teks placeholder
+
+4b. Tiga blok lain pada state galat (kartu t_950a38ca)
+
+   error = "koneksi gagal" (blok diisolasi satu per satu)
+  ok   blok "Stok kritis" dapat diisolasi dari markup
+  ok   blok "Stok kritis" merender ErrorState (role="alert")
+  ok   blok "Stok kritis" menampilkan judul galat baku, bukan empty state
+  ok   pesan galat halaman tampil di blok "Stok kritis"
+  ok   blok "Stok kritis" punya aksi "Coba lagi" (onRetry diteruskan)
+  ok   empty state "Stok aman" TIDAK tampil di blok "Stok kritis" saat galat
+  ok   blok "Stok kritis" tidak menggambar daftar/tabel data saat galat
+  ok   blok "Stok kritis" tidak menyisakan tautan (termasuk CTA empty state)
+  ok   blok "Pesanan terbaru (DataTable)" dapat diisolasi dari markup
+  ok   blok "Pesanan terbaru (DataTable)" merender ErrorState (role="alert")
+  ok   blok "Pesanan terbaru (DataTable)" menampilkan judul galat baku, bukan empty state
+  ok   pesan galat halaman tampil di blok "Pesanan terbaru (DataTable)"
+  ok   blok "Pesanan terbaru (DataTable)" punya aksi "Coba lagi" (onRetry diteruskan)
+  ok   empty state "Belum ada pesanan" TIDAK tampil di blok "Pesanan terbaru (DataTable)" saat galat
+  ok   blok "Pesanan terbaru (DataTable)" tidak menggambar daftar/tabel data saat galat
+  ok   blok "Pesanan terbaru (DataTable)" tidak menyisakan tautan (termasuk CTA empty state)
+  ok   blok "Ulasan terbaru" dapat diisolasi dari markup
+  ok   blok "Ulasan terbaru" merender ErrorState (role="alert")
+  ok   blok "Ulasan terbaru" menampilkan judul galat baku, bukan empty state
+  ok   pesan galat halaman tampil di blok "Ulasan terbaru"
+  ok   blok "Ulasan terbaru" punya aksi "Coba lagi" (onRetry diteruskan)
+  ok   empty state "Belum ada ulasan" TIDAK tampil di blok "Ulasan terbaru" saat galat
+  ok   blok "Ulasan terbaru" tidak menggambar daftar/tabel data saat galat
+  ok   blok "Ulasan terbaru" tidak menyisakan tautan (termasuk CTA empty state)
+   cuplikan blok stok kritis    : Stok kritis" class="flex flex-col gap-4 rounded-lg border border-line bg-white p-6"> Stok kritis Gagal memuat data koneksi gagal Coba lagi <section aria-label="
+   cuplikan blok pesanan        : Pesanan terbaru" class="flex flex-col gap-3"> Pesanan terbaru Gagal memuat data koneksi gagal Coba lagi <section aria-label="
+   cuplikan blok ulasan         : Ulasan terbaru" class="flex flex-col gap-3"> Ulasan terbaru Gagal memuat data koneksi gagal Coba lagi
+
+5. Interaksi tombol lain tidak ikut berubah
+
+   empty state lain (stok/pesanan/ulasan)
+  ok   empty state "Stok aman" (stok kritis) tetap ada
+  ok   empty state "Belum ada pesanan" tetap ada
+  ok   empty state "Belum ada ulasan" tetap ada
+  ok   aksi "Muat ulang" di PageHeader tetap ada
+  ok   aksi "Muat ulang" tetap tombol, bukan tautan
+  ok   label "Tambah produk" hanya muncul sekali di halaman
+
+HASIL: 81/81 lulus, 0 gagal
+harness_exit=0
+
+== 4. Kontrol negatif (tiga blok dikembalikan sementara ke empty state) ==
+$ cat docs/bukti-kontrol-negatif-t_950a38ca.txt
+== Kontrol negatif — kartu t_950a38ca ==
+Tiga blok dashboard dikembalikan SEMENTARA ke empty state saat prop error terisi
+(perilaku yang dilaporkan kartu). Harness harus GAGAL; sesudah itu berkas dipulihkan.
+Waktu: 2026-10-20 15:44:21 SEAST
+
+sha256 Dashboard.jsx sebelum perubahan : b6edd0374dc1b483f89e93886063924e6754fd8b5b7edb7cf28627c16cea6c69
+mtime Dashboard.jsx sebelum perubahan  : 2026-10-20 15:42:00.579333100 +0700
+salinan pemulihan                      : /tmp/dashboard-t950-kontrol-negatif.bak
+
+== 1. Pasang kontrol negatif (tmp/kontrol-negatif-t_950a38ca.py) ==
+$ python tmp/kontrol-negatif-t_950a38ca.py
+kontrol negatif terpasang: tiga blok kembali ke empty state saat prop error terisi
+revert_exit=0
+sha256 saat kontrol negatif terpasang  : 294480b3d8c9c09a5382d99468b5f04cb8bb30b53721727428ae4eddcfeeee8e
+
+== 2. Harness dibangun ulang dari sumber yang direvert lalu dijalankan ==
+$ node tmp/build-dashboard-cta-check.mjs && node tmp/verify-dashboard-cta.bundle.mjs
+bundel harness siap: tmp/verify-dashboard-cta.bundle.mjs
+Harness Dashboard admin — CTA empty state grafik penjualan (t_099c813c)
+Design §5.11: empty = "Belum ada penjualan" + CTA tambah produk.
+
+1. State empty grafik
+
+   (a) sales_14d = []
+  ok   judul empty "Belum ada penjualan" tampil
+  ok   CTA "Tambah produk" muncul tepat 1 kali di grafik
+  ok   CTA menunjuk /admin/produk/tambah
+  ok   CTA memakai tombol variant secondary (design §406 EmptyState)
+  ok   lihat juga pemeriksaan anchor (atribut href mentah)
+  ok   grafik tidak digambar saat tidak ada data
+  ok   empty (a): tidak ada NaN di markup
+  ok   empty (a): tidak ada undefined di markup
+  ok   empty (a): tidak ada teks placeholder
+
+   (b) sales_14d = 14 hari semua total 0
+  ok   judul empty "Belum ada penjualan" tampil
+  ok   CTA "Tambah produk" muncul tepat 1 kali
+  ok   CTA menunjuk /admin/produk/tambah
+  ok   grafik tidak digambar saat semua nol
+  ok   empty (b): tidak ada NaN di markup
+  ok   empty (b): tidak ada undefined di markup
+  ok   empty (b): tidak ada teks placeholder
+
+   (c) sales_14d = 14 hari total "0" (string dari server)
+  ok   judul empty "Belum ada penjualan" tampil
+  ok   CTA "Tambah produk" muncul tepat 1 kali
+  ok   empty (c): tidak ada NaN di markup
+  ok   empty (c): tidak ada undefined di markup
+  ok   empty (c): tidak ada teks placeholder
+
+2. State ada data (CTA tidak boleh tampil)
+
+   sales_14d = 14 hari dengan penjualan
+  ok   judul empty tidak tampil saat ada data
+  ok   CTA "Tambah produk" TIDAK tampil saat ada data
+  ok   grafik digambar saat ada data
+  ok   label ringkasan sumbu tampil
+  ok   ada data: tidak ada NaN di markup
+  ok   ada data: tidak ada undefined di markup
+  ok   ada data: tidak ada teks placeholder
+
+3. State loading (skeleton, belum ada CTA)
+
+   loading = true
+  ok   CTA "Tambah produk" TIDAK tampil saat loading
+  ok   judul empty tidak tampil saat loading
+  ok   loading: tidak ada NaN di markup
+  ok   loading: tidak ada undefined di markup
+  ok   loading: tidak ada teks placeholder
+
+4. State error halaman — error per blok (design §5.11, kartu t_8bca0661 + t_950a38ca)
+
+   error = "koneksi gagal"
+  ok   galat tampil sebagai ErrorState di dalam layout
+  ok   pesan galat dari server ditampilkan apa adanya
+  ok   blok grafik dapat diisolasi dari markup untuk diperiksa
+  ok   blok grafik menampilkan galat sendiri, bukan empty state
+  ok   pesan galat halaman tampil juga di blok grafik
+  ok   blok grafik punya aksi "Coba lagi" (onRetry diteruskan)
+  FAIL "Coba lagi" tampil 5 kali: ringkasan halaman + 4 blok (grafik, stok kritis, pesanan, ulasan) -> dapat 2
+  FAIL kelima aksi "Coba lagi" dirender sebagai tombol (bukan tautan) -> dapat 2
+  ok   tidak ada "Coba lagi" berbentuk tautan tanpa aksi
+  FAIL tiga blok (stok kritis, pesanan terbaru, ulasan terbaru) memakai judul galat baku "Gagal memuat data" (design §442) -> dapat 0
+  ok   judul empty "Belum ada penjualan" TIDAK tampil saat galat
+  ok   CTA "Tambah produk" TIDAK tampil saat galat (galat bukan data kosong)
+  ok   grafik tidak digambar saat galat
+  ok   blok grafik pada state galat tidak menyisakan tautan CTA/empty
+  ok   tidak ada grafik kosong yang menyesatkan di blok grafik
+  ok   error: tidak ada NaN di markup
+  ok   error: tidak ada undefined di markup
+  ok   error: tidak ada teks placeholder
+
+4b. Tiga blok lain pada state galat (kartu t_950a38ca)
+
+   error = "koneksi gagal" (blok diisolasi satu per satu)
+  ok   blok "Stok kritis" dapat diisolasi dari markup
+  FAIL blok "Stok kritis" merender ErrorState (role="alert") -> Stok kritis" class="flex flex-col gap-4 rounded-lg border border-line bg-white p-6"> Stok kritis Stok aman Tidak ada varian dengan stok menipis. <section aria-label="
+  FAIL blok "Stok kritis" menampilkan judul galat baku, bukan empty state -> Stok kritis" class="flex flex-col gap-4 rounded-lg border border-line bg-white p-6"> Stok kritis Stok aman Tidak ada varian dengan stok menipis. <section aria-label="
+  FAIL pesan galat halaman tampil di blok "Stok kritis"
+  FAIL blok "Stok kritis" punya aksi "Coba lagi" (onRetry diteruskan) -> Stok kritis" class="flex flex-col gap-4 rounded-lg border border-line bg-white p-6"> Stok kritis Stok aman Tidak ada varian dengan stok menipis. <section aria-label="
+  FAIL empty state "Stok aman" TIDAK tampil di blok "Stok kritis" saat galat -> Stok kritis" class="flex flex-col gap-4 rounded-lg border border-line bg-white p-6"> Stok kritis Stok aman Tidak ada varian dengan stok menipis. <section aria-label="
+  ok   blok "Stok kritis" tidak menggambar daftar/tabel data saat galat
+  ok   blok "Stok kritis" tidak menyisakan tautan (termasuk CTA empty state)
+  ok   blok "Pesanan terbaru (DataTable)" dapat diisolasi dari markup
+  FAIL blok "Pesanan terbaru (DataTable)" merender ErrorState (role="alert") -> Pesanan terbaru" class="flex flex-col gap-3"> Pesanan terbaru Belum ada pesanan Pesanan masuk akan tampil di sini. <section aria-label="
+  FAIL blok "Pesanan terbaru (DataTable)" menampilkan judul galat baku, bukan empty state -> Pesanan terbaru" class="flex flex-col gap-3"> Pesanan terbaru Belum ada pesanan Pesanan masuk akan tampil di sini. <section aria-label="
+  FAIL pesan galat halaman tampil di blok "Pesanan terbaru (DataTable)"
+  FAIL blok "Pesanan terbaru (DataTable)" punya aksi "Coba lagi" (onRetry diteruskan) -> Pesanan terbaru" class="flex flex-col gap-3"> Pesanan terbaru Belum ada pesanan Pesanan masuk akan tampil di sini. <section aria-label="
+  FAIL empty state "Belum ada pesanan" TIDAK tampil di blok "Pesanan terbaru (DataTable)" saat galat -> Pesanan terbaru" class="flex flex-col gap-3"> Pesanan terbaru Belum ada pesanan Pesanan masuk akan tampil di sini. <section aria-label="
+  ok   blok "Pesanan terbaru (DataTable)" tidak menggambar daftar/tabel data saat galat
+  ok   blok "Pesanan terbaru (DataTable)" tidak menyisakan tautan (termasuk CTA empty state)
+  ok   blok "Ulasan terbaru" dapat diisolasi dari markup
+  FAIL blok "Ulasan terbaru" merender ErrorState (role="alert") -> Ulasan terbaru" class="flex flex-col gap-3"> Ulasan terbaru Belum ada ulasan Ulasan pembeli tampil setelah pesanan selesai.
+  FAIL blok "Ulasan terbaru" menampilkan judul galat baku, bukan empty state -> Ulasan terbaru" class="flex flex-col gap-3"> Ulasan terbaru Belum ada ulasan Ulasan pembeli tampil setelah pesanan selesai.
+  FAIL pesan galat halaman tampil di blok "Ulasan terbaru"
+  FAIL blok "Ulasan terbaru" punya aksi "Coba lagi" (onRetry diteruskan) -> Ulasan terbaru" class="flex flex-col gap-3"> Ulasan terbaru Belum ada ulasan Ulasan pembeli tampil setelah pesanan selesai.
+  FAIL empty state "Belum ada ulasan" TIDAK tampil di blok "Ulasan terbaru" saat galat -> Ulasan terbaru" class="flex flex-col gap-3"> Ulasan terbaru Belum ada ulasan Ulasan pembeli tampil setelah pesanan selesai.
+  ok   blok "Ulasan terbaru" tidak menggambar daftar/tabel data saat galat
+  ok   blok "Ulasan terbaru" tidak menyisakan tautan (termasuk CTA empty state)
+   cuplikan blok stok kritis    : Stok kritis" class="flex flex-col gap-4 rounded-lg border border-line bg-white p-6"> Stok kritis Stok aman Tidak ada varian dengan stok menipis. <section aria-label="
+   cuplikan blok pesanan        : Pesanan terbaru" class="flex flex-col gap-3"> Pesanan terbaru Belum ada pesanan Pesanan masuk akan tampil di sini. <section aria-label="
+   cuplikan blok ulasan         : Ulasan terbaru" class="flex flex-col gap-3"> Ulasan terbaru Belum ada ulasan Ulasan pembeli tampil setelah pesanan selesai.
+
+5. Interaksi tombol lain tidak ikut berubah
+
+   empty state lain (stok/pesanan/ulasan)
+  ok   empty state "Stok aman" (stok kritis) tetap ada
+  ok   empty state "Belum ada pesanan" tetap ada
+  ok   empty state "Belum ada ulasan" tetap ada
+  ok   aksi "Muat ulang" di PageHeader tetap ada
+  ok   aksi "Muat ulang" tetap tombol, bukan tautan
+  ok   label "Tambah produk" hanya muncul sekali di halaman
+
+HASIL: 63/81 lulus, 18 gagal
+harness_exit=1
+
+== 3. Pulihkan Dashboard.jsx dari salinan ==
+$ cp "$BAK" resources/js/Pages/Admin/Dashboard.jsx
+sha256 sesudah pemulihan               : b6edd0374dc1b483f89e93886063924e6754fd8b5b7edb7cf28627c16cea6c69
+PEMULIHAN OK: hash identik, tidak ada pekerjaan agent lain yang hilang.
+
+== 4. Harness dibangun ulang dari sumber pulih (kontrol positif) ==
+$ node tmp/build-dashboard-cta-check.mjs && node tmp/verify-dashboard-cta.bundle.mjs
+bundel harness siap: tmp/verify-dashboard-cta.bundle.mjs
+Harness Dashboard admin — CTA empty state grafik penjualan (t_099c813c)
+Design §5.11: empty = "Belum ada penjualan" + CTA tambah produk.
+
+1. State empty grafik
+
+   (a) sales_14d = []
+  ok   judul empty "Belum ada penjualan" tampil
+  ok   CTA "Tambah produk" muncul tepat 1 kali di grafik
+  ok   CTA menunjuk /admin/produk/tambah
+  ok   CTA memakai tombol variant secondary (design §406 EmptyState)
+  ok   lihat juga pemeriksaan anchor (atribut href mentah)
+  ok   grafik tidak digambar saat tidak ada data
+  ok   empty (a): tidak ada NaN di markup
+  ok   empty (a): tidak ada undefined di markup
+  ok   empty (a): tidak ada teks placeholder
+
+   (b) sales_14d = 14 hari semua total 0
+  ok   judul empty "Belum ada penjualan" tampil
+  ok   CTA "Tambah produk" muncul tepat 1 kali
+  ok   CTA menunjuk /admin/produk/tambah
+  ok   grafik tidak digambar saat semua nol
+  ok   empty (b): tidak ada NaN di markup
+  ok   empty (b): tidak ada undefined di markup
+  ok   empty (b): tidak ada teks placeholder
+
+   (c) sales_14d = 14 hari total "0" (string dari server)
+  ok   judul empty "Belum ada penjualan" tampil
+  ok   CTA "Tambah produk" muncul tepat 1 kali
+  ok   empty (c): tidak ada NaN di markup
+  ok   empty (c): tidak ada undefined di markup
+  ok   empty (c): tidak ada teks placeholder
+
+2. State ada data (CTA tidak boleh tampil)
+
+   sales_14d = 14 hari dengan penjualan
+  ok   judul empty tidak tampil saat ada data
+  ok   CTA "Tambah produk" TIDAK tampil saat ada data
+  ok   grafik digambar saat ada data
+  ok   label ringkasan sumbu tampil
+  ok   ada data: tidak ada NaN di markup
+  ok   ada data: tidak ada undefined di markup
+  ok   ada data: tidak ada teks placeholder
+
+3. State loading (skeleton, belum ada CTA)
+
+   loading = true
+  ok   CTA "Tambah produk" TIDAK tampil saat loading
+  ok   judul empty tidak tampil saat loading
+  ok   loading: tidak ada NaN di markup
+  ok   loading: tidak ada undefined di markup
+  ok   loading: tidak ada teks placeholder
+
+4. State error halaman — error per blok (design §5.11, kartu t_8bca0661 + t_950a38ca)
+
+   error = "koneksi gagal"
+  ok   galat tampil sebagai ErrorState di dalam layout
+  ok   pesan galat dari server ditampilkan apa adanya
+  ok   blok grafik dapat diisolasi dari markup untuk diperiksa
+  ok   blok grafik menampilkan galat sendiri, bukan empty state
+  ok   pesan galat halaman tampil juga di blok grafik
+  ok   blok grafik punya aksi "Coba lagi" (onRetry diteruskan)
+  ok   "Coba lagi" tampil 5 kali: ringkasan halaman + 4 blok (grafik, stok kritis, pesanan, ulasan)
+  ok   kelima aksi "Coba lagi" dirender sebagai tombol (bukan tautan)
+  ok   tidak ada "Coba lagi" berbentuk tautan tanpa aksi
+  ok   tiga blok (stok kritis, pesanan terbaru, ulasan terbaru) memakai judul galat baku "Gagal memuat data" (design §442)
+  ok   judul empty "Belum ada penjualan" TIDAK tampil saat galat
+  ok   CTA "Tambah produk" TIDAK tampil saat galat (galat bukan data kosong)
+  ok   grafik tidak digambar saat galat
+  ok   blok grafik pada state galat tidak menyisakan tautan CTA/empty
+  ok   tidak ada grafik kosong yang menyesatkan di blok grafik
+  ok   error: tidak ada NaN di markup
+  ok   error: tidak ada undefined di markup
+  ok   error: tidak ada teks placeholder
+
+4b. Tiga blok lain pada state galat (kartu t_950a38ca)
+
+   error = "koneksi gagal" (blok diisolasi satu per satu)
+  ok   blok "Stok kritis" dapat diisolasi dari markup
+  ok   blok "Stok kritis" merender ErrorState (role="alert")
+  ok   blok "Stok kritis" menampilkan judul galat baku, bukan empty state
+  ok   pesan galat halaman tampil di blok "Stok kritis"
+  ok   blok "Stok kritis" punya aksi "Coba lagi" (onRetry diteruskan)
+  ok   empty state "Stok aman" TIDAK tampil di blok "Stok kritis" saat galat
+  ok   blok "Stok kritis" tidak menggambar daftar/tabel data saat galat
+  ok   blok "Stok kritis" tidak menyisakan tautan (termasuk CTA empty state)
+  ok   blok "Pesanan terbaru (DataTable)" dapat diisolasi dari markup
+  ok   blok "Pesanan terbaru (DataTable)" merender ErrorState (role="alert")
+  ok   blok "Pesanan terbaru (DataTable)" menampilkan judul galat baku, bukan empty state
+  ok   pesan galat halaman tampil di blok "Pesanan terbaru (DataTable)"
+  ok   blok "Pesanan terbaru (DataTable)" punya aksi "Coba lagi" (onRetry diteruskan)
+  ok   empty state "Belum ada pesanan" TIDAK tampil di blok "Pesanan terbaru (DataTable)" saat galat
+  ok   blok "Pesanan terbaru (DataTable)" tidak menggambar daftar/tabel data saat galat
+  ok   blok "Pesanan terbaru (DataTable)" tidak menyisakan tautan (termasuk CTA empty state)
+  ok   blok "Ulasan terbaru" dapat diisolasi dari markup
+  ok   blok "Ulasan terbaru" merender ErrorState (role="alert")
+  ok   blok "Ulasan terbaru" menampilkan judul galat baku, bukan empty state
+  ok   pesan galat halaman tampil di blok "Ulasan terbaru"
+  ok   blok "Ulasan terbaru" punya aksi "Coba lagi" (onRetry diteruskan)
+  ok   empty state "Belum ada ulasan" TIDAK tampil di blok "Ulasan terbaru" saat galat
+  ok   blok "Ulasan terbaru" tidak menggambar daftar/tabel data saat galat
+  ok   blok "Ulasan terbaru" tidak menyisakan tautan (termasuk CTA empty state)
+   cuplikan blok stok kritis    : Stok kritis" class="flex flex-col gap-4 rounded-lg border border-line bg-white p-6"> Stok kritis Gagal memuat data koneksi gagal Coba lagi <section aria-label="
+   cuplikan blok pesanan        : Pesanan terbaru" class="flex flex-col gap-3"> Pesanan terbaru Gagal memuat data koneksi gagal Coba lagi <section aria-label="
+   cuplikan blok ulasan         : Ulasan terbaru" class="flex flex-col gap-3"> Ulasan terbaru Gagal memuat data koneksi gagal Coba lagi
+
+5. Interaksi tombol lain tidak ikut berubah
+
+   empty state lain (stok/pesanan/ulasan)
+  ok   empty state "Stok aman" (stok kritis) tetap ada
+  ok   empty state "Belum ada pesanan" tetap ada
+  ok   empty state "Belum ada ulasan" tetap ada
+  ok   aksi "Muat ulang" di PageHeader tetap ada
+  ok   aksi "Muat ulang" tetap tombol, bukan tautan
+  ok   label "Tambah produk" hanya muncul sekali di halaman
+
+HASIL: 81/81 lulus, 0 gagal
+harness_exit=0
+
+== 5. Build produksi ==
+$ npm run build
+
+> build
+> vite build
+
+[36mvite v6.4.4 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 714 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mpublic/build/[22m[32mmanifest.json                       [39m[1m[2m 18.36 kB[22m[1m[22m[2m │ gzip:   1.84 kB[22m
+[2mpublic/build/[22m[35massets/app-McaDlWlw.css             [39m[1m[2m 57.34 kB[22m[1m[22m[2m │ gzip:  10.21 kB[22m
+[2mpublic/build/[22m[36massets/Skeleton-M6R9uTIz.js         [39m[1m[2m  0.40 kB[22m[1m[22m[2m │ gzip:   0.31 kB[22m
+[2mpublic/build/[22m[36massets/Spinner-CYT4hZDZ.js          [39m[1m[2m  0.55 kB[22m[1m[22m[2m │ gzip:   0.38 kB[22m
+[2mpublic/build/[22m[36massets/Input-DG79RCQs.js            [39m[1m[2m  0.57 kB[22m[1m[22m[2m │ gzip:   0.39 kB[22m
+[2mpublic/build/[22m[36massets/Textarea-CvyPTkRI.js         [39m[1m[2m  0.60 kB[22m[1m[22m[2m │ gzip:   0.41 kB[22m
+[2mpublic/build/[22m[36massets/IconButton-BSaigr6c.js       [39m[1m[2m  0.65 kB[22m[1m[22m[2m │ gzip:   0.41 kB[22m
+[2mpublic/build/[22m[36massets/Field-B_-CTsKJ.js            [39m[1m[2m  0.66 kB[22m[1m[22m[2m │ gzip:   0.39 kB[22m
+[2mpublic/build/[22m[36massets/Index-xT9GEYTU.js            [39m[1m[2m  0.69 kB[22m[1m[22m[2m │ gzip:   0.40 kB[22m
+[2mpublic/build/[22m[36massets/EmptyState-BxGaqn3v.js       [39m[1m[2m  0.72 kB[22m[1m[22m[2m │ gzip:   0.41 kB[22m
+[2mpublic/build/[22m[36massets/Index-ByhyANT_.js            [39m[1m[2m  0.75 kB[22m[1m[22m[2m │ gzip:   0.44 kB[22m
+[2mpublic/build/[22m[36massets/Index-z1HtrSIR.js            [39m[1m[2m  0.75 kB[22m[1m[22m[2m │ gzip:   0.42 kB[22m
+[2mpublic/build/[22m[36massets/Index-6C5NburA.js            [39m[1m[2m  0.76 kB[22m[1m[22m[2m │ gzip:   0.44 kB[22m
+[2mpublic/build/[22m[36massets/Index-Ci-lKpAu.js            [39m[1m[2m  0.82 kB[22m[1m[22m[2m │ gzip:   0.45 kB[22m
+[2mpublic/build/[22m[36massets/ErrorState-BIDG2pOx.js       [39m[1m[2m  0.85 kB[22m[1m[22m[2m │ gzip:   0.48 kB[22m
+[2mpublic/build/[22m[36massets/StatusBadge-BOrrFSCK.js      [39m[1m[2m  0.88 kB[22m[1m[22m[2m │ gzip:   0.49 kB[22m
+[2mpublic/build/[22m[36massets/VariantChip-DFvzs0ak.js      [39m[1m[2m  0.89 kB[22m[1m[22m[2m │ gzip:   0.54 kB[22m
+[2mpublic/build/[22m[36massets/Select-KkRZXpUj.js           [39m[1m[2m  0.95 kB[22m[1m[22m[2m │ gzip:   0.58 kB[22m
+[2mpublic/build/[22m[36massets/Accordion-CfBTx_A9.js        [39m[1m[2m  1.04 kB[22m[1m[22m[2m │ gzip:   0.58 kB[22m
+[2mpublic/build/[22m[36massets/Breadcrumb-BXNuIUBX.js       [39m[1m[2m  1.05 kB[22m[1m[22m[2m │ gzip:   0.49 kB[22m
+[2mpublic/build/[22m[36massets/InlineNotice-BlDgnawZ.js     [39m[1m[2m  1.14 kB[22m[1m[22m[2m │ gzip:   0.60 kB[22m
+[2mpublic/build/[22m[36massets/ForgotPassword-B2Mi4DU7.js   [39m[1m[2m  1.39 kB[22m[1m[22m[2m │ gzip:   0.70 kB[22m
+[2mpublic/build/[22m[36massets/OrderSummary-CYvCTCD6.js     [39m[1m[2m  1.47 kB[22m[1m[22m[2m │ gzip:   0.62 kB[22m
+[2mpublic/build/[22m[36massets/RatingSummary-DeGnk3Sh.js    [39m[1m[2m  1.61 kB[22m[1m[22m[2m │ gzip:   0.75 kB[22m
+[2mpublic/build/[22m[36massets/StarRating-D5X1Vk-f.js       [39m[1m[2m  1.73 kB[22m[1m[22m[2m │ gzip:   0.92 kB[22m
+[2mpublic/build/[22m[36massets/QtyStepper-Bb1K-aGd.js       [39m[1m[2m  1.83 kB[22m[1m[22m[2m │ gzip:   0.83 kB[22m
+[2mpublic/build/[22m[36massets/Login-BOxA01F-.js            [39m[1m[2m  1.98 kB[22m[1m[22m[2m │ gzip:   0.87 kB[22m
+[2mpublic/build/[22m[36massets/ResetPassword-BY9zl1nl.js    [39m[1m[2m  1.99 kB[22m[1m[22m[2m │ gzip:   0.82 kB[22m
+[2mpublic/build/[22m[36massets/hooks-FHSRoBPS.js            [39m[1m[2m  2.17 kB[22m[1m[22m[2m │ gzip:   0.82 kB[22m
+[2mpublic/build/[22m[36massets/AuthLayout-Cbh8pl1A.js       [39m[1m[2m  2.37 kB[22m[1m[22m[2m │ gzip:   1.02 kB[22m
+[2mpublic/build/[22m[36massets/Login-DjtlAUuM.js            [39m[1m[2m  2.79 kB[22m[1m[22m[2m │ gzip:   1.19 kB[22m
+[2mpublic/build/[22m[36massets/Toast-Bk2opJOx.js            [39m[1m[2m  2.81 kB[22m[1m[22m[2m │ gzip:   1.22 kB[22m
+[2mpublic/build/[22m[36massets/Register-6z-FfTXr.js         [39m[1m[2m  2.89 kB[22m[1m[22m[2m │ gzip:   1.07 kB[22m
+[2mpublic/build/[22m[36massets/Pagination-M1hZQWjO.js       [39m[1m[2m  3.42 kB[22m[1m[22m[2m │ gzip:   1.46 kB[22m
+[2mpublic/build/[22m[36massets/ProductGrid-DwVnhjEP.js      [39m[1m[2m  4.94 kB[22m[1m[22m[2m │ gzip:   2.07 kB[22m
+[2mpublic/build/[22m[36massets/Contact-CQgl2GR9.js          [39m[1m[2m  5.76 kB[22m[1m[22m[2m │ gzip:   2.10 kB[22m
+[2mpublic/build/[22m[36massets/Cart-CikeJE2k.js             [39m[1m[2m  6.01 kB[22m[1m[22m[2m │ gzip:   2.39 kB[22m
+[2mpublic/build/[22m[36massets/Checkout-DHgu_dS0.js         [39m[1m[2m  7.70 kB[22m[1m[22m[2m │ gzip:   2.60 kB[22m
+[2mpublic/build/[22m[36massets/CheckoutSuccess-D3s-EQlb.js  [39m[1m[2m  8.05 kB[22m[1m[22m[2m │ gzip:   2.69 kB[22m
+[2mpublic/build/[22m[36massets/DataTable-z6r1HASG.js        [39m[1m[2m  8.74 kB[22m[1m[22m[2m │ gzip:   2.96 kB[22m
+[2mpublic/build/[22m[36massets/PublicLayout-rMBI2QmU.js     [39m[1m[2m  9.33 kB[22m[1m[22m[2m │ gzip:   3.16 kB[22m
+[2mpublic/build/[22m[36massets/Button-BzdxW5mW.js           [39m[1m[2m  9.43 kB[22m[1m[22m[2m │ gzip:   3.09 kB[22m
+[2mpublic/build/[22m[36massets/Index-DQ7KvwIN.js            [39m[1m[2m  9.64 kB[22m[1m[22m[2m │ gzip:   3.47 kB[22m
+[2mpublic/build/[22m[36massets/Index-CYGUsjYK.js            [39m[1m[2m  9.70 kB[22m[1m[22m[2m │ gzip:   3.56 kB[22m
+[2mpublic/build/[22m[36massets/Index-BOv0dJRh.js            [39m[1m[2m 11.78 kB[22m[1m[22m[2m │ gzip:   4.10 kB[22m
+[2mpublic/build/[22m[36massets/Dashboard-BFxrpHhh.js        [39m[1m[2m 12.01 kB[22m[1m[22m[2m │ gzip:   4.22 kB[22m
+[2mpublic/build/[22m[36massets/Home-_xY-fpQh.js             [39m[1m[2m 13.44 kB[22m[1m[22m[2m │ gzip:   4.35 kB[22m
+[2mpublic/build/[22m[36massets/Show-kBTVCcWA.js             [39m[1m[2m 13.97 kB[22m[1m[22m[2m │ gzip:   4.80 kB[22m
+[2mpublic/build/[22m[36massets/CheckoutPay-aC3ygYr4.js      [39m[1m[2m 16.94 kB[22m[1m[22m[2m │ gzip:   6.28 kB[22m
+[2mpublic/build/[22m[36massets/Index--cpV00JG.js            [39m[1m[2m 49.73 kB[22m[1m[22m[2m │ gzip:  11.76 kB[22m
+[2mpublic/build/[22m[36massets/app-BQJW9H3n.js              [39m[1m[2m361.78 kB[22m[1m[22m[2m │ gzip: 113.40 kB[22m
+[32m✓ built in 4.24s[39m
+npm_exit=0
+
+== 6. Sweep komponen tanpa import + identifier bebas di bundel ==
+$ python tmp/cek-komponen-tanpa-import.py .
+file diperiksa: 81
+resources\js\app.jsx: App
+sweep1_exit=0
+$ python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build
+chunk .js diperiksa: 49
+OK: tidak ada identifier komponen JSX tanpa import/definisi di bundel.
+sweep2_exit=0
+
+== 7. Berkas yang berubah untuk kartu ini ==
+$ git status --short resources/js/Pages/Admin/Dashboard.jsx tmp/verify-dashboard-cta.mjs tmp/kontrol-negatif-t_950a38ca.py docs/catatan-frontend.md docs/bukti-frontend-t_950a38ca.txt docs/bukti-kontrol-negatif-t_950a38ca.txt
+ M docs/catatan-frontend.md
+?? docs/bukti-frontend-t_950a38ca.txt
+?? docs/bukti-kontrol-negatif-t_950a38ca.txt
+?? resources/js/Pages/Admin/Dashboard.jsx
+?? tmp/kontrol-negatif-t_950a38ca.py
+?? tmp/verify-dashboard-cta.mjs
+
+== 8. Catatan race: Dashboard.jsx juga disentuh kartu lain (kontras token t_90759be9) ==
+$ stat -c "%y %n" resources/js/Pages/Admin/Dashboard.jsx docs/bukti-frontend-t_90759be9.txt
+2026-10-20 15:44:21.617988200 +0700 resources/js/Pages/Admin/Dashboard.jsx
+2026-10-20 15:42:07.733818700 +0700 docs/bukti-frontend-t_90759be9.txt

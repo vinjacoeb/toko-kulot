@@ -1,0 +1,73 @@
+BUKTI VERIFIKASI DoD §15.1 — migrate:fresh --seed
+=================================================
+Tanggal     : 2026-10-20 14:00 (UTC+07:00)
+Mesin       : Windows 11 (Laragon), PHP 8.3.32, MySQL 8.0.30
+Tujuan      : membuktikan migrasi + seeder utuh dari nol pada MySQL 8 (bukan SQLite),
+              TANPA menyentuh database dev `toko-kulot` yang berisi data pemilik.
+
+Cara isolasi
+------------
+1. mysql -u root -e "CREATE DATABASE IF NOT EXISTS toko_kulot_rilis_check CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+2. DB_DATABASE=toko_kulot_rilis_check php artisan migrate:fresh --seed --no-interaction
+   (variabel lingkungan DB_DATABASE menimpa nilai .env untuk proses ini saja; file .env
+    tidak dibuka, diubah, maupun ditampilkan oleh DevOps.)
+3. Setelah bukti dikumpulkan: DROP DATABASE toko_kulot_rilis_check.
+
+Kredensial: akun MySQL lokal tanpa sandi (bawaan Laragon) dipakai hanya untuk membuat dan
+menghapus database uji di atas. Tidak ada rahasia yang ditulis atau dibaca dari .env.
+
+== migrate:status pada database uji terisolasi ==
+  21 migrasi "Ran", 0 "Pending" — daftar penuh ada di docs/bukti-migrate-status.txt
+  0001_01_01_000000_create_users_table .................. [1] Ran
+  0001_01_01_000001_create_cache_table .................. [1] Ran
+  0001_01_01_000002_create_jobs_table ................... [1] Ran
+  2026_10_20_000001_create_admins_table ................. [1] Ran
+  ... (15 baris lain, semua Ran)
+  2026_10_20_000018_add_compare_price_to_products_table . [1] Ran
+
+== jumlah baris setelah seeder (query baca-saja) ==
+  products 12 | product_variants 36 | product_images 24 | categories 3 | users 2
+  orders 3 | order_items 5 | reviews 2 | carts 1 | faqs 6 | carousels 3
+  settings 19 | admins 2 | contact_messages 3
+
+== keluaran migrate:fresh --seed (ekor keluaran, tabel dibuat dari nol) ==
+  2026_10_20_000016_create_carousels_table .............................................................. 82.37ms DONE
+  2026_10_20_000017_create_faqs_table ................................................................... 54.97ms DONE
+  2026_10_20_000018_add_compare_price_to_products_table ................................................ 101.28ms DONE
+
+
+   INFO  Seeding database.  
+
+  Database\Seeders\AdminSeeder ............................................................................... RUNNING  
+  Database\Seeders\AdminSeeder ......................................................................... 1,813 ms DONE  
+
+  Database\Seeders\UserSeeder ................................................................................ RUNNING  
+  Database\Seeders\UserSeeder .......................................................................... 1,929 ms DONE  
+
+  Database\Seeders\SettingSeeder ............................................................................. RUNNING  
+  Database\Seeders\SettingSeeder ......................................................................... 564 ms DONE  
+
+  Database\Seeders\CategorySeeder ............................................................................ RUNNING  
+  Database\Seeders\CategorySeeder ........................................................................ 413 ms DONE  
+
+  Database\Seeders\ProductSeeder ............................................................................. RUNNING  
+  Database\Seeders\ProductSeeder ....................................................................... 4,502 ms DONE  
+
+  Database\Seeders\CarouselSeeder ............................................................................ RUNNING  
+  Database\Seeders\CarouselSeeder ...................................................................... 1,032 ms DONE  
+
+  Database\Seeders\FaqSeeder ................................................................................. RUNNING  
+  Database\Seeders\FaqSeeder .............................................................................. 33 ms DONE  
+
+  Database\Seeders\OrderSeeder ............................................................................... RUNNING  
+  Database\Seeders\OrderSeeder ........................................................................... 227 ms DONE  
+
+  Database\Seeders\ReviewSeeder .............................................................................. RUNNING  
+  Database\Seeders\ReviewSeeder ........................................................................... 83 ms DONE  
+
+  Database\Seeders\CartSeeder ................................................................................ RUNNING  
+  Database\Seeders\CartSeeder ............................................................................. 49 ms DONE  
+
+  Database\Seeders\ContactMessageSeeder ...................................................................... RUNNING  
+  Database\Seeders\ContactMessageSeeder ................................................................... 27 ms DONE  
+

@@ -1,0 +1,323 @@
+BUKTI FRONTEND — kartu t_6ee422f2 (QA-007: item sidebar admin disabled)
+Tanggal: 2026-10-20 15:05:46 +0700
+Perubahan: resources/js/Layouts/AdminLayout.jsx (ADMIN_NAV + render item nav)
+
+== 1. python tmp/cek-nav-admin-vs-rute.py ==
+ADMIN_NAV: 9 item | rute GET terdaftar di routes/admin.php: 15
+key          href                   rute GET               status
+dashboard    /admin                 ada                    ok
+produk       /admin/produk          ada                    ok
+kategori     /admin/kategori        ada                    ok
+stok         /admin/stok            ada                    ok
+pesanan      /admin/pesanan         ada                    ok
+pesan        /admin/pesan-masuk     ada                    ok
+penilaian    /admin/penilaian       ada                    ok
+pengaturan   /admin/pengaturan      ada                    ok
+akun         /admin/akun            ada                    ok
+
+Rute GET admin di luar item nav (info, tidak dinilai):
+  - /admin/login
+
+LULUS: semua item ADMIN_NAV punya rute GET terdaftar.
+exit=0
+
+== 2. node tmp/build-admin-nav-check.mjs ==
+bundel harness siap: tmp/verify-admin-nav.bundle.mjs
+
+== 3. node tmp/verify-admin-nav.bundle.mjs ==
+1. ADMIN_NAV (sumber tunggal nav admin)
+  ok   jumlah item nav = 9
+  ok   item dashboard ada
+  ok   item dashboard -> /admin
+  ok   item dashboard tidak disabled
+  ok   item dashboard punya ikon
+  ok   item produk ada
+  ok   item produk -> /admin/produk
+  ok   item produk tidak disabled
+  ok   item produk punya ikon
+  ok   item kategori ada
+  ok   item kategori -> /admin/kategori
+  ok   item kategori tidak disabled
+  ok   item kategori punya ikon
+  ok   item stok ada
+  ok   item stok -> /admin/stok
+  ok   item stok tidak disabled
+  ok   item stok punya ikon
+  ok   item pesanan ada
+  ok   item pesanan -> /admin/pesanan
+  ok   item pesanan tidak disabled
+  ok   item pesanan punya ikon
+  ok   item pesan ada
+  ok   item pesan -> /admin/pesan-masuk
+  ok   item pesan tidak disabled
+  ok   item pesan punya ikon
+  ok   item penilaian ada
+  ok   item penilaian -> /admin/penilaian
+  ok   item penilaian tidak disabled
+  ok   item penilaian punya ikon
+  ok   item pengaturan ada
+  ok   item pengaturan -> /admin/pengaturan
+  ok   item pengaturan tidak disabled
+  ok   item pengaturan punya ikon
+  ok   item akun ada
+  ok   item akun -> /admin/akun
+  ok   item akun tidak disabled
+  ok   item akun punya ikon
+2. Render per halaman (design §5.10)
+  ok   /admin: 9 tautan nav dirender
+  ok   /admin: tanpa item aria-disabled
+  ok   /admin: tanpa href kosong
+  ok   /admin: semua 9 tautan modul ada
+  ok   /admin: tepat satu item tersorot
+  ok   /admin: penyorotan di /admin
+  ok   /admin: penyorot pakai border-accent-500
+  ok   /admin: penyorot pakai bg-white/10
+  ok   /admin: penyorot teks putih
+  ok   /admin: item lain border-transparent (tanpa geser tata letak)
+  ok   /admin/: 9 tautan nav dirender
+  ok   /admin/: tanpa item aria-disabled
+  ok   /admin/: tanpa href kosong
+  ok   /admin/: semua 9 tautan modul ada
+  ok   /admin/: tepat satu item tersorot
+  ok   /admin/: penyorotan di /admin
+  ok   /admin/: penyorot pakai border-accent-500
+  ok   /admin/: penyorot pakai bg-white/10
+  ok   /admin/: penyorot teks putih
+  ok   /admin/: item lain border-transparent (tanpa geser tata letak)
+  ok   /admin/produk: 9 tautan nav dirender
+  ok   /admin/produk: tanpa item aria-disabled
+  ok   /admin/produk: tanpa href kosong
+  ok   /admin/produk: semua 9 tautan modul ada
+  ok   /admin/produk: tepat satu item tersorot
+  ok   /admin/produk: penyorotan di /admin/produk
+  ok   /admin/produk: penyorot pakai border-accent-500
+  ok   /admin/produk: penyorot pakai bg-white/10
+  ok   /admin/produk: penyorot teks putih
+  ok   /admin/produk: item lain border-transparent (tanpa geser tata letak)
+  ok   /admin/produk/tambah: 9 tautan nav dirender
+  ok   /admin/produk/tambah: tanpa item aria-disabled
+  ok   /admin/produk/tambah: tanpa href kosong
+  ok   /admin/produk/tambah: semua 9 tautan modul ada
+  ok   /admin/produk/tambah: tepat satu item tersorot
+  ok   /admin/produk/tambah: penyorotan di /admin/produk
+  ok   /admin/produk/tambah: penyorot pakai border-accent-500
+  ok   /admin/produk/tambah: penyorot pakai bg-white/10
+  ok   /admin/produk/tambah: penyorot teks putih
+  ok   /admin/produk/tambah: item lain border-transparent (tanpa geser tata letak)
+  ok   /admin/produk?page=2: 9 tautan nav dirender
+  ok   /admin/produk?page=2: tanpa item aria-disabled
+  ok   /admin/produk?page=2: tanpa href kosong
+  ok   /admin/produk?page=2: semua 9 tautan modul ada
+  ok   /admin/produk?page=2: tepat satu item tersorot
+  ok   /admin/produk?page=2: penyorotan di /admin/produk
+  ok   /admin/produk?page=2: penyorot pakai border-accent-500
+  ok   /admin/produk?page=2: penyorot pakai bg-white/10
+  ok   /admin/produk?page=2: penyorot teks putih
+  ok   /admin/produk?page=2: item lain border-transparent (tanpa geser tata letak)
+  ok   /admin/kategori: 9 tautan nav dirender
+  ok   /admin/kategori: tanpa item aria-disabled
+  ok   /admin/kategori: tanpa href kosong
+  ok   /admin/kategori: semua 9 tautan modul ada
+  ok   /admin/kategori: tepat satu item tersorot
+  ok   /admin/kategori: penyorotan di /admin/kategori
+  ok   /admin/kategori: penyorot pakai border-accent-500
+  ok   /admin/kategori: penyorot pakai bg-white/10
+  ok   /admin/kategori: penyorot teks putih
+  ok   /admin/kategori: item lain border-transparent (tanpa geser tata letak)
+  ok   /admin/stok: 9 tautan nav dirender
+  ok   /admin/stok: tanpa item aria-disabled
+  ok   /admin/stok: tanpa href kosong
+  ok   /admin/stok: semua 9 tautan modul ada
+  ok   /admin/stok: tepat satu item tersorot
+  ok   /admin/stok: penyorotan di /admin/stok
+  ok   /admin/stok: penyorot pakai border-accent-500
+  ok   /admin/stok: penyorot pakai bg-white/10
+  ok   /admin/stok: penyorot teks putih
+  ok   /admin/stok: item lain border-transparent (tanpa geser tata letak)
+  ok   /admin/stok/riwayat: 9 tautan nav dirender
+  ok   /admin/stok/riwayat: tanpa item aria-disabled
+  ok   /admin/stok/riwayat: tanpa href kosong
+  ok   /admin/stok/riwayat: semua 9 tautan modul ada
+  ok   /admin/stok/riwayat: tepat satu item tersorot
+  ok   /admin/stok/riwayat: penyorotan di /admin/stok
+  ok   /admin/stok/riwayat: penyorot pakai border-accent-500
+  ok   /admin/stok/riwayat: penyorot pakai bg-white/10
+  ok   /admin/stok/riwayat: penyorot teks putih
+  ok   /admin/stok/riwayat: item lain border-transparent (tanpa geser tata letak)
+  ok   /admin/pesanan: 9 tautan nav dirender
+  ok   /admin/pesanan: tanpa item aria-disabled
+  ok   /admin/pesanan: tanpa href kosong
+  ok   /admin/pesanan: semua 9 tautan modul ada
+  ok   /admin/pesanan: tepat satu item tersorot
+  ok   /admin/pesanan: penyorotan di /admin/pesanan
+  ok   /admin/pesanan: penyorot pakai border-accent-500
+  ok   /admin/pesanan: penyorot pakai bg-white/10
+  ok   /admin/pesanan: penyorot teks putih
+  ok   /admin/pesanan: item lain border-transparent (tanpa geser tata letak)
+  ok   /admin/pesanan/12: 9 tautan nav dirender
+  ok   /admin/pesanan/12: tanpa item aria-disabled
+  ok   /admin/pesanan/12: tanpa href kosong
+  ok   /admin/pesanan/12: semua 9 tautan modul ada
+  ok   /admin/pesanan/12: tepat satu item tersorot
+  ok   /admin/pesanan/12: penyorotan di /admin/pesanan
+  ok   /admin/pesanan/12: penyorot pakai border-accent-500
+  ok   /admin/pesanan/12: penyorot pakai bg-white/10
+  ok   /admin/pesanan/12: penyorot teks putih
+  ok   /admin/pesanan/12: item lain border-transparent (tanpa geser tata letak)
+  ok   /admin/pesan-masuk: 9 tautan nav dirender
+  ok   /admin/pesan-masuk: tanpa item aria-disabled
+  ok   /admin/pesan-masuk: tanpa href kosong
+  ok   /admin/pesan-masuk: semua 9 tautan modul ada
+  ok   /admin/pesan-masuk: tepat satu item tersorot
+  ok   /admin/pesan-masuk: penyorotan di /admin/pesan-masuk
+  ok   /admin/pesan-masuk: penyorot pakai border-accent-500
+  ok   /admin/pesan-masuk: penyorot pakai bg-white/10
+  ok   /admin/pesan-masuk: penyorot teks putih
+  ok   /admin/pesan-masuk: item lain border-transparent (tanpa geser tata letak)
+  ok   /admin/penilaian: 9 tautan nav dirender
+  ok   /admin/penilaian: tanpa item aria-disabled
+  ok   /admin/penilaian: tanpa href kosong
+  ok   /admin/penilaian: semua 9 tautan modul ada
+  ok   /admin/penilaian: tepat satu item tersorot
+  ok   /admin/penilaian: penyorotan di /admin/penilaian
+  ok   /admin/penilaian: penyorot pakai border-accent-500
+  ok   /admin/penilaian: penyorot pakai bg-white/10
+  ok   /admin/penilaian: penyorot teks putih
+  ok   /admin/penilaian: item lain border-transparent (tanpa geser tata letak)
+  ok   /admin/pengaturan: 9 tautan nav dirender
+  ok   /admin/pengaturan: tanpa item aria-disabled
+  ok   /admin/pengaturan: tanpa href kosong
+  ok   /admin/pengaturan: semua 9 tautan modul ada
+  ok   /admin/pengaturan: tepat satu item tersorot
+  ok   /admin/pengaturan: penyorotan di /admin/pengaturan
+  ok   /admin/pengaturan: penyorot pakai border-accent-500
+  ok   /admin/pengaturan: penyorot pakai bg-white/10
+  ok   /admin/pengaturan: penyorot teks putih
+  ok   /admin/pengaturan: item lain border-transparent (tanpa geser tata letak)
+  ok   /admin/akun: 9 tautan nav dirender
+  ok   /admin/akun: tanpa item aria-disabled
+  ok   /admin/akun: tanpa href kosong
+  ok   /admin/akun: semua 9 tautan modul ada
+  ok   /admin/akun: tepat satu item tersorot
+  ok   /admin/akun: penyorotan di /admin/akun
+  ok   /admin/akun: penyorot pakai border-accent-500
+  ok   /admin/akun: penyorot pakai bg-white/10
+  ok   /admin/akun: penyorot teks putih
+  ok   /admin/akun: item lain border-transparent (tanpa geser tata letak)
+3. Prop `nav` per halaman masih diterima
+  ok   nav kustom dari halaman tetap dirender
+  ok   nav kustom tanpa aria-disabled
+
+LULUS: 179/179 pemeriksaan lolos
+exit=0
+
+== 4. npm run build ==
+[2mpublic/build/[22m[36massets/ResetPassword-CONl8ob4.js    [39m[1m[2m  1.99 kB[22m[1m[22m[2m │ gzip:   0.82 kB[22m
+[2mpublic/build/[22m[36massets/hooks-Dhqq7os8.js            [39m[1m[2m  2.17 kB[22m[1m[22m[2m │ gzip:   0.81 kB[22m
+[2mpublic/build/[22m[36massets/AuthLayout-DhDpAmc3.js       [39m[1m[2m  2.37 kB[22m[1m[22m[2m │ gzip:   1.02 kB[22m
+[2mpublic/build/[22m[36massets/Login-CiJYum8W.js            [39m[1m[2m  2.79 kB[22m[1m[22m[2m │ gzip:   1.19 kB[22m
+[2mpublic/build/[22m[36massets/Toast-Cl3S-rqe.js            [39m[1m[2m  2.80 kB[22m[1m[22m[2m │ gzip:   1.21 kB[22m
+[2mpublic/build/[22m[36massets/Register-DNuhenLd.js         [39m[1m[2m  2.89 kB[22m[1m[22m[2m │ gzip:   1.06 kB[22m
+[2mpublic/build/[22m[36massets/Pagination-BAlTMNbH.js       [39m[1m[2m  3.42 kB[22m[1m[22m[2m │ gzip:   1.46 kB[22m
+[2mpublic/build/[22m[36massets/ProductGrid-CV-TB56O.js      [39m[1m[2m  4.94 kB[22m[1m[22m[2m │ gzip:   2.07 kB[22m
+[2mpublic/build/[22m[36massets/Contact-BwmYNtFH.js          [39m[1m[2m  5.76 kB[22m[1m[22m[2m │ gzip:   2.10 kB[22m
+[2mpublic/build/[22m[36massets/Cart-Ct0ohS1t.js             [39m[1m[2m  6.01 kB[22m[1m[22m[2m │ gzip:   2.39 kB[22m
+[2mpublic/build/[22m[36massets/Checkout-BWvEU5ug.js         [39m[1m[2m  7.70 kB[22m[1m[22m[2m │ gzip:   2.59 kB[22m
+[2mpublic/build/[22m[36massets/CheckoutSuccess-D0zvgbc7.js  [39m[1m[2m  8.04 kB[22m[1m[22m[2m │ gzip:   2.68 kB[22m
+[2mpublic/build/[22m[36massets/DataTable-BLLvgJwl.js        [39m[1m[2m  8.74 kB[22m[1m[22m[2m │ gzip:   2.96 kB[22m
+[2mpublic/build/[22m[36massets/PublicLayout-BtZTGZmm.js     [39m[1m[2m  9.33 kB[22m[1m[22m[2m │ gzip:   3.16 kB[22m
+[2mpublic/build/[22m[36massets/Button-Dsl0MhyY.js           [39m[1m[2m  9.43 kB[22m[1m[22m[2m │ gzip:   3.09 kB[22m
+[2mpublic/build/[22m[36massets/Index-DVeruWPi.js            [39m[1m[2m  9.63 kB[22m[1m[22m[2m │ gzip:   3.47 kB[22m
+[2mpublic/build/[22m[36massets/Index-DaqgQ7RB.js            [39m[1m[2m  9.69 kB[22m[1m[22m[2m │ gzip:   3.55 kB[22m
+[2mpublic/build/[22m[36massets/Dashboard-CQtGdnSB.js        [39m[1m[2m 11.54 kB[22m[1m[22m[2m │ gzip:   4.16 kB[22m
+[2mpublic/build/[22m[36massets/Index-BdxAIE86.js            [39m[1m[2m 11.78 kB[22m[1m[22m[2m │ gzip:   4.09 kB[22m
+[2mpublic/build/[22m[36massets/Home-Df-XWEsX.js             [39m[1m[2m 13.44 kB[22m[1m[22m[2m │ gzip:   4.35 kB[22m
+[2mpublic/build/[22m[36massets/Show-CpJJTOhz.js             [39m[1m[2m 13.93 kB[22m[1m[22m[2m │ gzip:   4.79 kB[22m
+[2mpublic/build/[22m[36massets/CheckoutPay-DSbg8Xf8.js      [39m[1m[2m 16.92 kB[22m[1m[22m[2m │ gzip:   6.27 kB[22m
+[2mpublic/build/[22m[36massets/Index-Dblkkbwb.js            [39m[1m[2m 49.73 kB[22m[1m[22m[2m │ gzip:  11.76 kB[22m
+[2mpublic/build/[22m[36massets/app-BoWNegkJ.js              [39m[1m[2m361.78 kB[22m[1m[22m[2m │ gzip: 113.39 kB[22m
+[32m✓ built in 13.97s[39m
+exit=0
+
+== 5. python tmp/cek-komponen-tanpa-import.py ==
+file diperiksa: 80
+resources\js\app.jsx: App
+exit=0
+
+== 6. python tmp/cek-bundel-identifier-bebas.py ==
+chunk .js diperiksa: 49
+OK: tidak ada identifier komponen JSX tanpa import/definisi di bundel.
+exit=0
+
+== 7. HTTP ke server pemilik (read-only, guest) ==
+302 /admin
+302 /admin/produk
+302 /admin/kategori
+302 /admin/stok
+302 /admin/pesanan
+302 /admin/pesan-masuk
+302 /admin/penilaian
+302 /admin/pengaturan
+302 /admin/akun
+Location: http://127.0.0.1:8000/admin/login   (contoh /admin/produk)
+=> tidak ada 404: seluruh item sidebar menunjuk rute yang hidup.
+
+== 8. Bundel hasil build ==
+grep -rl "h-11 items-center gap-3 rounded-md border-l-\[3px\]" public/build/assets
+=> public/build/assets/DataTable-BLLvgJwl.js   (chunk yang memuat AdminLayout)
+aria-disabled di public/build/assets: 1 berkas -> VariantChip (stok habis), bukan item nav admin.
+== 9. Audit url admin vs rute (metode diperhitungkan) ==
+Catatan alat: versi pertama audit salah (penanda dinamis "*" dianggap kuantifier regex
+dan metode HTTP diabaikan) sehingga 4 url dinamis aksi tampak "tanpa rute" - itu temuan
+palsu alat, bukan bug halaman. Versi sekarang mengubah penanda dinamis menjadi satu
+segmen path dan mencocokkan metode: href= -> GET, router.<m>( / form.<m>( -> metode m.
+Versi final (yang dipakai sebagai bukti):
+$ python tmp/cek-tautan-admin-vs-rute.py
+url '/admin...' diperiksa: 31 | rute admin terdaftar: 41
+
+url dinamis (${...}) dan rute yang cocok:
+  - resources/js/Pages/Admin/Messages/Index.jsx:227 [PATCH via router.patch] /admin/pesan-masuk/${row.id}/baca -> PATCH /admin/pesan-masuk/{message}/baca
+  - resources/js/Pages/Admin/Messages/Index.jsx:250 [POST via form.post] /admin/pesan-masuk/${target.id}/balas -> POST /admin/pesan-masuk/{message}/balas
+  - resources/js/Pages/Admin/Reviews/Index.jsx:192 [POST via form.post] /admin/penilaian/${target.id}/balas -> POST /admin/penilaian/{review}/balas
+  - resources/js/Pages/Admin/Reviews/Index.jsx:206 [PATCH via router.patch] /admin/penilaian/${row.id}/tampil -> PATCH /admin/penilaian/{review}/tampil
+
+konteks tidak dikenal (info, tidak dinilai):
+  (tidak ada)
+
+url tanpa rute pada metode yang benar:
+  - resources/js/Pages/Admin/Accounts/Index.jsx:18 [GET via href] /admin/akun/tambah
+  - resources/js/Pages/Admin/Categories/Index.jsx:17 [GET via href] /admin/kategori/tambah
+
+GAGAL: ada url admin yang menunjuk rute tidak terdaftar untuk metodenya.
+exit=1
+=> Dua tautan mati di luar lingkup kartu ini (halaman placeholder Kategori & Akun):
+   kartu lanjutan t_e5149746. Sidebar admin sendiri bersih (lihat bagian 1-2).
+
+== 10. CTA 'Tambah produk' pada empty state dashboard (design §5.11) ==
+$ grep -c 'Tambah produk' resources/js/Pages/Admin/Dashboard.jsx
+0
+$ grep -n 'emptyTitle="Belum ada penjualan"' -A 2 resources/js/Pages/Admin/Dashboard.jsx
+168:                        emptyTitle="Belum ada penjualan"
+169-                        emptyDescription="Grafik muncul setelah ada pesanan yang dibayar."
+170-                        className="lg:col-span-2"
+=> design §5.11: state empty dashboard = "Belum ada penjualan" + CTA tambah produk; CTA belum ada (kartu lanjutan t_099c813c).
+$ rute tujuan: sed -n '97p' routes/admin.php
+    Route::get('/produk/tambah', [ProductController::class, 'create'])->name('products.create');
+
+== 11. Verifikasi ulang penutup (setelah alat audit diperbaiki) ==
+$ python tmp/cek-nav-admin-vs-rute.py
+  - /admin/login
+
+LULUS: semua item ADMIN_NAV punya rute GET terdaftar.
+exit=0
+
+$ node tmp/build-admin-nav-check.mjs && node tmp/verify-admin-nav.bundle.mjs | tail -2
+
+LULUS: 179/179 pemeriksaan lolos
+exit=0
+
+$ npm run build | tail -3
+[2mpublic/build/[22m[36massets/Index-C2XinKgN.js            [39m[1m[2m 49.73 kB[22m[1m[22m[2m │ gzip:  11.76 kB[22m
+[2mpublic/build/[22m[36massets/app-DYkdi1Ss.js              [39m[1m[2m361.78 kB[22m[1m[22m[2m │ gzip: 113.40 kB[22m
+[32m✓ built in 5.13s[39m
+exit=0

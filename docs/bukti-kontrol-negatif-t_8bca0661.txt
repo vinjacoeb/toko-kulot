@@ -1,0 +1,95 @@
+== Kontrol negatif — kartu t_8bca0661 (bukti assert baru benar-benar menangkap bug) ==
+Waktu: 2026-10-20 15:31 SEAST
+Cara: dua baris `error={error}` + `onRetry={reload}` pada `<ChartCard>` di
+`resources/js/Pages/Admin/Dashboard.jsx` DILEPAS sementara (kondisi bug lama),
+harness dijalankan, lalu dua baris itu dipasang kembali dan harness dijalankan lagi.
+
+Perintah: node tmp/build-dashboard-cta-check.mjs && node tmp/verify-dashboard-cta.bundle.mjs
+Keluar (bug lama): exit 1, 47/54 lulus, 7 gagal — blok grafik tampil sebagai
+"Belum ada penjualan" + CTA "Tambah produk" saat galat halaman.
+Keluar (setelah perbaikan): exit 0, 54/54 lulus.
+
+Keluaran lengkap saat bug lama (baris 4-5 adalah bagian state error):
+
+Harness Dashboard admin — CTA empty state grafik penjualan (t_099c813c)
+Design §5.11: empty = "Belum ada penjualan" + CTA tambah produk.
+
+1. State empty grafik
+
+   (a) sales_14d = []
+  ok   judul empty "Belum ada penjualan" tampil
+  ok   CTA "Tambah produk" muncul tepat 1 kali di grafik
+  ok   CTA menunjuk /admin/produk/tambah
+  ok   CTA memakai tombol variant secondary (design §406 EmptyState)
+  ok   lihat juga pemeriksaan anchor (atribut href mentah)
+  ok   grafik tidak digambar saat tidak ada data
+  ok   empty (a): tidak ada NaN di markup
+  ok   empty (a): tidak ada undefined di markup
+  ok   empty (a): tidak ada teks placeholder
+
+   (b) sales_14d = 14 hari semua total 0
+  ok   judul empty "Belum ada penjualan" tampil
+  ok   CTA "Tambah produk" muncul tepat 1 kali
+  ok   CTA menunjuk /admin/produk/tambah
+  ok   grafik tidak digambar saat semua nol
+  ok   empty (b): tidak ada NaN di markup
+  ok   empty (b): tidak ada undefined di markup
+  ok   empty (b): tidak ada teks placeholder
+
+   (c) sales_14d = 14 hari total "0" (string dari server)
+  ok   judul empty "Belum ada penjualan" tampil
+  ok   CTA "Tambah produk" muncul tepat 1 kali
+  ok   empty (c): tidak ada NaN di markup
+  ok   empty (c): tidak ada undefined di markup
+  ok   empty (c): tidak ada teks placeholder
+
+2. State ada data (CTA tidak boleh tampil)
+
+   sales_14d = 14 hari dengan penjualan
+  ok   judul empty tidak tampil saat ada data
+  ok   CTA "Tambah produk" TIDAK tampil saat ada data
+  ok   grafik digambar saat ada data
+  ok   label ringkasan sumbu tampil
+  ok   ada data: tidak ada NaN di markup
+  ok   ada data: tidak ada undefined di markup
+  ok   ada data: tidak ada teks placeholder
+
+3. State loading (skeleton, belum ada CTA)
+
+   loading = true
+  ok   CTA "Tambah produk" TIDAK tampil saat loading
+  ok   judul empty tidak tampil saat loading
+  ok   loading: tidak ada NaN di markup
+  ok   loading: tidak ada undefined di markup
+  ok   loading: tidak ada teks placeholder
+
+4. State error halaman — error per blok (design §5.11, kartu t_8bca0661)
+
+   error = "koneksi gagal"
+  ok   galat tampil sebagai ErrorState di dalam layout
+  ok   pesan galat dari server ditampilkan apa adanya
+  ok   blok grafik dapat diisolasi dari markup untuk diperiksa
+  FAIL blok grafik menampilkan galat sendiri, bukan empty state -> Penjualan 14 hari 14 hari terakhir Belum ada penjualan Grafik muncul setelah ada pesanan yang dibayar. Tambah produk <section aria-label="
+  FAIL pesan galat halaman tampil juga di blok grafik
+  FAIL blok grafik punya aksi "Coba lagi" (onRetry diteruskan) -> Penjualan 14 hari 14 hari terakhir Belum ada penjualan Grafik muncul setelah ada pesanan yang dibayar. Tambah produk <section aria-label="
+  FAIL "Coba lagi" tampil 2 kali: ringkasan halaman + blok grafik -> dapat 1
+  FAIL judul empty "Belum ada penjualan" TIDAK tampil saat galat -> Penjualan 14 hari 14 hari terakhir Belum ada penjualan Grafik muncul setelah ada pesanan yang dibayar. Tambah produk <section aria-label="
+  FAIL CTA "Tambah produk" TIDAK tampil saat galat (galat bukan data kosong) -> dapat 1
+  ok   grafik tidak digambar saat galat
+  FAIL blok grafik pada state galat tidak menyisakan tautan CTA/empty -> dapat 1
+  ok   tidak ada grafik kosong yang menyesatkan di blok grafik
+  ok   error: tidak ada NaN di markup
+  ok   error: tidak ada undefined di markup
+  ok   error: tidak ada teks placeholder
+
+5. Interaksi tombol lain tidak ikut berubah
+
+   empty state lain (stok/pesanan/ulasan)
+  ok   empty state "Stok aman" (stok kritis) tetap ada
+  ok   empty state "Belum ada pesanan" tetap ada
+  ok   empty state "Belum ada ulasan" tetap ada
+  ok   aksi "Muat ulang" di PageHeader tetap ada
+  ok   aksi "Muat ulang" tetap tombol, bukan tautan
+  ok   label "Tambah produk" hanya muncul sekali di halaman
+
+HASIL: 47/54 lulus, 7 gagal

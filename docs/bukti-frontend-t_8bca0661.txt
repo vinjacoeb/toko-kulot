@@ -1,0 +1,234 @@
+== Bukti frontend — kartu t_8bca0661 ==
+ChartCard dashboard menerima prop error/onRetry: blok grafik menampilkan galat + 'Coba lagi',
+bukan empty state 'Belum ada penjualan' + CTA 'Tambah produk' (design §5.11 'error per blok').
+Waktu: 2026-10-20 15:35:26 SEAST
+Berkas diubah: resources/js/Pages/Admin/Dashboard.jsx, tmp/verify-dashboard-cta.mjs, docs/catatan-frontend.md
+
+== 1. Perubahan pada Dashboard.jsx (blok ChartCard) ==
+$ sed -n "161,175p" resources/js/Pages/Admin/Dashboard.jsx
+                <div className="grid gap-4 lg:grid-cols-3">
+                    <ChartCard
+                        title="Penjualan 14 hari"
+                        range="14 hari terakhir"
+                        series={chartSeries}
+                        labels={chartLabels}
+                        loading={loading}
+                        error={error}
+                        onRetry={reload}
+                        emptyTitle="Belum ada penjualan"
+                        emptyDescription="Grafik muncul setelah ada pesanan yang dibayar."
+                        emptyActionLabel="Tambah produk"
+                        emptyActionHref="/admin/produk/tambah"
+                        className="lg:col-span-2"
+                    />
+
+== 2. ChartCard sudah punya cabang error/onRetry (dipakai, bukan komponen baru) ==
+$ grep -n "error = null\|onRetry\|Gagal memuat grafik" resources/js/Components/ChartCard.jsx
+37:    error = null,
+38:    onRetry = null,
+138:                    title="Gagal memuat grafik"
+140:                    onRetry={onRetry}
+
+== 3. Harness render statis (state error per blok) ==
+$ node tmp/build-dashboard-cta-check.mjs && node tmp/verify-dashboard-cta.bundle.mjs
+bundel harness siap: tmp/verify-dashboard-cta.bundle.mjs
+Harness Dashboard admin — CTA empty state grafik penjualan (t_099c813c)
+Design §5.11: empty = "Belum ada penjualan" + CTA tambah produk.
+
+1. State empty grafik
+
+   (a) sales_14d = []
+  ok   judul empty "Belum ada penjualan" tampil
+  ok   CTA "Tambah produk" muncul tepat 1 kali di grafik
+  ok   CTA menunjuk /admin/produk/tambah
+  ok   CTA memakai tombol variant secondary (design §406 EmptyState)
+  ok   lihat juga pemeriksaan anchor (atribut href mentah)
+  ok   grafik tidak digambar saat tidak ada data
+  ok   empty (a): tidak ada NaN di markup
+  ok   empty (a): tidak ada undefined di markup
+  ok   empty (a): tidak ada teks placeholder
+
+   (b) sales_14d = 14 hari semua total 0
+  ok   judul empty "Belum ada penjualan" tampil
+  ok   CTA "Tambah produk" muncul tepat 1 kali
+  ok   CTA menunjuk /admin/produk/tambah
+  ok   grafik tidak digambar saat semua nol
+  ok   empty (b): tidak ada NaN di markup
+  ok   empty (b): tidak ada undefined di markup
+  ok   empty (b): tidak ada teks placeholder
+
+   (c) sales_14d = 14 hari total "0" (string dari server)
+  ok   judul empty "Belum ada penjualan" tampil
+  ok   CTA "Tambah produk" muncul tepat 1 kali
+  ok   empty (c): tidak ada NaN di markup
+  ok   empty (c): tidak ada undefined di markup
+  ok   empty (c): tidak ada teks placeholder
+
+2. State ada data (CTA tidak boleh tampil)
+
+   sales_14d = 14 hari dengan penjualan
+  ok   judul empty tidak tampil saat ada data
+  ok   CTA "Tambah produk" TIDAK tampil saat ada data
+  ok   grafik digambar saat ada data
+  ok   label ringkasan sumbu tampil
+  ok   ada data: tidak ada NaN di markup
+  ok   ada data: tidak ada undefined di markup
+  ok   ada data: tidak ada teks placeholder
+
+3. State loading (skeleton, belum ada CTA)
+
+   loading = true
+  ok   CTA "Tambah produk" TIDAK tampil saat loading
+  ok   judul empty tidak tampil saat loading
+  ok   loading: tidak ada NaN di markup
+  ok   loading: tidak ada undefined di markup
+  ok   loading: tidak ada teks placeholder
+
+4. State error halaman — error per blok (design §5.11, kartu t_8bca0661)
+
+   error = "koneksi gagal"
+  ok   galat tampil sebagai ErrorState di dalam layout
+  ok   pesan galat dari server ditampilkan apa adanya
+  ok   blok grafik dapat diisolasi dari markup untuk diperiksa
+  ok   blok grafik menampilkan galat sendiri, bukan empty state
+  ok   pesan galat halaman tampil juga di blok grafik
+  ok   blok grafik punya aksi "Coba lagi" (onRetry diteruskan)
+  ok   "Coba lagi" tampil 2 kali: ringkasan halaman + blok grafik
+  ok   judul empty "Belum ada penjualan" TIDAK tampil saat galat
+  ok   CTA "Tambah produk" TIDAK tampil saat galat (galat bukan data kosong)
+  ok   grafik tidak digambar saat galat
+  ok   blok grafik pada state galat tidak menyisakan tautan CTA/empty
+  ok   tidak ada grafik kosong yang menyesatkan di blok grafik
+  ok   error: tidak ada NaN di markup
+  ok   error: tidak ada undefined di markup
+  ok   error: tidak ada teks placeholder
+  catat: kartu ini hanya memperbaiki blok grafik. Blok lain saat galat halaman -> Stok kritis: "Stok aman", Pesanan terbaru: "Belum ada pesanan", Ulasan terbaru: "Belum ada ulasan" = temuan lanjutan (kartu sendiri), bukan bagian kartu ini.
+
+5. Interaksi tombol lain tidak ikut berubah
+
+   empty state lain (stok/pesanan/ulasan)
+  ok   empty state "Stok aman" (stok kritis) tetap ada
+  ok   empty state "Belum ada pesanan" tetap ada
+  ok   empty state "Belum ada ulasan" tetap ada
+  ok   aksi "Muat ulang" di PageHeader tetap ada
+  ok   aksi "Muat ulang" tetap tombol, bukan tautan
+  ok   label "Tambah produk" hanya muncul sekali di halaman
+
+HASIL: 54/54 lulus, 0 gagal
+harness_exit=0
+
+== 4. Kontrol negatif: tanpa prop error/onRetry harness GAGAL (dibuktikan 20-10-2026 15:31) ==
+$ cat docs/bukti-kontrol-negatif-t_8bca0661.txt
+4. State error halaman — error per blok (design §5.11, kartu t_8bca0661)
+
+   error = "koneksi gagal"
+  ok   galat tampil sebagai ErrorState di dalam layout
+  ok   pesan galat dari server ditampilkan apa adanya
+  ok   blok grafik dapat diisolasi dari markup untuk diperiksa
+  FAIL blok grafik menampilkan galat sendiri, bukan empty state -> Penjualan 14 hari 14 hari terakhir Belum ada penjualan Grafik muncul setelah ada pesanan yang dibayar. Tambah produk <section aria-label="
+  FAIL pesan galat halaman tampil juga di blok grafik
+  FAIL blok grafik punya aksi "Coba lagi" (onRetry diteruskan) -> Penjualan 14 hari 14 hari terakhir Belum ada penjualan Grafik muncul setelah ada pesanan yang dibayar. Tambah produk <section aria-label="
+  FAIL "Coba lagi" tampil 2 kali: ringkasan halaman + blok grafik -> dapat 1
+  FAIL judul empty "Belum ada penjualan" TIDAK tampil saat galat -> Penjualan 14 hari 14 hari terakhir Belum ada penjualan Grafik muncul setelah ada pesanan yang dibayar. Tambah produk <section aria-label="
+  FAIL CTA "Tambah produk" TIDAK tampil saat galat (galat bukan data kosong) -> dapat 1
+  ok   grafik tidak digambar saat galat
+  FAIL blok grafik pada state galat tidak menyisakan tautan CTA/empty -> dapat 1
+  ok   tidak ada grafik kosong yang menyesatkan di blok grafik
+  ok   error: tidak ada NaN di markup
+  ok   error: tidak ada undefined di markup
+  ok   error: tidak ada teks placeholder
+
+5. Interaksi tombol lain tidak ikut berubah
+
+   empty state lain (stok/pesanan/ulasan)
+  ok   empty state "Stok aman" (stok kritis) tetap ada
+  ok   empty state "Belum ada pesanan" tetap ada
+  ok   empty state "Belum ada ulasan" tetap ada
+  ok   aksi "Muat ulang" di PageHeader tetap ada
+  ok   aksi "Muat ulang" tetap tombol, bukan tautan
+  ok   label "Tambah produk" hanya muncul sekali di halaman
+
+HASIL: 47/54 lulus, 7 gagal
+
+== 5. Build produksi ==
+$ npm run build
+
+> build
+> vite build
+
+[36mvite v6.4.4 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 714 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mpublic/build/[22m[32mmanifest.json                       [39m[1m[2m 18.36 kB[22m[1m[22m[2m │ gzip:   1.83 kB[22m
+[2mpublic/build/[22m[35massets/app-CwEwAIPU.css             [39m[1m[2m 57.19 kB[22m[1m[22m[2m │ gzip:  10.18 kB[22m
+[2mpublic/build/[22m[36massets/Skeleton-ByAg2vX-.js         [39m[1m[2m  0.40 kB[22m[1m[22m[2m │ gzip:   0.31 kB[22m
+[2mpublic/build/[22m[36massets/Spinner-DQJo8kFD.js          [39m[1m[2m  0.55 kB[22m[1m[22m[2m │ gzip:   0.38 kB[22m
+[2mpublic/build/[22m[36massets/Input-CUBZTFfX.js            [39m[1m[2m  0.57 kB[22m[1m[22m[2m │ gzip:   0.39 kB[22m
+[2mpublic/build/[22m[36massets/Textarea-DQACBgow.js         [39m[1m[2m  0.60 kB[22m[1m[22m[2m │ gzip:   0.41 kB[22m
+[2mpublic/build/[22m[36massets/IconButton-C2B6wRQD.js       [39m[1m[2m  0.65 kB[22m[1m[22m[2m │ gzip:   0.41 kB[22m
+[2mpublic/build/[22m[36massets/Field-DXLYlY1f.js            [39m[1m[2m  0.65 kB[22m[1m[22m[2m │ gzip:   0.38 kB[22m
+[2mpublic/build/[22m[36massets/Index-D_qEywCh.js            [39m[1m[2m  0.69 kB[22m[1m[22m[2m │ gzip:   0.40 kB[22m
+[2mpublic/build/[22m[36massets/EmptyState-BD78wfAT.js       [39m[1m[2m  0.72 kB[22m[1m[22m[2m │ gzip:   0.41 kB[22m
+[2mpublic/build/[22m[36massets/Index-CBW1cA-f.js            [39m[1m[2m  0.75 kB[22m[1m[22m[2m │ gzip:   0.43 kB[22m
+[2mpublic/build/[22m[36massets/Index-Buq1dh13.js            [39m[1m[2m  0.75 kB[22m[1m[22m[2m │ gzip:   0.42 kB[22m
+[2mpublic/build/[22m[36massets/Index-BuC4XNIE.js            [39m[1m[2m  0.76 kB[22m[1m[22m[2m │ gzip:   0.43 kB[22m
+[2mpublic/build/[22m[36massets/Index-Danru2lM.js            [39m[1m[2m  0.82 kB[22m[1m[22m[2m │ gzip:   0.45 kB[22m
+[2mpublic/build/[22m[36massets/ErrorState-ilOz-DPC.js       [39m[1m[2m  0.85 kB[22m[1m[22m[2m │ gzip:   0.48 kB[22m
+[2mpublic/build/[22m[36massets/StatusBadge-CrDpX_pC.js      [39m[1m[2m  0.86 kB[22m[1m[22m[2m │ gzip:   0.48 kB[22m
+[2mpublic/build/[22m[36massets/VariantChip-CpXKK99S.js      [39m[1m[2m  0.89 kB[22m[1m[22m[2m │ gzip:   0.54 kB[22m
+[2mpublic/build/[22m[36massets/Select-itWBGsAa.js           [39m[1m[2m  0.95 kB[22m[1m[22m[2m │ gzip:   0.58 kB[22m
+[2mpublic/build/[22m[36massets/Accordion-L5BQrP0i.js        [39m[1m[2m  1.04 kB[22m[1m[22m[2m │ gzip:   0.58 kB[22m
+[2mpublic/build/[22m[36massets/Breadcrumb-CKsPnkeS.js       [39m[1m[2m  1.05 kB[22m[1m[22m[2m │ gzip:   0.49 kB[22m
+[2mpublic/build/[22m[36massets/InlineNotice-K1EaP6sk.js     [39m[1m[2m  1.12 kB[22m[1m[22m[2m │ gzip:   0.59 kB[22m
+[2mpublic/build/[22m[36massets/ForgotPassword-BhOrvi-t.js   [39m[1m[2m  1.39 kB[22m[1m[22m[2m │ gzip:   0.70 kB[22m
+[2mpublic/build/[22m[36massets/OrderSummary-DHZZ7V_V.js     [39m[1m[2m  1.47 kB[22m[1m[22m[2m │ gzip:   0.62 kB[22m
+[2mpublic/build/[22m[36massets/RatingSummary-srp6nt-R.js    [39m[1m[2m  1.61 kB[22m[1m[22m[2m │ gzip:   0.75 kB[22m
+[2mpublic/build/[22m[36massets/StarRating-BV6BPMEb.js       [39m[1m[2m  1.73 kB[22m[1m[22m[2m │ gzip:   0.92 kB[22m
+[2mpublic/build/[22m[36massets/QtyStepper-Bkcq1id_.js       [39m[1m[2m  1.83 kB[22m[1m[22m[2m │ gzip:   0.83 kB[22m
+[2mpublic/build/[22m[36massets/Login-CfHkVYgP.js            [39m[1m[2m  1.98 kB[22m[1m[22m[2m │ gzip:   0.87 kB[22m
+[2mpublic/build/[22m[36massets/ResetPassword-BXQAPbFZ.js    [39m[1m[2m  1.99 kB[22m[1m[22m[2m │ gzip:   0.83 kB[22m
+[2mpublic/build/[22m[36massets/hooks-BF5DaKrg.js            [39m[1m[2m  2.17 kB[22m[1m[22m[2m │ gzip:   0.81 kB[22m
+[2mpublic/build/[22m[36massets/AuthLayout-BX7Q6F9k.js       [39m[1m[2m  2.37 kB[22m[1m[22m[2m │ gzip:   1.02 kB[22m
+[2mpublic/build/[22m[36massets/Login-Czp5pGUV.js            [39m[1m[2m  2.79 kB[22m[1m[22m[2m │ gzip:   1.19 kB[22m
+[2mpublic/build/[22m[36massets/Toast-Cgth_ATY.js            [39m[1m[2m  2.80 kB[22m[1m[22m[2m │ gzip:   1.21 kB[22m
+[2mpublic/build/[22m[36massets/Register-sZgZx5H7.js         [39m[1m[2m  2.89 kB[22m[1m[22m[2m │ gzip:   1.06 kB[22m
+[2mpublic/build/[22m[36massets/Pagination-nVxZI5P1.js       [39m[1m[2m  3.42 kB[22m[1m[22m[2m │ gzip:   1.45 kB[22m
+[2mpublic/build/[22m[36massets/ProductGrid-DsclA5jD.js      [39m[1m[2m  4.94 kB[22m[1m[22m[2m │ gzip:   2.07 kB[22m
+[2mpublic/build/[22m[36massets/Contact-DdGnOwne.js          [39m[1m[2m  5.76 kB[22m[1m[22m[2m │ gzip:   2.10 kB[22m
+[2mpublic/build/[22m[36massets/Cart-COeT1NRR.js             [39m[1m[2m  6.01 kB[22m[1m[22m[2m │ gzip:   2.39 kB[22m
+[2mpublic/build/[22m[36massets/Checkout-Dp3-CchN.js         [39m[1m[2m  7.70 kB[22m[1m[22m[2m │ gzip:   2.60 kB[22m
+[2mpublic/build/[22m[36massets/CheckoutSuccess-DK1UjuAQ.js  [39m[1m[2m  8.04 kB[22m[1m[22m[2m │ gzip:   2.68 kB[22m
+[2mpublic/build/[22m[36massets/DataTable-Dw1ybEYz.js        [39m[1m[2m  8.74 kB[22m[1m[22m[2m │ gzip:   2.96 kB[22m
+[2mpublic/build/[22m[36massets/PublicLayout-BMZdlh60.js     [39m[1m[2m  9.33 kB[22m[1m[22m[2m │ gzip:   3.16 kB[22m
+[2mpublic/build/[22m[36massets/Button-CEcC-JoQ.js           [39m[1m[2m  9.43 kB[22m[1m[22m[2m │ gzip:   3.09 kB[22m
+[2mpublic/build/[22m[36massets/Index-DCIPrsNZ.js            [39m[1m[2m  9.63 kB[22m[1m[22m[2m │ gzip:   3.47 kB[22m
+[2mpublic/build/[22m[36massets/Index-FRGEpPKO.js            [39m[1m[2m  9.69 kB[22m[1m[22m[2m │ gzip:   3.55 kB[22m
+[2mpublic/build/[22m[36massets/Dashboard-0VyyIrCJ.js        [39m[1m[2m 11.63 kB[22m[1m[22m[2m │ gzip:   4.19 kB[22m
+[2mpublic/build/[22m[36massets/Index-BJ-mZRIb.js            [39m[1m[2m 11.78 kB[22m[1m[22m[2m │ gzip:   4.09 kB[22m
+[2mpublic/build/[22m[36massets/Home-COsaLjLk.js             [39m[1m[2m 13.44 kB[22m[1m[22m[2m │ gzip:   4.35 kB[22m
+[2mpublic/build/[22m[36massets/Show-cW4r3AVG.js             [39m[1m[2m 13.93 kB[22m[1m[22m[2m │ gzip:   4.79 kB[22m
+[2mpublic/build/[22m[36massets/CheckoutPay-CS5eFuEb.js      [39m[1m[2m 16.92 kB[22m[1m[22m[2m │ gzip:   6.27 kB[22m
+[2mpublic/build/[22m[36massets/Index-C15g33kK.js            [39m[1m[2m 49.73 kB[22m[1m[22m[2m │ gzip:  11.76 kB[22m
+[2mpublic/build/[22m[36massets/app-D9VeOng4.js              [39m[1m[2m361.78 kB[22m[1m[22m[2m │ gzip: 113.40 kB[22m
+[32m✓ built in 3.54s[39m
+npm_exit=0
+
+== 6. Sweep komponen tanpa import + identifier bebas di bundel ==
+$ python tmp/cek-komponen-tanpa-import.py .
+file diperiksa: 80
+resources\js\app.jsx: App
+sweep1_exit=0
+$ python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build
+chunk .js diperiksa: 49
+OK: tidak ada identifier komponen JSX tanpa import/definisi di bundel.
+sweep2_exit=0
+
+== 7. Berkas yang berubah untuk kartu ini ==
+$ git status --short resources/js/Pages/Admin/Dashboard.jsx tmp/verify-dashboard-cta.mjs docs/catatan-frontend.md docs/bukti-frontend-t_8bca0661.txt docs/bukti-kontrol-negatif-t_8bca0661.txt
+ M docs/catatan-frontend.md
+?? docs/bukti-frontend-t_8bca0661.txt
+?? docs/bukti-kontrol-negatif-t_8bca0661.txt
+?? resources/js/Pages/Admin/Dashboard.jsx
+?? tmp/verify-dashboard-cta.mjs

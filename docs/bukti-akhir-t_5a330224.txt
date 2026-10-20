@@ -1,0 +1,30 @@
+=== mana: 2026-10-20 15:41:56 +0700 ===
+
+=== public/build ===
+manifest mtime: 15:41:11
+jumlah berkas di public/build/assets: 50
+chunk app-*.js di manifest:
+assets/app-BQJW9H3n.js
+sumber lebih baru dari manifest: 2
+
+=== berkas bukti (baris) ===
+    92 baris  docs/bukti-build-penutup-t_5a330224.txt
+    30 baris  docs/bukti-sweep-bundel-1532-t_5a330224.txt
+    49 baris  docs/bukti-smoke-penutup-t_5a330224.txt
+    49 baris  docs/bukti-smoke-penutup-1530-t_5a330224.txt
+   259 baris  docs/bukti-phpunit-t_5a330224.txt
+    18 baris  docs/bukti-rute-admin-tamu-t_5a330224.txt
+    22 baris  docs/bukti-rute-admin-tamu-id-ada-t_5a330224.txt
+    11 baris  docs/bukti-put-akun-tamu-t_5a330224.txt
+
+=== ringkasan smoke penutup (bundel terbaru) ===
+
+=== ringkasan phpunit ===
+  Tests:    190 passed (1111 assertions)
+  Duration: 31.69s
+
+=== dokumen rilis ===
+15:31:32 docs/asumsi.md
+15:39:38 docs/catatan-devops.md
+15:39:32 docs/checklist-rilis.md
+15:34:56 docs/lingkungan.md

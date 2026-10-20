@@ -1,0 +1,30 @@
+Bukti penyapu statis pada bundel terbaru — kartu t_5a330224
+Waktu (sistem): 2026-10-20 15:35:39 +0700
+Repo          : C:/Users/LENOVO/Downloads/toko-kulot
+PHP 8.3.32   node v26.7.0   npm 11.19.0
+
+== Keadaan public/build ==
+manifest mtime : 2026-10-20_15:35:31
+jumlah artefak : 50 berkas di public/build/assets
+chunk aplikasi : assets/app-D9VeOng4.js 
+sumber lebih baru dari manifest (resources/js app routes config database tests):
+  (kosong = tidak ada)
+
+== Penyapu 1: import JSX ==
+$ node <scratch-devops>/check-jsx-imports.mjs resources/js
+Berkas diperiksa : 80
+Pemakaian tag JSX: 650
+Temuan           : 0
+exit=0
+
+== Penyapu 2: komponen tanpa import ==
+$ python tmp/cek-komponen-tanpa-import.py C:/Users/LENOVO/Downloads/toko-kulot
+file diperiksa: 80
+resources\js\app.jsx: App
+exit=0
+
+== Penyapu 3: identifier bebas di bundel ==
+$ python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build
+chunk .js diperiksa: 49
+OK: tidak ada identifier komponen JSX tanpa import/definisi di bundel.
+exit=0

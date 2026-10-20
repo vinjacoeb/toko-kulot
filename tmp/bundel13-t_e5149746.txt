@@ -1,0 +1,95 @@
+=== Field.jsx ===
+     1	import React from 'react';
+     2	import { cn } from '../lib/format';
+     3	
+     4	/**
+     5	 * Pembungkus isian - docs/design.md 4.5.
+     6	 * Label wajib htmlFor; hint dan galat terhubung lewat aria-describedby.
+     7	 */
+     8	export default function Field({
+     9	    label,
+    10	    htmlFor,
+    11	    required = false,
+    12	    hint = null,
+    13	    error = null,
+    14	    children,
+    15	    className = '',
+    16	}) {
+    17	    const hintId = htmlFor ? htmlFor + '-hint' : undefined;
+    18	    const errorId = htmlFor ? htmlFor + '-error' : undefined;
+    19	
+    20	    return (
+    21	        <div className={cn('flex flex-col', className)}>
+    22	            {label && (
+    23	                <label htmlFor={htmlFor} className="mb-1.5 block text-meta font-semibold text-ink">
+    24	                    {label}
+    25	                    {required && (
+    26	                        <span className="text-danger" aria-hidden="true">
+    27	                            {' *'}
+    28	                        </span>
+    29	                    )}
+    30	                </label>
+    31	            )}
+    32	            {children}
+    33	            {hint && !error && (
+    34	                <p id={hintId} className="mt-1.5 text-meta text-slate-500">
+    35	                    {hint}
+    36	                </p>
+    37	            )}
+    38	            {error && (
+    39	                <p id={errorId} className="mt-1.5 text-meta text-danger-strong" role="alert">
+    40	                    {error}
+    41	                </p>
+    42	            )}
+    43	        </div>
+    44	    );
+    45	}
+
+=== Input.jsx ===
+     1	import React from 'react';
+     2	import { cn } from '../lib/format';
+     3	
+     4	const BASE =
+     5	    'w-full h-field rounded-md border border-line bg-white px-3.5 text-body text-ink transition-colors duration-hover placeholder:text-slate-500 focus:border-brand focus:outline-none focus:ring-[3px] focus:ring-brand/15 disabled:cursor-not-allowed disabled:bg-surface';
+     6	
+     7	/** Input - docs/design.md 4.5. Tinggi 44px (h-field). */
+     8	export default function Input({ error = null, className = '', id = null, ...rest }) {
+     9	    return (
+    10	        <input
+    11	            id={id}
+    12	            aria-invalid={error ? 'true' : undefined}
+    13	            aria-describedby={error && id ? id + '-error' : undefined}
+    14	            className={cn(BASE, error ? 'border-danger' : null, className)}
+    15	            {...rest}
+    16	        />
+    17	    );
+    18	}
+
+=== app.css 40-70 ===
+    40	        @apply btn bg-accent-500 text-ink hover:bg-accent-600 active:translate-y-px;
+    41	    }
+    42	    .btn-secondary {
+    43	        @apply btn bg-transparent text-ink border border-line hover:bg-surface active:translate-y-px;
+    44	    }
+    45	    .btn-ghost {
+    46	        @apply inline-flex items-center justify-center h-10 px-3 rounded-sm
+    47	               text-brand hover:bg-surface transition-colors duration-hover;
+    48	    }
+    49	    .field {
+    50	        @apply w-full h-field px-3.5 rounded-md border border-line text-body
+    51	               placeholder:text-slate-500 focus:border-brand focus:ring-[3px]
+    52	               focus:ring-brand/15 transition-colors duration-150;
+    53	    }
+    54	    .field-error {
+    55	        @apply border-danger focus:border-danger focus:ring-danger/15;
+    56	    }
+    57	    .label {
+    58	        @apply block text-meta font-semibold mb-1.5;
+    59	    }
+    60	    .card {
+    61	        @apply bg-white rounded-xl border border-line;
+    62	    }
+    63	    .skeleton {
+    64	        @apply bg-slate-200 rounded-md animate-pulse-slow;
+    65	    }
+    66	}

@@ -18,8 +18,8 @@ const ICONS = {
 
 const ICON_TONES = {
     info: 'text-brand',
-    success: 'text-success',
-    warning: 'text-warning',
+    success: 'text-success-strong',
+    warning: 'text-warning-strong',
     error: 'text-danger',
 };
 

@@ -1,0 +1,113 @@
+=== BUILD ===
+
+> build
+> vite build
+
+[36mvite v6.4.4 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 714 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mpublic/build/[22m[32mmanifest.json                       [39m[1m[2m 18.82 kB[22m[1m[22m[2m │ gzip:   1.85 kB[22m
+[2mpublic/build/[22m[35massets/app-C4SfSLQH.css             [39m[1m[2m 57.45 kB[22m[1m[22m[2m │ gzip:  10.22 kB[22m
+[2mpublic/build/[22m[36massets/Skeleton-Cn0WSXxH.js         [39m[1m[2m  0.40 kB[22m[1m[22m[2m │ gzip:   0.31 kB[22m
+[2mpublic/build/[22m[36massets/Spinner-CYjOaXq9.js          [39m[1m[2m  0.55 kB[22m[1m[22m[2m │ gzip:   0.38 kB[22m
+[2mpublic/build/[22m[36massets/Input-DpLWLNz5.js            [39m[1m[2m  0.57 kB[22m[1m[22m[2m │ gzip:   0.39 kB[22m
+[2mpublic/build/[22m[36massets/Textarea-BSsrdYVH.js         [39m[1m[2m  0.60 kB[22m[1m[22m[2m │ gzip:   0.40 kB[22m
+[2mpublic/build/[22m[36massets/IconButton-BrgFTvn5.js       [39m[1m[2m  0.65 kB[22m[1m[22m[2m │ gzip:   0.41 kB[22m
+[2mpublic/build/[22m[36massets/Field-DtLh49zS.js            [39m[1m[2m  0.66 kB[22m[1m[22m[2m │ gzip:   0.39 kB[22m
+[2mpublic/build/[22m[36massets/Index-BL50gVwn.js            [39m[1m[2m  0.69 kB[22m[1m[22m[2m │ gzip:   0.40 kB[22m
+[2mpublic/build/[22m[36massets/EmptyState-BI5zW3XD.js       [39m[1m[2m  0.72 kB[22m[1m[22m[2m │ gzip:   0.41 kB[22m
+[2mpublic/build/[22m[36massets/Index-k3y8vVch.js            [39m[1m[2m  0.75 kB[22m[1m[22m[2m │ gzip:   0.42 kB[22m
+[2mpublic/build/[22m[36massets/Index-t7GwqFr-.js            [39m[1m[2m  0.82 kB[22m[1m[22m[2m │ gzip:   0.45 kB[22m
+[2mpublic/build/[22m[36massets/ErrorState-CUkSRejd.js       [39m[1m[2m  0.85 kB[22m[1m[22m[2m │ gzip:   0.48 kB[22m
+[2mpublic/build/[22m[36massets/StatusBadge-Buo5TNHR.js      [39m[1m[2m  0.88 kB[22m[1m[22m[2m │ gzip:   0.49 kB[22m
+[2mpublic/build/[22m[36massets/VariantChip-CRoyC7Kz.js      [39m[1m[2m  0.89 kB[22m[1m[22m[2m │ gzip:   0.53 kB[22m
+[2mpublic/build/[22m[36massets/Select-D3GMc4fi.js           [39m[1m[2m  0.95 kB[22m[1m[22m[2m │ gzip:   0.58 kB[22m
+[2mpublic/build/[22m[36massets/Accordion-By6RUMBa.js        [39m[1m[2m  1.04 kB[22m[1m[22m[2m │ gzip:   0.58 kB[22m
+[2mpublic/build/[22m[36massets/Breadcrumb-Bxbj5UU2.js       [39m[1m[2m  1.05 kB[22m[1m[22m[2m │ gzip:   0.49 kB[22m
+[2mpublic/build/[22m[36massets/InlineNotice-D4w9TyeT.js     [39m[1m[2m  1.14 kB[22m[1m[22m[2m │ gzip:   0.59 kB[22m
+[2mpublic/build/[22m[36massets/ForgotPassword-Di386RPe.js   [39m[1m[2m  1.39 kB[22m[1m[22m[2m │ gzip:   0.70 kB[22m
+[2mpublic/build/[22m[36massets/OrderSummary-BI1ikq-h.js     [39m[1m[2m  1.47 kB[22m[1m[22m[2m │ gzip:   0.62 kB[22m
+[2mpublic/build/[22m[36massets/RatingSummary-BBeHbIG7.js    [39m[1m[2m  1.61 kB[22m[1m[22m[2m │ gzip:   0.75 kB[22m
+[2mpublic/build/[22m[36massets/StarRating-DdmY9PbL.js       [39m[1m[2m  1.73 kB[22m[1m[22m[2m │ gzip:   0.92 kB[22m
+[2mpublic/build/[22m[36massets/QtyStepper-Ceov5Lm1.js       [39m[1m[2m  1.83 kB[22m[1m[22m[2m │ gzip:   0.84 kB[22m
+[2mpublic/build/[22m[36massets/Login-mpDCSMSV.js            [39m[1m[2m  1.98 kB[22m[1m[22m[2m │ gzip:   0.87 kB[22m
+[2mpublic/build/[22m[36massets/ResetPassword-CUKBOGqm.js    [39m[1m[2m  1.99 kB[22m[1m[22m[2m │ gzip:   0.82 kB[22m
+[2mpublic/build/[22m[36massets/hooks-g2SPGlu5.js            [39m[1m[2m  2.17 kB[22m[1m[22m[2m │ gzip:   0.81 kB[22m
+[2mpublic/build/[22m[36massets/AuthLayout-CIHr2C7m.js       [39m[1m[2m  2.37 kB[22m[1m[22m[2m │ gzip:   1.02 kB[22m
+[2mpublic/build/[22m[36massets/Login-tjWaGQAv.js            [39m[1m[2m  2.79 kB[22m[1m[22m[2m │ gzip:   1.19 kB[22m
+[2mpublic/build/[22m[36massets/Toast-DVkk5mkU.js            [39m[1m[2m  2.81 kB[22m[1m[22m[2m │ gzip:   1.21 kB[22m
+[2mpublic/build/[22m[36massets/Register-BaGGvzU6.js         [39m[1m[2m  2.89 kB[22m[1m[22m[2m │ gzip:   1.07 kB[22m
+[2mpublic/build/[22m[36massets/Pagination-zkg-g90k.js       [39m[1m[2m  3.42 kB[22m[1m[22m[2m │ gzip:   1.46 kB[22m
+[2mpublic/build/[22m[36massets/ProductGrid-TV_Q5B_4.js      [39m[1m[2m  4.94 kB[22m[1m[22m[2m │ gzip:   2.07 kB[22m
+[2mpublic/build/[22m[36massets/Contact-CtLqA-s0.js          [39m[1m[2m  5.76 kB[22m[1m[22m[2m │ gzip:   2.10 kB[22m
+[2mpublic/build/[22m[36massets/Cart-CLG4yYtt.js             [39m[1m[2m  6.01 kB[22m[1m[22m[2m │ gzip:   2.38 kB[22m
+[2mpublic/build/[22m[36massets/Checkout-BEsw5duG.js         [39m[1m[2m  7.70 kB[22m[1m[22m[2m │ gzip:   2.59 kB[22m
+[2mpublic/build/[22m[36massets/CheckoutSuccess-C1jcAx6O.js  [39m[1m[2m  8.05 kB[22m[1m[22m[2m │ gzip:   2.69 kB[22m
+[2mpublic/build/[22m[36massets/DataTable-V_6rL3Hn.js        [39m[1m[2m  8.74 kB[22m[1m[22m[2m │ gzip:   2.96 kB[22m
+[2mpublic/build/[22m[36massets/PublicLayout-DsamL1kt.js     [39m[1m[2m  9.33 kB[22m[1m[22m[2m │ gzip:   3.15 kB[22m
+[2mpublic/build/[22m[36massets/Button-CXq8O7hg.js           [39m[1m[2m  9.43 kB[22m[1m[22m[2m │ gzip:   3.09 kB[22m
+[2mpublic/build/[22m[36massets/Index-Cxrgi88I.js            [39m[1m[2m  9.64 kB[22m[1m[22m[2m │ gzip:   3.47 kB[22m
+[2mpublic/build/[22m[36massets/Index-BSd6CGRk.js            [39m[1m[2m  9.70 kB[22m[1m[22m[2m │ gzip:   3.56 kB[22m
+[2mpublic/build/[22m[36massets/Index-CkHlM4i8.js            [39m[1m[2m 11.33 kB[22m[1m[22m[2m │ gzip:   4.07 kB[22m
+[2mpublic/build/[22m[36massets/Index-DvDEr7P_.js            [39m[1m[2m 11.78 kB[22m[1m[22m[2m │ gzip:   4.09 kB[22m
+[2mpublic/build/[22m[36massets/Index-JAXKzMCT.js            [39m[1m[2m 11.81 kB[22m[1m[22m[2m │ gzip:   4.28 kB[22m
+[2mpublic/build/[22m[36massets/Dashboard-B2pH2zTb.js        [39m[1m[2m 12.01 kB[22m[1m[22m[2m │ gzip:   4.21 kB[22m
+[2mpublic/build/[22m[36massets/Home-xBskzpbM.js             [39m[1m[2m 13.44 kB[22m[1m[22m[2m │ gzip:   4.35 kB[22m
+[2mpublic/build/[22m[36massets/Show-BW1DfUDh.js             [39m[1m[2m 13.97 kB[22m[1m[22m[2m │ gzip:   4.80 kB[22m
+[2mpublic/build/[22m[36massets/CheckoutPay-cRZauQjV.js      [39m[1m[2m 16.94 kB[22m[1m[22m[2m │ gzip:   6.28 kB[22m
+[2mpublic/build/[22m[36massets/Index-CXVCafX1.js            [39m[1m[2m 49.73 kB[22m[1m[22m[2m │ gzip:  11.76 kB[22m
+[2mpublic/build/[22m[36massets/app-Bi-jA20D.js              [39m[1m[2m361.82 kB[22m[1m[22m[2m │ gzip: 113.41 kB[22m
+[32m✓ built in 4.30s[39m
+build exit=0
+=== C1 komponen-tanpa-import ===
+file diperiksa: 0
+OK: tidak ada komponen JSX tanpa import/definisi.
+=== C2 bundel-identifier-bebas ===
+chunk .js diperiksa: 49
+OK: tidak ada identifier komponen JSX tanpa import/definisi di bundel.
+=== C3 tautan-admin-vs-rute ===
+url '/admin...' diperiksa: 42 | rute admin terdaftar: 41
+
+url dinamis (${...}) dan rute yang cocok:
+  - resources/js/Pages/Admin/Accounts/Index.jsx:294 [PUT via form.put] /admin/akun/${editRow.id} -> PUT /admin/akun/{admin}
+  - resources/js/Pages/Admin/Accounts/Index.jsx:342 [DELETE via router.delete] /admin/akun/${hapus.id} -> DELETE /admin/akun/{admin}
+  - resources/js/Pages/Admin/Categories/Index.jsx:283 [? via tidak dikenal] /admin/kategori/${editRow.id} -> PUT /admin/kategori/{category}, DELETE /admin/kategori/{category}
+  - resources/js/Pages/Admin/Categories/Index.jsx:318 [DELETE via router.delete] /admin/kategori/${hapus.id} -> DELETE /admin/kategori/{category}
+  - resources/js/Pages/Admin/Messages/Index.jsx:227 [PATCH via router.patch] /admin/pesan-masuk/${row.id}/baca -> PATCH /admin/pesan-masuk/{message}/baca
+  - resources/js/Pages/Admin/Messages/Index.jsx:250 [POST via form.post] /admin/pesan-masuk/${target.id}/balas -> POST /admin/pesan-masuk/{message}/balas
+  - resources/js/Pages/Admin/Reviews/Index.jsx:192 [POST via form.post] /admin/penilaian/${target.id}/balas -> POST /admin/penilaian/{review}/balas
+  - resources/js/Pages/Admin/Reviews/Index.jsx:206 [PATCH via router.patch] /admin/penilaian/${row.id}/tampil -> PATCH /admin/penilaian/{review}/tampil
+
+konteks tidak dikenal (info, tidak dinilai):
+
+url tanpa rute pada metode yang benar:
+  (tidak ada)
+LULUS: semua url admin cocok dengan rute terdaftar pada metode yang benar.
+=== GIT ===
+ M .env.example
+ M app/Http/Middleware/EnsureAdmin.php
+ M app/Http/Middleware/HandleInertiaRequests.php
+ M app/Models/Admin.php
+ M app/Models/User.php
+ M app/Providers/AppServiceProvider.php
+ M database/migrations/2026_10_20_000001_create_admins_table.php
+ M database/seeders/DatabaseSeeder.php
+ M docs/PRD.md
+ M docs/asumsi.md
+ M docs/brief-backend.md
+ M docs/brief-devops.md
+ M docs/brief-frontend.md
+ M docs/brief-qa.md
+ M docs/brief-uiux.md
+ M docs/catatan-devops.md
+ M docs/catatan-frontend.md
+ M docs/design.md
+ M docs/langkah-pemilik.md
+ M docs/lingkungan.md
+ M docs/pertanyaan-pemilik.md
+ M docs/ringkasan-tim.md
+ M phpunit.xml
+ M resources/css/app.css
+ M resources/js/Components/Breadcrumb.jsx

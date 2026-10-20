@@ -4,8 +4,8 @@ import { AlertIcon, CheckIcon, CloseIcon, SearchIcon } from './icons';
 
 const TONES = {
     info: { bar: 'border-l-brand', icon: SearchIcon, color: 'text-brand' },
-    success: { bar: 'border-l-success', icon: CheckIcon, color: 'text-success' },
-    warning: { bar: 'border-l-warning', icon: AlertIcon, color: 'text-warning' },
+    success: { bar: 'border-l-success', icon: CheckIcon, color: 'text-success-strong' },
+    warning: { bar: 'border-l-warning', icon: AlertIcon, color: 'text-warning-strong' },
     error: { bar: 'border-l-danger', icon: AlertIcon, color: 'text-danger' },
 };
 

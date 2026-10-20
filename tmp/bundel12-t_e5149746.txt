@@ -1,0 +1,225 @@
+
+===== A. ADMIN_NAV =====
+28:export const ADMIN_NAV = [
+29-    { key: 'dashboard', label: 'Dashboard', href: '/admin', icon: GridIcon },
+30-    { key: 'produk', label: 'Produk', href: '/admin/produk', icon: BoxIcon },
+31-    { key: 'kategori', label: 'Kategori', href: '/admin/kategori', icon: LayersIcon },
+32-    { key: 'stok', label: 'Stok', href: '/admin/stok', icon: ArchiveIcon },
+33-    { key: 'pesanan', label: 'Pesanan', href: '/admin/pesanan', icon: CartIcon },
+34-    { key: 'pesan', label: 'Pesan', href: '/admin/pesan-masuk', icon: MailIcon },
+35-    { key: 'penilaian', label: 'Penilaian', href: '/admin/penilaian', icon: StarIcon },
+36-    { key: 'pengaturan', label: 'Pengaturan', href: '/admin/pengaturan', icon: GearIcon },
+37-    { key: 'akun', label: 'Akun', href: '/admin/akun', icon: UserIcon },
+38-];
+39-
+40-const isActive = (url, href) => {
+41-    if (!url || !href) return false;
+42-    if (href === '/admin') return url === '/admin' || url === '/admin/';
+43-    return url === href || url.startsWith(`${href}/`) || url.startsWith(`${href}?`);
+44-};
+45-
+46:export default function AdminLayout({ auth = null, nav = ADMIN_NAV, title = null, children }) {
+47-    const page = usePage();
+48-    const url = page?.url ?? '';
+49-    const [drawerOpen, setDrawerOpen] = useState(false);
+50-    const [menuOpen, setMenuOpen] = useState(false);
+51-    const drawerRef = useRef(null);
+52-    const menuRef = useRef(null);
+53-
+54-    useBodyScrollLock(drawerOpen);
+55-    useFocusTrap(drawerRef, drawerOpen);
+56-
+57-    useEffect(() => {
+58-        setDrawerOpen(false);
+59-        setMenuOpen(false);
+60-    }, [url]);
+61-
+62-    useEffect(() => {
+63-        if (!menuOpen) return undefined;
+64-
+65-        const onPointerDown = (event) => {
+66-            if (menuRef.current && !menuRef.current.contains(event.target)) setMenuOpen(false);
+67-        };
+68-
+69-        const onKeyDown = (event) => {
+70-            if (event.key === 'Escape') setMenuOpen(false);
+71-        };
+72-
+
+===== B. Modal SIZES + header =====
+import React, { useEffect, useRef } from 'react';
+import { cn } from '../lib/format';
+import { useBodyScrollLock, useFocusTrap } from '../lib/hooks';
+import { CloseIcon } from './icons';
+
+const SIZES = {
+    md: 'max-w-modal',
+    lg: 'max-w-modalLg',
+};
+
+/**
+ * Modal dasar — docs/design.md §4.24 (turunan: `ConfirmDialog`).
+ * Overlay gelap, Esc menutup, klik overlay menutup, fokus terperangkap,
+ * scroll body dikunci, `aria-modal="true"`.
+ */
+export default function Modal({
+    open = false,
+    title = null,
+    description = null,
+    children = null,
+    footer = null,
+    onClose,
+    size = 'md',
+    closeLabel = 'Tutup',
+}) {
+    const panelRef = useRef(null);
+
+    useBodyScrollLock(open);
+    useFocusTrap(panelRef, open);
+
+    useEffect(() => {
+        if (!open) return undefined;
+
+        const onKeyDown = (event) => {
+            if (event.key === 'Escape') onClose?.();
+        };
+
+        document.addEventListener('keydown', onKeyDown);
+
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, [open, onClose]);
+
+    if (!open) return null;
+
+    return (
+        <div
+            className="fixed inset-0 z-modal flex items-center justify-center bg-black/50 p-4"
+            onMouseDown={(event) => {
+                if (event.target === event.currentTarget) onClose?.();
+            }}
+6:const SIZES = {
+7:    md: 'max-w-modal',
+8:    lg: 'max-w-modalLg',
+60:                    SIZES[size] ?? SIZES.md
+
+===== C. Button varian + ukuran =====
+6:const VARIANTS = {
+7:    primary: 'btn-primary',
+8:    secondary: 'btn-secondary',
+9:    ghost: 'btn-ghost',
+10:    danger:
+11:        'inline-flex items-center justify-center gap-2 h-10 px-5 rounded-sm text-label font-semibold leading-none bg-danger text-white transition-colors duration-hover hover:opacity-90 disabled:opacity-45 disabled:cursor-not-allowed',
+27:    variant = 'primary',
+40:        VARIANTS[variant] ?? VARIANTS.primary,
+41:        size === 'sm' && variant !== 'link' ? SIZES.sm : null,
+42:        variant === 'link' && size === 'sm' ? 'text-meta' : null,
+
+===== D. ekspor icons.jsx =====
+26:export const SearchIcon = (props) => (
+33:export const CartIcon = (props) => (
+41:export const MenuIcon = (props) => (
+47:export const CloseIcon = (props) => (
+53:export const ChevronDownIcon = (props) => (
+59:export const ChevronLeftIcon = (props) => (
+65:export const ChevronRightIcon = (props) => (
+71:export const StarIcon = ({ filled = false, ...props }) => (
+77:export const CheckIcon = (props) => (
+83:export const TruckIcon = (props) => (
+92:export const ReturnIcon = (props) => (
+99:export const ShieldCheckIcon = (props) => (
+106:export const HeadsetIcon = (props) => (
+115:export const UserIcon = (props) => (
+122:export const MailIcon = (props) => (
+129:export const PhoneIcon = (props) => (
+135:export const MapPinIcon = (props) => (
+142:export const AlertIcon = (props) => (
+150:export const ImageOffIcon = (props) => (
+158:export const SpinnerIcon = ({ size = 16, className = '' }) => (
+173:export const InstagramIcon = (props) => (
+181:export const FacebookIcon = (props) => (
+187:export const TikTokIcon = (props) => (
+194:export const WhatsAppIcon = (props) => (
+201:export const LeafIcon = (props) => (
+208:export const ScissorsIcon = (props) => (
+216:export const GridIcon = (props) => (
+225:export const BoxIcon = (props) => (
+233:export const LayersIcon = (props) => (
+241:export const ArchiveIcon = (props) => (
+249:export const GearIcon = (props) => (
+256:export const LogOutIcon = (props) => (
+264:export const WalletIcon = (props) => (
+272:export const TrendUpIcon = (props) => (
+279:export const TrendDownIcon = (props) => (
+286:export const ChartIcon = (props) => (
+297:export const TrashIcon = (props) => (
+308:export const CopyIcon = (props) => (
+316:export const TRUST_ICONS = {
+333:export const SOCIAL_ICONS = {
+
+===== E. pola checkbox Settings =====
+
+===== F. isi stub Categories/Index.jsx =====
+     1	import React from 'react';
+     2	import AdminLayout from '../../../Layouts/AdminLayout';
+     3	import PageHeader from '../../../Components/PageHeader';
+     4	import DataTable from '../../../Components/DataTable';
+     5	import Button from '../../../Components/Button';
+     6	
+     7	export default function Index({ categories = [], loading = false, error = null }) {
+     8	    const columns = [
+     9	        { key: 'name', header: 'Nama Kategori', render: (row) => row.name },
+    10	        { key: 'slug', header: 'Slug', render: (row) => row.slug },
+    11	        { key: 'product_count', header: 'Jumlah Produk', render: (row) => row.product_count },
+    12	    ];
+    13	
+    14	    return (
+    15	        <AdminLayout title="Kategori">
+    16	            <PageHeader title="Kategori">
+    17	                <Button href="/admin/kategori/tambah">Tambah Kategori</Button>
+    18	            </PageHeader>
+    19	            <DataTable
+    20	                columns={columns}
+    21	                rows={categories}
+    22	                loading={loading}
+    23	                error={error}
+    24	            />
+    25	        </AdminLayout>
+    26	    );
+    27	}
+
+===== G. isi stub Accounts/Index.jsx =====
+     1	import React from 'react';
+     2	import AdminLayout from '../../../Layouts/AdminLayout';
+     3	import PageHeader from '../../../Components/PageHeader';
+     4	import DataTable from '../../../Components/DataTable';
+     5	import Button from '../../../Components/Button';
+     6	
+     7	export default function Index({ accounts = [], loading = false, error = null }) {
+     8	    const columns = [
+     9	        { key: 'name', header: 'Nama', render: (row) => row.name },
+    10	        { key: 'email', header: 'Email', render: (row) => row.email },
+    11	        { key: 'role', header: 'Role', render: (row) => row.role },
+    12	        { key: 'status', header: 'Status', render: (row) => row.status },
+    13	    ];
+    14	
+    15	    return (
+    16	        <AdminLayout title="Akun Admin">
+    17	            <PageHeader title="Akun Admin">
+    18	                <Button href="/admin/akun/tambah">Tambah Admin</Button>
+    19	            </PageHeader>
+    20	            <DataTable
+    21	                columns={columns}
+    22	                rows={accounts}
+    23	                loading={loading}
+    24	                error={error}
+    25	            />
+    26	        </AdminLayout>
+    27	    );
+    28	}
+
+===== H. css: checkbox/form-check =====
+app.css
+resources/css/app.css:49:    .field {
+resources/css/app.css:54:    .field-error {
+resources/css/app.css:57:    .label {
+ 224 8603 tmp/bundel12-t_e5149746.txt

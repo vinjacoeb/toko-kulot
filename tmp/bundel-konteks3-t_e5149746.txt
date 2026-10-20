@@ -1,0 +1,1040 @@
+
+===== A. design.md level-2/3 headings =====
+9:## Riwayat Revisi
+19:## 1. Karakter Visual yang Diambil dari Erigo
+27:## 2. Design Token
+29:### 2.1 Warna
+63:### 2.2 Tipografi
+97:### 2.3 Spacing, radius, shadow, container, ukuran
+129:### 2.4 Breakpoint & target uji
+141:### 2.5 Peta token → `tailwind.config.js`
+170:### 2.6 Aturan pemakaian token
+181:## 3. Layout Global
+183:### 3.1 Header (68px, sticky)
+200:### 3.2 Footer (hitam, 4 kolom → 1 kolom mobile)
+221:### 3.3 Pola seksi landing (urutan baku)
+235:### 3.4 Shell admin
+241:## 4. Inventaris Komponen
+245:### 4.0 Matriks state universal
+261:### 4.1 `Button`
+274:### 4.2 `ProductCard`
+291:### 4.3 `StarRating`
+297:### 4.4 `QrisPanel`
+314:### 4.5 `Input` / `Select` / `Textarea`
+322:### 4.6 `Accordion` (FAQ)
+328:### 4.7 `Table` (admin)
+336:### 4.8 `Toast`
+341:### 4.9 `Modal`
+345:### 4.10 `Skeleton`
+349:### 4.11 `IconButton`
+354:### 4.12 `Header` + `NavDrawer`
+359:### 4.13 `Breadcrumb`
+363:### 4.14 `SectionHeader`
+367:### 4.15 `HeroCarousel`
+373:### 4.16 `CategoryCard`
+378:### 4.17 `TrustStrip`
+382:### 4.18 `FilterPanel` + `BottomSheet`
+388:### 4.19 `SearchInput` + `SortSelect`
+394:### 4.20 `QtyStepper` + `VariantChip` + `ColorSwatch`
+400:### 4.21 `PriceBlock` + `StatusBadge` + `Countdown`
+435:### 4.22 `Pagination`
+439:### 4.23 `EmptyState` + `ErrorState` + `InlineNotice`
+445:### 4.24 `ConfirmDialog`
+449:### 4.25 `Dropzone`
+454:### 4.26 `KpiCard` + `ChartCard`
+459:### 4.27 `TabNav`
+463:### 4.28 `CartLine` + `OrderSummary`
+469:### 4.29 `ReviewCard` + `RatingSummary` + `ReviewForm`
+475:### 4.30 `PageHeader` (admin)
+479:### 4.31 `Footer`
+485:## 5. Layout per Halaman
+489:### 5.1 `/` Landing
+495:### 5.2 `/produk` Katalog
+516:### 5.3 `/produk/{slug}` Detail
+553:### 5.4 `/kontak-kami`
+573:### 5.5 `/login`, `/register`, `/forgot-password`, `/reset-password/{token}`
+583:### 5.6 `/keranjang`
+591:### 5.7 `/checkout`
+597:### 5.8 `/checkout/{order}/bayar` & `/selesai`
+617:### 5.9 Admin — `/admin/login`
+622:### 5.10 Admin — shell
+647:### 5.11 Admin — `/admin` Dashboard
+663:### 5.12 Admin — halaman CRUD
+675:### 5.13 Admin — `/admin/pengaturan`
+680:### 5.14 Halaman error (404 / 403 / 419 / 500)
+687:### 5.15 Loading global (transisi Inertia)
+691:### 5.16 `/checkout/{order}/status` (JSON)
+695:### 5.17 Rute tanpa UI khusus
+700:### 5.18 Matriks cakupan rute → halaman desain
+718:## 6. Motion
+734:## 7. Aturan Implementasi
+749:## 8. Selisih dengan Sumber (disengaja)
+764:## 9. Checklist Kesesuaian (dipakai QA)
+792:## 10. Traceability PRD ↔ Desain
+810:## 11. Catatan REA, drift & batas verifikasi
+812:### 11.1 Yang benar-benar diverifikasi (20 Okt 2026)
+827:### 11.2 Batas: yang **tidak** diverifikasi ulang
+833:### 11.3 Drift yang ditemukan saat K3
+847:### 11.4 Temuan kontras di luar badge (terukur 20 Okt 2026, kartu `t_8cd61512`)
+863:## 12. Berkas Terkait
+
+===== B. design 235-480 =====
+### 3.4 Shell admin
+
+Lihat §5.10: sidebar 240px `bg-brand-700`, topbar 64px, konten `p-6` dalam kartu `rounded-xl border-line`.
+
+---
+
+## 4. Inventaris Komponen
+
+Setiap komponen: struktur, ukuran, state. Wajib jadi komponen React reusable di `resources/js/Components/`. API props & checklist implementasi ada di `docs/komponen.md`.
+
+### 4.0 Matriks state universal
+
+Berlaku untuk **setiap** komponen yang mengambil data atau menerima aksi pengguna. QA menolak komponen yang tidak punya state di bawah.
+
+| State | Pemicu | Tampilan wajib | Kelas/token acuan |
+|---|---|---|---|
+| `default` | data ada | konten normal | — |
+| `loading` | request berjalan | skeleton mengikuti dimensi asli (bukan spinner penuh halaman), `aria-busy="true"` | `animate-pulse-slow` |
+| `empty` | data kosong & bukan error | ilustrasi garis + teks penjelas + CTA keluar dari kondisi kosong | `text-slate-400`, §4.23 `EmptyState` |
+| `error` | request gagal | pesan di dalam layout (bukan halaman putih) + tombol "Coba lagi" | `border-danger`, `text-danger`, §4.23 `ErrorState` |
+| `disabled` | aksi tidak tersedia (stok 0, belum login) | opacity .45 + `cursor-not-allowed` + alasan terlihat | `disabled:opacity-45` |
+| `focus-visible` | navigasi keyboard | ring 2px `brand` offset 2px | `ring-2 ring-brand ring-offset-2` |
+| `hover` | pointer di atas elemen | sesuai komponen | `duration-hover` |
+
+Aturan tambahan: `loading` yang melewati **10 detik** wajib berubah jadi `error` + tombol "Coba lagi" (mencegah layar menggantung); skeleton tidak boleh dipakai untuk menutupi error.
+
+### 4.1 `Button`
+
+| Varian | Latar | Teks | Border | Tinggi | Radius | Padding |
+|---|---|---|---|---|---|---|
+| `primary` | `accent-500` | `ink` 600 | none | 47px | 9px | `0 30px` |
+| `secondary` | transparan | `ink` 600 | 1px `line` | 47px | 9px | `0 30px` |
+| `ghost` | transparan | `brand` | none | 40px | 6px | `0 12px` |
+| `danger` | `danger` | putih | none | 40px | 6px | `0 20px` |
+| `link` | — | `brand` underline | — | auto | — | 0 |
+
+Kelas dasar: `inline-flex items-center justify-center gap-2 h-btn px-[30px] rounded-lg text-label transition-colors duration-hover`.
+State: `hover` (primary → `accent-600`; secondary → `bg-surface`), `active` (`translate-y-px`), `focus-visible` (ring 2px `brand` offset 2px), `disabled` (opacity .45 + `cursor-not-allowed`), `loading` (spinner 16px + label "Memproses…", **lebar dikunci** agar layout tidak melompat).
+
+### 4.2 `ProductCard`
+
+```
+┌───────────────┐
+│  gambar 1:1   │  radius 8px, object-cover, hover → gambar kedua (crossfade 300ms)
+│ [SALE]        │  badge kiri-atas: text-badge uppercase, bg sale-500, teks putih, radius 6px
+├───────────────┤
+│ Tipe produk   │  text-meta text-slate-400 uppercase
+│ Nama Produk   │  text-h3 text-ink, line-clamp-2, min-height 2 baris
+│ Rp149.000     │  text-h3 font-bold · harga coret text-meta text-slate-400 line-through
+│ ★★★★☆ (12)    │  StarRating sm (accent-500 / slate-300)
+│ [Tambah]      │  ghost full-width, border-t border-line
+└───────────────┘
+```
+
+State: `default`, `hover` (gambar zoom 1.03 + `shadow-raised`), `sold-out` (overlay putih 60% + label "Habis"), `loading` (skeleton rasio sama), `error-gambar` (blok `bg-surface` + ikon, §11 D2).
+
+### 4.3 `StarRating`
+
+- Ukuran `sm` 14px (kartu), `md` 20px (detail), `lg` 32px (form ulasan).
+- Terisi `accent-500`, kosong `slate-300`.
+- Read-only: `aria-label="Rating 4 dari 5"`. Interaktif: `<button>` per bintang, `aria-pressed`, hover preview, dukungan keyboard (arrow keys).
+
+### 4.4 `QrisPanel`
+
+```
+┌────────────────────────────────┐
+│ Selesaikan Pembayaran  ⏱ 14:32 │
+│ ┌────────────────────────────┐ │
+│ │      [QR CODE 240px]       │ │  putih, padding 16, radius 8, border line
+│ └────────────────────────────┘ │
+│ Total  Rp249.000               │  text-h1 font-bold
+│ Kode   TK-20261020-0001        │  text-meta font-mono text-slate-400
+│ [Cek Status]  [Salin Kode]     │
+└────────────────────────────────┘
+```
+
+- Countdown `< 3 menit` → `text-danger` + `animate-pulse`.
+- State: `pending` (QR tampil), `checking` (spinner di tombol, tombol `disabled`), `paid` (panel `success` + centang + CTA "Lihat Pesanan"), `expired` (panel abu + CTA "Buat Pesanan Baru"), `error` (gagal ambil status → tombol "Coba lagi", countdown tetap jalan).
+
+### 4.5 `Input` / `Select` / `Textarea`
+
+- Tinggi 44px (`h-field`), radius 8px, border 1px `line`, padding `0 14px`, `text-body`.
+- Focus: border `brand` + ring 3px `brand/15`.
+- Error: border `danger`, teks error `text-meta` di bawah, `aria-invalid`.
+- Label di atas: `text-meta font-semibold mb-1.5`, wajib `htmlFor`. Helper `text-meta text-slate-400`.
+- `Textarea`: min 120px, `resize-y`, tanpa `h-field`.
+
+### 4.6 `Accordion` (FAQ)
+
+- Baris 56px, judul `text-h3`, chevron 16px rotasi 180° saat buka, isi `text-meta text-ink-soft`, padding-bottom 20px, `border-b border-line`.
+- Animasi tinggi 200ms `ease-out` (`duration-accordion`).
+- State: `closed`, `open`, `disabled`.
+
+### 4.7 `Table` (admin)
+
+- Header: `text-badge uppercase text-slate-500`, bg `surface`, `h-tableHead`, sticky.
+- Baris: `h-tableRow`, `border-b border-line`, hover `bg-surface/60`.
+- Aksi: `IconButton` 32×32 + tooltip.
+- Pagination: tombol 36×36, aktif `bg-brand-700 text-white`.
+- State: `loading` (skeleton 8 baris), `empty` (baris tunggal 200px + CTA), `error` (baris tunggal + "Coba lagi"), `sorted` (panah di header), `selected` (baris `bg-brand-100/60`).
+
+### 4.8 `Toast`
+
+- Kanan-bawah, 360px, radius 8px, `shadow-raised`, ikon status 20px, `text-meta`, auto-dismiss 4s, maks 3 tumpuk, `z-toast`.
+- Varian `success` `error` `info` `warning` (garis kiri 3px warna status).
+
+### 4.9 `Modal`
+
+- Overlay `rgba(0,0,0,.5)`, panel putih radius 12px, `max-w-modal` (480px) / `max-w-modalLg` (720px), padding 24px, animasi scale .96→1 200ms (`animate-modal-in`). Fokus terperangkap, Esc menutup, klik overlay menutup (kecuali form kotor → konfirmasi).
+
+### 4.10 `Skeleton`
+
+- Blok `slate-200` `animate-pulse-slow` (1,5s), radius 8px, mengikuti dimensi komponen aslinya. Varian: `text`, `title`, `card`, `table-row`, `chart`.
+
+### 4.11 `IconButton`
+
+- Kotak 32/40/44px, `rounded-md`, ikon SVG 18–20px `stroke-width 1.5`, hover `bg-surface`.
+- Wajib `aria-label`. State: `default` `hover` `active` `disabled` `busy`.
+
+### 4.12 `Header` + `NavDrawer`
+
+- Lihat §3.1. `NavDrawer`: `w-drawer` `h-screen` `bg-white` `z-drawer`, `animate-drawer-in`, overlay gelap, fokus terperangkap, Esc menutup, scroll body dikunci.
+- State drawer: `closed` `open` `closing`.
+
+### 4.13 `Breadcrumb`
+
+- `text-meta text-slate-400`, pemisah `/`, item terakhir `text-ink`, tinggi 48px, `aria-label="Breadcrumb"` + `aria-current="page"`. Mobile: maks 2 level + elipsis.
+
+### 4.14 `SectionHeader`
+
+- Kiri: judul `font-display text-h2 text-brand` + subteks `text-meta text-ink-soft`. Kanan: "Lihat semua" (`text-label text-brand underline underline-offset-4`). Jarak bawah 24px.
+
+### 4.15 `HeroCarousel`
+
+- Tinggi `h-hero` / `h-heroMobile`, gambar `object-cover` + overlay `rgba(0,0,0,.35)`, konten rata kiri-bawah (desktop) / tengah (mobile).
+- Kontrol: dot 8px (aktif `bg-accent-500`, lebar 24px), panah desktop, swipe mobile, autoplay 6s berhenti saat hover/focus/tab tidak aktif.
+- State: `loading` (skeleton setinggi hero), `empty`/`error` (fallback banner statis dari `settings`), `reduced-motion` (tanpa autoplay).
+
+### 4.16 `CategoryCard`
+
+- Rasio 3:4, `rounded-md`, overlay gradien bawah, judul `text-h3 text-white`, jumlah produk `text-badge text-white/75`.
+- State: `hover` (zoom 1.03 + overlay lebih gelap), `loading`, `empty` (kategori tanpa produk disembunyikan dari landing).
+
+### 4.17 `TrustStrip`
+
+- 3–4 item, ikon 24px `text-brand`, teks `text-meta`, bg `surface`, padding 20px, `grid-cols-2 md:grid-cols-4`. Tanpa state interaktif.
+
+### 4.18 `FilterPanel` + `BottomSheet`
+
+- Desktop: sidebar `w-sidebar` sticky `top-header`, grup filter = judul `text-label uppercase` + checkbox/chip.
+- Mobile: tombol sticky bawah "Filter (2)" → `BottomSheet` 80vh, `rounded-t-xl`, handle 4px, "Terapkan" full-width `h-btn`.
+- State: `default` `expanded` `applied` (jumlah filter aktif di label) `loading` `disabled` (opsi tanpa produk).
+
+### 4.19 `SearchInput` + `SortSelect`
+
+- `SearchInput`: ikon kaca 18px kiri, `h-field`, `rounded-md`, tombol bersihkan saat terisi, debounce 300ms, `aria-label="Cari produk"`.
+- `SortSelect`: native `<select>` bergaya `h-field` + chevron; opsi baku: Terbaru, Harga terendah, Harga tertinggi, Terlaris, Rating.
+- State: `idle` `typing` `loading` `no-result`.
+
+### 4.20 `QtyStepper` + `VariantChip` + `ColorSwatch`
+
+- `QtyStepper`: 3 sel (tombol − 44×44, input 44px `text-center`, tombol + 44×44), border `line`, radius 8px, min 1, maks = stok, tombol `disabled` di batas.
+- `VariantChip`: 44×40px, radius 6px, `text-meta`, aktif border 2px `ink`; tidak tersedia = `disabled` + garis diagonal + `aria-disabled`.
+- `ColorSwatch`: lingkaran 28px, cincin aktif 2px `ink` offset 2px, `aria-label` nama warna.
+
+### 4.21 `PriceBlock` + `StatusBadge` + `Countdown`
+
+- `PriceBlock`: harga jual 24px 700 `ink` (kartu 15px 700), harga coret `text-meta text-slate-500 line-through` (bukan `slate-400` — hanya 2,56:1, §11.4 T2), diskon `text-badge bg-sale-500 text-white` (4,65:1, bentuk **solid**; tint `bg-sale-500/10 text-sale-500` hanya 4,00:1 dan **dilarang**), harga grosir di tabel terpisah.
+- `StatusBadge`: pil `text-badge uppercase px-2.5 py-1 rounded-full`. Pemetaan status order: `pending` → `warning`; `dibayar` → `brand`; `diproses` → `brand`; `dikirim` → `brand`; `selesai` → `success`; `batal` → `danger`; status di luar daftar (mis. "Sudah dibaca", pesan masuk §5.12) → `neutral`. **Jangan** pakai warna di luar token.
+- `Countdown`: `font-mono text-meta`, normal `text-ink-soft`, < 3 menit `text-danger` (4,83:1 di atas putih, lolos) + `animate-pulse`; berhenti di 00:00 lalu memicu state `expired`.
+
+**Aturan tone badge (v2.1)** — menggantikan bentuk lama `bg-{token}/10 text-{token}`. Berlaku untuk `StatusBadge`,
+`Badge`, dan pil status mana pun (termasuk halaman admin). Teks badge = `text-badge` (`clamp(11px, 0.11vw + 10.6px, 12px)`)
+sehingga selalu < 24px → ambangnya **4,5:1** (teks normal), bukan 3:1. Rasio = nilai terendah dari 4 latar nyata:
+putih, `surface`, `brand-100`, `slate-200/60`.
+
+| tone | Kelas baku | Rasio terendah | Warna teks | Catatan |
+|---|---|---|---|---|
+| `brand` | `bg-brand/10 text-brand` | 9,35:1 | #1F2A5E | token dasar tidak berubah (sudah lolos) |
+| `warning` | `bg-warning/10 text-warning-strong` | 5,34:1 | #92400E | sebelumnya `text-warning` = **2,86:1** |
+| `success` | `bg-success/10 text-success-strong` | 5,33:1 | #166534 | sebelumnya `text-success` = **2,96:1** |
+| `danger` | `bg-danger/10 text-danger-strong` | 5,95:1 | #991B1B | sebelumnya `text-danger` = **4,13:1** |
+| `neutral` | `bg-slate-200/60 text-slate-600` | 6,69:1 | `#475569` | sebelumnya `text-slate-500` = **4,20:1** (gagal) |
+| `accent` (hanya `Badge` promo) | `bg-accent-500 text-ink` | 10,11:1 | `ink` | `bg-accent/10 text-accent` = **1,74:1** → **dilarang** |
+| `sale` (badge diskon) | `bg-sale-500 text-white` | 4,65:1 | `white` | bentuk tint = **4,00:1** → **dilarang** |
+
+Tone solid (penekanan tinggi) — pilih warna teks per token, jangan asal putih:
+
+| token solid | + `text-white` | + `text-ink` |
+|---|---|---|
+| `brand-700` | 13,54:1 ✅ | 1,38:1 ❌ |
+| `accent` | 1,85:1 ❌ | 10,11:1 ✅ |
+| `accent-600` | 2,38:1 ❌ | 7,89:1 ✅ |
+| `sale-500` | 4,65:1 ✅ | 4,03:1 ❌ |
+| `success` | 3,30:1 ❌ | 5,68:1 ✅ |
+| `warning` | 3,19:1 ❌ | 5,88:1 ✅ |
+| `danger` | 4,83:1 ✅ | 3,88:1 ❌ |
+
+Penerapan menyeluruh di komponen menyusul di kartu frontend (t_67576fb2); sampai itu selesai, kartu UIUX ini hanya menetapkan aturan.
+
+### 4.22 `Pagination`
+
+- Tombol 36×36, radius 6px, aktif `bg-brand-700 text-white`, nonaktif `text-slate-400`, elipsis untuk lompatan jauh. Mobile: Prev/Next + "1 / 3". `aria-current="page"`.
+
+### 4.23 `EmptyState` + `ErrorState` + `InlineNotice`
+
+- `EmptyState`: ilustrasi garis 96px (`text-slate-300`), judul `text-h3`, penjelas `text-meta text-slate-400`, CTA `secondary`.
+- `ErrorState`: ikon peringatan `text-danger`, judul "Gagal memuat data", penyebab singkat, tombol "Coba lagi" + tautan bantuan. **Selalu di dalam layout** (header/footer tetap tampil).
+- `InlineNotice`: `rounded-md p-4`, varian `info` (`bg-brand-100`), `success` (`bg-success/10`), `warning` (`bg-warning/10`), `error` (`bg-red-50` + border `danger`); ikon + `text-meta`, `role="status"`/`role="alert"`.
+
+### 4.24 `ConfirmDialog`
+
+- Turunan `Modal` `max-w-modal`: judul aksi, nama entitas eksplisit ("Hapus produk *Daster Kancing*?"), tombol `danger` + `secondary`, fokus awal di tombol batal. Wajib untuk semua aksi destruktif (PRD §9).
+
+### 4.25 `Dropzone`
+
+- `aspect-square border-2 border-dashed border-line rounded-md`, ikon unggah 24px, teks "Tarik gambar atau klik", pratinjau 1:1 + tombol hapus.
+- State: `idle` `dragover` (border `brand`) `uploading` (progress bar) `error` (border `danger` + alasan tipe/ukuran).
+
+### 4.26 `KpiCard` + `ChartCard`
+
+- `KpiCard`: label `text-label uppercase text-slate-500`, angka 28px 700 `ink`, delta `text-meta` (naik `success`, turun `danger`), ikon 32px `bg-brand-100 text-brand`. Bisa diklik → halaman terkait (PRD §9).
+- `ChartCard`: judul + rentang waktu, area/garis `brand-700` dengan isi `brand-100`, grid `line`, tooltip. State: `loading` (skeleton), `empty` ("Belum ada penjualan pada rentang ini"), `error`.
+
+### 4.27 `TabNav`
+
+- Item `px-4 h-11 text-label`, aktif `border-b-2 border-brand text-brand`, nonaktif `text-slate-500`. Mobile: `overflow-x-auto` tanpa scrollbar, `role="tablist"`. Dipakai `/admin/pengaturan` (9 tab) dan detail pesanan.
+
+### 4.28 `CartLine` + `OrderSummary`
+
+- `CartLine`: grid `80px 1fr auto` (mobile bertumpuk), gambar `w-cartThumb`, nama `text-h3`, varian `text-meta text-slate-400`, `QtyStepper`, subtotal `text-h3`, hapus `IconButton` `text-danger`.
+- `OrderSummary`: kartu `rounded-xl border-line p-6 w-summary` sticky; baris Subtotal / Ongkir / **Total** (20px 700), CTA `primary` full-width, catatan "Pembayaran QRIS" `text-meta text-slate-400`.
+- State: `loading` (skeleton 3 baris), `empty` (tidak dirender bila keranjang kosong), `error` (baris + "Coba lagi").
+
+### 4.29 `ReviewCard` + `RatingSummary` + `ReviewForm`
+
+- `ReviewCard`: avatar 40px (`bg-brand-100` inisial), nama `text-h3`, `StarRating sm`, tanggal `text-meta text-slate-400`, komentar `text-body`; balasan toko = `bg-surface border-l-[3px] border-accent-500 p-3` + label "Balasan Toko Kulot".
+- `RatingSummary`: rata-rata 32px 700 + `StarRating md` + jumlah ulasan; distribusi 5→1 (`bg-accent-500` di atas `bg-slate-200`, lebar proporsional).
+- `ReviewForm`: bintang interaktif 32px, textarea 120px, tombol `primary`; state `idle` `submitting` `submitted` ("Terima kasih! Penilaianmu membantu pembeli lain." + bintang readonly) `error` `already-reviewed`.
+
+### 4.30 `PageHeader` (admin)
+
+- Breadcrumb + H1 `font-display text-h1` + slot aksi kanan ("Tambah X"). Jarak bawah 24px. Mobile: aksi turun ke baris sendiri, full-width.
+
+### 4.31 `Footer`
+
+
+===== C. Settings/Index.jsx 211-360 =====
+function Thumb({ src, size = 48, className = '' }) {
+    const [failed, setFailed] = useState(false);
+
+    useEffect(() => {
+        setFailed(false);
+    }, [src]);
+
+    const style = { width: `${size}px`, height: `${size}px` };
+
+    if (!src || failed) {
+        return (
+            <span
+                style={style}
+                className={cn('flex shrink-0 items-center justify-center rounded-md border border-line bg-surface text-slate-400', className)}
+            >
+                <ImageOffIcon size={18} />
+            </span>
+        );
+    }
+
+    return (
+        <img
+            src={src}
+            alt=""
+            style={style}
+            loading="lazy"
+            onError={() => setFailed(true)}
+            className={cn('shrink-0 rounded-md border border-line object-cover', className)}
+        />
+    );
+}
+
+function ImageField({
+    id,
+    label,
+    hint = null,
+    required = false,
+    accept,
+    maxKb,
+    extensions,
+    file = null,
+    currentPath = null,
+    error = null,
+    message,
+    onSelect,
+}) {
+    const [objectUrl, setObjectUrl] = useState(null);
+
+    useEffect(() => {
+        if (!file) {
+            setObjectUrl(null);
+            return undefined;
+        }
+        const url = URL.createObjectURL(file);
+        setObjectUrl(url);
+        return () => URL.revokeObjectURL(url);
+    }, [file]);
+
+    const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
+    const sizeLabel = maxKb >= 1024 ? `${Math.round(maxKb / 1024)} MB` : `${maxKb} KB`;
+
+    return (
+        <Field label={label} htmlFor={id} required={required} hint={hint} error={error}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
+                <Thumb src={objectUrl || currentPath || null} size={112} className="rounded-lg" />
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                    <input
+                        id={id}
+                        type="file"
+                        accept={accept}
+                        aria-describedby={describedBy}
+                        aria-invalid={error ? 'true' : undefined}
+                        onChange={(event) => {
+                            const picked = event.target.files && event.target.files[0] ? event.target.files[0] : null;
+                            onSelect(picked);
+                            event.target.value = '';
+                        }}
+                        className={cn(
+                            'field h-auto cursor-pointer py-2 text-meta file:mr-3 file:rounded-sm file:border-0 file:bg-surface file:px-3 file:py-1.5 file:text-meta file:font-semibold file:text-ink hover:file:bg-slate-200',
+                            error && 'field-error'
+                        )}
+                    />
+                    <p className="text-meta text-slate-400">
+                        {message} Maksimal {sizeLabel}.
+                    </p>
+                    {file ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="truncate text-meta text-ink-soft">{file.name}</span>
+                            <Button variant="ghost" size="sm" onClick={() => onSelect(null)}>
+                                Batalkan pilihan
+                            </Button>
+                        </div>
+                    ) : null}
+                </div>
+            </div>
+        </Field>
+    );
+}
+
+function ArrayRow({ children, onRemove, removeLabel }) {
+    return (
+        <div className="rounded-lg border border-line p-3">
+            <div className="flex items-start gap-2">
+                <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-2">{children}</div>
+                <IconButton label={removeLabel} onClick={onRemove} className="text-danger">
+                    <TrashIcon size={18} />
+                </IconButton>
+            </div>
+        </div>
+    );
+}
+
+function StatusCell({ active }) {
+    return (
+        <span className="inline-flex items-center gap-2 text-meta text-ink">
+            <span
+                aria-hidden="true"
+                className={cn('h-2 w-2 rounded-full', active ? 'bg-success' : 'bg-slate-300')}
+            />
+            {active ? 'Aktif' : 'Nonaktif'}
+        </span>
+    );
+}
+
+function ConfirmDialog({ open, title, description, confirmLabel, processing, onConfirm, onCancel }) {
+    return (
+        <Modal
+            open={open}
+            title={title}
+            description={description}
+            onClose={processing ? () => {} : onCancel}
+            size="md"
+            footer={
+                <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                    <Button variant="secondary" onClick={onCancel} disabled={processing}>
+                        Batal
+                    </Button>
+                    <Button variant="danger" onClick={onConfirm} loading={processing}>
+                        {confirmLabel}
+                    </Button>
+                </div>
+            }
+        >
+            <p className="text-body text-ink-soft">Tindakan ini tidak bisa dibatalkan.</p>
+        </Modal>
+    );
+}
+
+export default function SettingsIndex({ auth = null, pengaturan = null, carousels = [], faqs = [], flash = null }) {
+    const [tab, setTab] = useState(() => readTabFromUrl());
+
+===== D. Messages/Index.jsx 121-380 =====
+        if (navLoading) return;
+
+        const next = normalizeFilter(filter);
+        setQuery((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
+    }, [filter, navLoading]);
+
+    useEffect(() => {
+        if (flash?.success) {
+            setToast({ tone: 'success', title: 'Berhasil', message: String(flash.success) });
+        } else if (flash?.error) {
+            setToast({ tone: 'error', title: 'Gagal', message: String(flash.error) });
+        }
+    }, [flash?.success, flash?.error]);
+
+    const load = (params) => {
+        router.get('/admin/pesan-masuk', params, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            onStart: () => {
+                setNavLoading(true);
+                setNavError(null);
+            },
+            onFinish: () => setNavLoading(false),
+            onError: () => setNavError('Gagal memuat daftar pesan. Periksa koneksi lalu coba lagi.'),
+        });
+    };
+
+    /** Parameter query yang benar-benar dikirim: nilai bawaan tidak ditulis ke URL. */
+    const paramsFor = (source, page = 1) => {
+        const params = {};
+        const q = source.q.trim();
+
+        if (q !== '') params.q = q;
+        if (source.status !== DEFAULT_FILTER.status) params.status = source.status;
+        if (page > 1) params.page = page;
+
+        return params;
+    };
+
+    const applyFilters = (overrides = {}) => {
+        const next = { ...query, ...overrides };
+        setQuery(next);
+        load(paramsFor(next));
+    };
+
+    const resetFilters = () => {
+        setQuery(DEFAULT_FILTER);
+        load({});
+    };
+
+    const changePage = (page) => load(paramsFor(query, page));
+
+    const reload = () => load(paramsFor(query, paginator.currentPage));
+
+    const openDetail = (row) => {
+        setActionError(null);
+        setAskDiscard(false);
+        form.setData('admin_reply', asText(row.admin_reply));
+        form.clearErrors();
+        setTargetId(row.id);
+    };
+
+    const closeDetail = () => {
+        setTargetId(null);
+        setAskDiscard(false);
+        form.setData('admin_reply', '');
+        form.clearErrors();
+    };
+
+    const replyDirty = target !== null && form.data.admin_reply.trim() !== asText(target.admin_reply).trim();
+
+    const requestClose = () => {
+        if (form.processing || busyId !== null) return;
+
+        if (replyDirty) {
+            setAskDiscard(true);
+
+            return;
+        }
+
+        closeDetail();
+    };
+
+    /** Throttle `admin-write` (60/menit): beri pesan yang terbaca, bukan modal galat bawaan. */
+    const onHttpException = (response) => {
+        if (response?.status === 429) {
+            setActionError({
+                message: 'Terlalu banyak aksi berturut-turut. Tunggu sebentar, lalu coba lagi.',
+                retry: null,
+            });
+
+            return false;
+        }
+
+        return undefined;
+    };
+
+    /** Tandai dibaca — wajib PATCH (kontrak §10.2, dikoreksi 20 Okt 2026). */
+    const markRead = (row) => {
+        if (busyId !== null || row.is_read) return;
+
+        setBusyId(row.id);
+        setActionError(null);
+
+        router.patch(
+            `/admin/pesan-masuk/${row.id}/baca`,
+            {},
+            {
+                preserveState: true,
+                preserveScroll: true,
+                onHttpException,
+                onFinish: () => setBusyId(null),
+                onError: () =>
+                    setActionError({
+                        message: 'Pesan gagal ditandai sudah dibaca. Periksa koneksi lalu coba lagi.',
+                        retry: () => markRead(row),
+                    }),
+            }
+        );
+    };
+
+    const submitReply = (event) => {
+        if (event) event.preventDefault();
+
+        if (target === null || form.processing) return;
+
+        setActionError(null);
+
+        form.post(`/admin/pesan-masuk/${target.id}/balas`, {
+            preserveState: true,
+            preserveScroll: true,
+            onHttpException,
+            onSuccess: () => closeDetail(),
+        });
+    };
+
+    const columns = [
+        {
+            key: 'pengirim',
+            header: 'Pengirim',
+            render: (row) => (
+                <div className="max-w-[220px]">
+                    <p className="truncate font-semibold text-ink">{asText(row.name) || '-'}</p>
+                    <p className="truncate text-meta text-slate-500">{asText(row.email) || '-'}</p>
+                </div>
+            ),
+        },
+        {
+            key: 'subjek',
+            header: 'Subjek',
+            render: (row) => {
+                const subject = asText(row.subject);
+                const body = asText(row.message);
+                const reply = asText(row.admin_reply);
+
+                return (
+                    <div className="max-w-[320px] space-y-1">
+                        <p className="truncate font-semibold text-ink">
+                            {subject !== '' ? subject : 'Tanpa subjek'}
+                        </p>
+                        <p className="truncate text-meta text-ink-soft">
+                            {body !== '' ? body.replace(/\s+/g, ' ') : '-'}
+                        </p>
+                        {reply !== '' && (
+                            <p className="truncate text-meta text-slate-500">
+                                Dibalas {formatDateTime(row.replied_at)}
+                            </p>
+                        )}
+                    </div>
+                );
+            },
+        },
+        {
+            key: 'created_at',
+            header: 'Tanggal',
+            render: (row) => <span className="whitespace-nowrap">{formatDateTime(row.created_at)}</span>,
+        },
+        {
+            key: 'is_read',
+            header: 'Status baca',
+            render: (row) =>
+                row.is_read ? (
+                    <StatusBadge status="sudah dibaca" label="Sudah dibaca" className="bg-success/10 text-success" />
+                ) : (
+                    <StatusBadge status="belum dibaca" label="Belum dibaca" className="bg-warning/10 text-warning" />
+                ),
+        },
+        {
+            key: 'aksi',
+            header: 'Aksi',
+            align: 'right',
+            render: (row) => (
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Button variant="secondary" size="sm" onClick={() => openDetail(row)}>
+                        Baca detail
+                    </Button>
+                    {!row.is_read && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => markRead(row)}
+                            loading={busyId === row.id}
+                            disabled={busyId !== null && busyId !== row.id}
+                        >
+                            Tandai dibaca
+                        </Button>
+                    )}
+                </div>
+            ),
+        },
+    ];
+
+    const replyText = target ? asText(target.admin_reply) : '';
+
+    return (
+        <AdminLayout auth={auth?.admin ?? null} nav={NAV_AKTIF} title="Pesan Masuk">
+            <div className="flex flex-col gap-6">
+                <PageHeader title="Pesan Masuk" breadcrumb={BREADCRUMB} />
+
+                <p className="text-meta text-slate-500">
+                    Total {formatNumber(total)} pesan · {formatNumber(belumDibaca)} belum dibaca
+                </p>
+
+                {actionError && (
+                    <InlineNotice tone="error" title="Aksi gagal" onDismiss={() => setActionError(null)}>
+                        <p>{actionError.message}</p>
+                        {actionError.retry && (
+                            <Button variant="secondary" size="sm" className="mt-3" onClick={actionError.retry}>
+                                Coba lagi
+                            </Button>
+                        )}
+                    </InlineNotice>
+                )}
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                    <SearchInput
+                        className="w-full sm:max-w-sm"
+                        value={query.q}
+                        onChange={(value) => applyFilters({ q: value })}
+                        placeholder="Cari nama, subjek, atau email"
+                        label="Cari pesan"
+                        loading={navLoading}
+                    />
+
+                    <Field label="Status baca" htmlFor="filter-status" className="w-full sm:w-48">
+                        <Select
+                            id="filter-status"
+                            value={query.status}
+                            onChange={(event) => applyFilters({ status: event.target.value })}
+                        >
+                            {STATUS_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </Select>
+                    </Field>
+
+                    {filterActive && (
+
+===== E. Modal.jsx =====
+import React, { useEffect, useRef } from 'react';
+import { cn } from '../lib/format';
+import { useBodyScrollLock, useFocusTrap } from '../lib/hooks';
+import { CloseIcon } from './icons';
+
+const SIZES = {
+    md: 'max-w-modal',
+    lg: 'max-w-modalLg',
+};
+
+/**
+ * Modal dasar — docs/design.md §4.24 (turunan: `ConfirmDialog`).
+ * Overlay gelap, Esc menutup, klik overlay menutup, fokus terperangkap,
+ * scroll body dikunci, `aria-modal="true"`.
+ */
+export default function Modal({
+    open = false,
+    title = null,
+    description = null,
+    children = null,
+    footer = null,
+    onClose,
+    size = 'md',
+    closeLabel = 'Tutup',
+}) {
+    const panelRef = useRef(null);
+
+    useBodyScrollLock(open);
+    useFocusTrap(panelRef, open);
+
+    useEffect(() => {
+        if (!open) return undefined;
+
+        const onKeyDown = (event) => {
+            if (event.key === 'Escape') onClose?.();
+        };
+
+        document.addEventListener('keydown', onKeyDown);
+
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, [open, onClose]);
+
+    if (!open) return null;
+
+    return (
+        <div
+            className="fixed inset-0 z-modal flex items-center justify-center bg-black/50 p-4"
+            onMouseDown={(event) => {
+                if (event.target === event.currentTarget) onClose?.();
+            }}
+        >
+            <div
+                ref={panelRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={title ? 'modal-title' : undefined}
+                tabIndex={-1}
+                className={cn(
+                    'w-full rounded-xl bg-white p-6 shadow-raised animate-modal-in',
+                    SIZES[size] ?? SIZES.md
+                )}
+            >
+                <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                        {title && (
+                            <h2 id="modal-title" className="text-h3 text-ink">
+                                {title}
+                            </h2>
+                        )}
+                        {description && <p className="mt-1 text-meta text-ink-soft">{description}</p>}
+                    </div>
+                    {onClose && (
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            aria-label={closeLabel}
+                            className="-mr-2 -mt-1 inline-flex h-touch w-touch items-center justify-center rounded-md text-ink-soft transition-colors duration-hover hover:bg-surface"
+                        >
+                            <CloseIcon size={20} />
+                        </button>
+                    )}
+                </div>
+
+                {children && <div className="mt-4 text-body text-ink">{children}</div>}
+                {footer && <div className="mt-6 flex flex-wrap justify-end gap-3">{footer}</div>}
+            </div>
+        </div>
+    );
+}
+
+===== F. DataTable.jsx =====
+import React from 'react';
+import { cn } from '../lib/format';
+import EmptyState from './EmptyState';
+import ErrorState from './ErrorState';
+import Skeleton from './Skeleton';
+
+/**
+ * Tabel data admin — docs/design.md §4.28, docs/komponen.md §4.
+ * Header sticky `h-tableHead bg-surface`, baris `h-tableRow`, teks `text-meta`.
+ * Memuat: 8 baris skeleton. Kosong dan galat adalah dua keadaan berbeda.
+ */
+export default function DataTable({
+    columns = [],
+    rows = [],
+    rowKey = (row, index) => row?.id ?? index,
+    loading = false,
+    error = null,
+    emptyTitle = 'Belum ada data',
+    emptyDescription = null,
+    emptyActionLabel = null,
+    emptyActionHref = null,
+    onRetry = null,
+    onRowClick = null,
+    sort = null,
+    onSort = null,
+    caption = null,
+    className = '',
+}) {
+    const list = Array.isArray(rows) ? rows : [];
+    const hasRows = list.length > 0;
+
+    const cellAlign = (column) =>
+        column.align === 'right' ? 'text-right' : column.align === 'center' ? 'text-center' : 'text-left';
+
+    const sortState = (column) => {
+        if (!sort || sort.key !== column.key) return 'none';
+        return sort.dir === 'desc' ? 'descending' : 'ascending';
+    };
+
+    return (
+        <div className={cn('overflow-hidden rounded-lg border border-line bg-white', className)}>
+            {error ? (
+                <ErrorState
+                    title="Gagal memuat data"
+                    description={typeof error === 'string' ? error : 'Periksa koneksi Anda lalu coba lagi.'}
+                    onRetry={onRetry}
+                    supportHref={null}
+                />
+            ) : loading ? (
+                <div className="flex flex-col" aria-busy="true">
+                    <div className="h-tableHead w-full border-b border-line bg-surface" aria-hidden="true" />
+                    {Array.from({ length: 8 }).map((_, index) => (
+                        <div key={index} className="flex items-center gap-4 border-b border-line px-4 last:border-b-0">
+                            <Skeleton variant="row" />
+                        </div>
+                    ))}
+                </div>
+            ) : !hasRows ? (
+                <EmptyState
+                    title={emptyTitle}
+                    description={emptyDescription}
+                    actionLabel={emptyActionLabel}
+                    actionHref={emptyActionHref}
+                />
+            ) : (
+                <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-meta">
+                        {caption && <caption className="sr-only">{caption}</caption>}
+                        <thead>
+                            <tr className="bg-surface">
+                                {columns.map((column) => {
+                                    const isSorted = sort && sort.key === column.key;
+                                    const sortable = Boolean(onSort && column.sortable !== false);
+
+                                    return (
+                                        <th
+                                            key={column.key}
+                                            scope="col"
+                                            aria-sort={isSorted ? sortState(column) : undefined}
+                                            className={cn(
+                                                'h-tableHead whitespace-nowrap border-b border-line px-4 text-label uppercase text-slate-500',
+                                                cellAlign(column)
+                                            )}
+                                        >
+                                            {sortable ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onSort(column.key)}
+                                                    className={cn(
+                                                        'inline-flex items-center gap-1 rounded-sm transition-colors duration-hover hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand',
+                                                        isSorted && 'text-ink'
+                                                    )}
+                                                >
+                                                    {column.header}
+                                                    <span aria-hidden="true">
+                                                        {isSorted ? (sort.dir === 'desc' ? '↓' : '↑') : '↕'}
+                                                    </span>
+                                                </button>
+                                            ) : (
+                                                column.header
+                                            )}
+                                        </th>
+                                    );
+                                })}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {list.map((row, index) => {
+                                const clickable = typeof onRowClick === 'function';
+
+                                return (
+                                    <tr
+                                        key={rowKey(row, index)}
+                                        className={cn(
+                                            'h-tableRow border-b border-line last:border-b-0',
+                                            clickable &&
+                                                'cursor-pointer transition-colors duration-hover hover:bg-surface focus-within:bg-surface'
+                                        )}
+                                        onClick={clickable ? () => onRowClick(row, index) : undefined}
+                                    >
+                                        {columns.map((column) => (
+                                            <td
+                                                key={column.key}
+                                                className={cn('px-4 align-middle text-ink', cellAlign(column))}
+                                            >
+                                                {column.render ? column.render(row, index) : (row?.[column.key] ?? '-')}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </div>
+    );
+}
+
+===== G. Field.jsx + Input.jsx =====
+import React from 'react';
+import { cn } from '../lib/format';
+
+/**
+ * Pembungkus isian - docs/design.md 4.5.
+ * Label wajib htmlFor; hint dan galat terhubung lewat aria-describedby.
+ */
+export default function Field({
+    label,
+    htmlFor,
+    required = false,
+    hint = null,
+    error = null,
+    children,
+    className = '',
+}) {
+    const hintId = htmlFor ? htmlFor + '-hint' : undefined;
+    const errorId = htmlFor ? htmlFor + '-error' : undefined;
+
+    return (
+        <div className={cn('flex flex-col', className)}>
+            {label && (
+                <label htmlFor={htmlFor} className="mb-1.5 block text-meta font-semibold text-ink">
+                    {label}
+                    {required && (
+                        <span className="text-danger" aria-hidden="true">
+                            {' *'}
+                        </span>
+                    )}
+                </label>
+            )}
+            {children}
+            {hint && !error && (
+                <p id={hintId} className="mt-1.5 text-meta text-slate-400">
+                    {hint}
+                </p>
+            )}
+            {error && (
+                <p id={errorId} className="mt-1.5 text-meta text-danger" role="alert">
+                    {error}
+                </p>
+            )}
+        </div>
+    );
+}
+
+--- Input ---
+import React from 'react';
+import { cn } from '../lib/format';
+
+const BASE =
+    'w-full h-field rounded-md border border-line bg-white px-3.5 text-body text-ink transition-colors duration-hover placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-[3px] focus:ring-brand/15 disabled:cursor-not-allowed disabled:bg-surface';
+
+/** Input - docs/design.md 4.5. Tinggi 44px (h-field). */
+export default function Input({ error = null, className = '', id = null, ...rest }) {
+    return (
+        <input
+            id={id}
+            aria-invalid={error ? 'true' : undefined}
+            aria-describedby={error && id ? id + '-error' : undefined}
+            className={cn(BASE, error ? 'border-danger' : null, className)}
+            {...rest}
+        />
+    );
+}
+45006 tmp/bundel-konteks3-t_e5149746.txt

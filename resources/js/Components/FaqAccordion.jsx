@@ -45,7 +45,7 @@ export default function FaqAccordion({
         return (
             <section id={id} className="container py-sectionMobile lg:py-section">
                 <SectionHeader title={title} />
-                <p className="text-meta text-slate-400" role="alert">
+                <p className="text-meta text-slate-500" role="alert">
                     FAQ gagal dimuat.
                 </p>
                 {onRetry && (

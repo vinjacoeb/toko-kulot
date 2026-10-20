@@ -34,7 +34,7 @@ export default function RatingSummary({ average = 0, count = 0, distribution = n
                 <span className="text-[32px] font-bold leading-10 text-ink">{avg ? avg.toFixed(1) : '-'}</span>
                 <div className="flex flex-col">
                     <Stars value={avg} />
-                    <span className="text-meta text-slate-400">
+                    <span className="text-meta text-slate-500">
                         {total > 0 ? formatNumber(total) + ' ulasan' : 'Belum ada ulasan'}
                     </span>
                 </div>
@@ -44,14 +44,14 @@ export default function RatingSummary({ average = 0, count = 0, distribution = n
                 <div className="flex-1 space-y-1.5">
                     {bars.map((bar) => (
                         <div key={bar.star} className="flex items-center gap-2">
-                            <span className="w-8 shrink-0 text-meta text-slate-400">{bar.star} bintang</span>
+                            <span className="w-8 shrink-0 text-meta text-slate-500">{bar.star} bintang</span>
                             <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface">
                                 <span
                                     className="block h-full rounded-full bg-accent-500"
                                     style={{ width: bar.percent + '%' }}
                                 />
                             </span>
-                            <span className="w-9 shrink-0 text-right text-meta text-slate-400">{bar.percent}%</span>
+                            <span className="w-9 shrink-0 text-right text-meta text-slate-500">{bar.percent}%</span>
                         </div>
                     ))}
                 </div>

@@ -231,7 +231,7 @@ export default function ProductsShow({
                         {categoryName && (
                             <Link
                                 href={categorySlug ? '/produk?kategori=' + encodeURIComponent(categorySlug) : '/produk'}
-                                className="text-badge uppercase tracking-wide text-slate-400 hover:text-brand"
+                                className="text-badge uppercase tracking-wide text-slate-500 hover:text-brand"
                             >
                                 Tipe: {categoryName}
                             </Link>
@@ -239,7 +239,7 @@ export default function ProductsShow({
 
                         <h1 className="mt-1 font-display text-h1 text-ink">{name}</h1>
 
-                        <div className="mt-2 flex flex-wrap items-center gap-2 text-meta text-slate-400">
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-meta text-slate-500">
                             {ratingCount > 0 ? (
                                 <>
                                     <StarRating value={ratingAvg} size="sm" />
@@ -255,9 +255,9 @@ export default function ProductsShow({
                         </div>
 
                         <div className="mt-4">
-                            <PriceBlock price={effectivePrice} />
+                            <PriceBlock price={effectivePrice} comparePrice={product?.compare_price} />
                             {hasWholesale && (
-                                <p className="mt-1 text-meta text-success">
+                                <p className="mt-1 text-meta text-success-strong">
                                     Harga grosir {rupiah(wholesalePrice)} mulai {formatNumber(minWholesale)} pcs
                                 </p>
                             )}
@@ -314,7 +314,7 @@ export default function ProductsShow({
                             </div>
                         )}
 
-                        <p className={soldOut ? 'mt-4 text-meta text-danger' : 'mt-4 text-meta text-success'}>
+                        <p className={soldOut ? 'mt-4 text-meta text-danger-strong' : 'mt-4 text-meta text-success-strong'}>
                             {soldOut
                                 ? 'Stok habis'
                                 : 'Stok: Tersedia' + (stockValue > 0 && stockValue < 100 ? ' (' + formatNumber(stockValue) + ')' : '')}
@@ -326,7 +326,7 @@ export default function ProductsShow({
                         </div>
 
                         {formError && (
-                            <p className="mt-3 text-meta text-danger" role="alert">
+                            <p className="mt-3 text-meta text-danger-strong" role="alert">
                                 {formError}
                             </p>
                         )}
@@ -365,7 +365,7 @@ export default function ProductsShow({
                         </div>
 
                         {needsVariant && !soldOut && (
-                            <p className="mt-2 text-meta text-warning" role="status">
+                            <p className="mt-2 text-meta text-warning-strong" role="status">
                                 Pilih ukuran dan warna yang tersedia dulu.
                             </p>
                         )}
@@ -377,7 +377,7 @@ export default function ProductsShow({
                                     <caption className="sr-only">
                                         Harga per pcs berdasarkan jumlah pembelian
                                     </caption>
-                                    <thead className="text-slate-400">
+                                    <thead className="text-slate-500">
                                         <tr>
                                             <th scope="col" className="pb-1 font-semibold">
                                                 Jumlah
@@ -394,7 +394,7 @@ export default function ProductsShow({
                                         </tr>
                                         <tr className="border-t border-line">
                                             <td className="py-1.5">{'≥ ' + formatNumber(minWholesale) + ' pcs'}</td>
-                                            <td className="py-1.5 text-right font-semibold text-success">
+                                            <td className="py-1.5 text-right font-semibold text-success-strong">
                                                 {rupiah(wholesalePrice)}
                                             </td>
                                         </tr>

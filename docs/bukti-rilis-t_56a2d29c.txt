@@ -1,0 +1,32 @@
+BUKTI RILIS — kartu devops t_56a2d29c
+Waktu      : 2026-10-20 14:20:39 +0700
+Repo       : C:/Users/LENOVO/Downloads/toko-kulot
+Server uji : http://127.0.0.1:8000 (dijalankan pemilik; devops tidak menyalakan server)
+
+== 1. BUILD PRODUKSI (DoD 15.2) ==
+$ npm run build
+exit=0; baris akhir:
+[2mpublic/build/[22m[36massets/CheckoutPay-Cq4FSkaK.js      [39m[1m[2m 16.92 kB[22m[1m[22m[2m │ gzip:   6.27 kB[22m
+[2mpublic/build/[22m[36massets/app-BkyIvEIo.js              [39m[1m[2m361.53 kB[22m[1m[22m[2m │ gzip: 113.31 kB[22m
+[32m✓ built in 9.81s[39m
+manifest.json mtime: 2026-10-20 14:20:23.465931800 +0700
+artefak di public/build/assets: 45 berkas
+sumber resources/js yang lebih baru dari manifest: 0
+
+== 2. SAPUAN STATIS 'komponen JSX tanpa import' (kelas bug QA-001) ==
+$ node <devops>/check-jsx-imports.mjs resources/js
+Berkas diperiksa : 79
+Pemakaian tag JSX: 361
+Temuan           : 0
+exit=0
+
+$ python tmp/cek-komponen-tanpa-import.py C:/Users/LENOVO/Downloads/toko-kulot
+file diperiksa: 79
+resources\js\app.jsx: App
+exit=0
+
+$ python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build
+chunk .js diperiksa: 44
+OK: tidak ada identifier komponen JSX tanpa import/definisi di bundel.
+exit=0
+

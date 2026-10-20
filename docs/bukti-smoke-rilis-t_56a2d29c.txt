@@ -1,0 +1,48 @@
+BUKTI SMOKE BROWSER RILIS — kartu devops t_56a2d29c
+Waktu      : 2026-10-20 14:23:01 +0700
+Server     : http://127.0.0.1:8000 (server pemilik; devops tidak menyalakan/menghentikan server)
+Mode       : hanya GET (tanpa login, tanpa submit form, tanpa tambah keranjang)
+Bundel     : http://127.0.0.1:8000/build/assets/app-BkyIvEIo.js
+Kolektor   : window.onerror + unhandledrejection + console.error, dipasang lewat
+             Page.addScriptToEvaluateOnNewDocument (sebelum document start)
+
+path (redirect bila ada)                              vp   teks simpul  form  overflow console
+--------------------------------------------------------------------------------------------------------------------------------------------
+/ -> /                                               360   2027    460     0        +0 BERSIH
+/ -> /                                               768   2054    460     0        +0 BERSIH
+/ -> /                                              1280   2054    460     0        +0 BERSIH
+/produk -> /produk                                   360   1791    633     0        +0 BERSIH
+/produk -> /produk                                   768   1818    633     0        +0 BERSIH
+/produk -> /produk                                  1280   1906    633     0        +0 BERSIH
+/produk/setelan-kulot-linen-lengan-panjang -> /produk/setelan-kulot-linen-lengan-panjang   360   1329    308     0        +0 BERSIH
+/produk/setelan-kulot-linen-lengan-panjang -> /produk/setelan-kulot-linen-lengan-panjang   768   1352    308     0        +0 BERSIH
+/produk/setelan-kulot-linen-lengan-panjang -> /produk/setelan-kulot-linen-lengan-panjang  1280   1352    308     0        +0 BERSIH
+/keranjang -> /keranjang                             360    156     56     0        +0 BERSIH
+/keranjang -> /keranjang                             768    178     56     0        +0 BERSIH
+/keranjang -> /keranjang                            1280    178     56     0        +0 BERSIH
+/login -> /login                                     360      0      0     0        +0 error: Uncaught ReferenceError: route is not defined [TEKS KOSONG] [CONSOLE]
+/login -> /login                                     768      0      0     0        +0 error: Uncaught ReferenceError: route is not defined [TEKS KOSONG] [CONSOLE]
+/login -> /login                                    1280      0      0     0        +0 error: Uncaught ReferenceError: route is not defined [TEKS KOSONG] [CONSOLE]
+/admin/login -> /admin/login                         360     62     17     1        +0 BERSIH [TEKS KOSONG]
+/admin/login -> /admin/login                         768     62     17     1        +0 BERSIH [TEKS KOSONG]
+/admin/login -> /admin/login                        1280     62     17     1        +0 BERSIH [TEKS KOSONG]
+/kontak-kami -> /kontak-kami                        1280    854    152     1        +0 BERSIH
+/register -> /register                              1280    225     58     1        +0 BERSIH
+/lupa-password -> /lupa-password                    1280     13      0     0        +0 BERSIH [TEKS KOSONG]
+/checkout -> /login                                 1280      0      0     0        +0 error: Uncaught ReferenceError: route is not defined [TEKS KOSONG] [CONSOLE]
+/admin -> /admin/login                              1280     62     17     1        +0 BERSIH [TEKS KOSONG]
+
+Ringkasan: 23 pengukuran, 9 bermasalah
+
+Judul halaman (viewport 1280):
+  /                                -> Toko Kulot — Daster & Kulot Nyaman Harga Grosir — Toko Kulot
+  /produk                          -> 🐴 Toko Kulot
+  /produk/setelan-kulot-linen-lengan-panjang -> Setelan Kulot Linen Lengan Panjang — Toko Kulot
+  /keranjang                       -> Keranjang — Toko Kulot
+  /login                           -> Toko Kulot
+  /admin/login                     -> Masuk Panel Admin — Toko Kulot
+  /kontak-kami                     -> Kontak Kami — Toko Kulot
+  /register                        -> Daftar Akun — Toko Kulot
+  /lupa-password                   -> 🐴 Not Found
+  /checkout                        -> Toko Kulot
+  /admin                           -> Masuk Panel Admin — Toko Kulot

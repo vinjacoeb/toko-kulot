@@ -1,0 +1,147 @@
+BUKTI VERIFIKASI FRONTEND — kartu t_7cbe34dc
+ProductCard memakai <PriceBlock> tanpa import -> /, /produk, /produk/{slug} blank (Critical)
+Tanggal: 2026-10-20 13:50-14:05 WIB | Repo: C:/Users/LENOVO/Downloads/toko-kulot (master, tanpa commit)
+
+Ringkasan: penyebab = `resources/js/Components/ProductCard.jsx:102` memakai `<PriceBlock>`
+tanpa baris import (regresi dari kartu t_6b722a49). Perbaikan = tambah import + hapus `const price`
+yang menjadi tidak terpakai. Sweep kelas bug yang sama pada sumber dan bundel: bersih.
+
+================================================================================
+1. PERUBAHAN SUMBER (git diff --stat resources/js/Components/ProductCard.jsx)
+================================================================================
+ resources/js/Components/ProductCard.jsx | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff:
+     import { ImageOffIcon } from './icons';
+     import StarRating from './StarRating';
++    import PriceBlock from './PriceBlock';
+...
+-            const price = rupiah(product?.base_price);
+...
+-                <p className="text-h3 font-bold text-ink">{price ?? '-'}</p>
++                <PriceBlock price={Number(product?.base_price ?? 0)} comparePrice={product?.compare_price} size="sm" />
+
+================================================================================
+2. BUILD PRODUKSI (npm run build) — dua kali, keduanya exit 0
+================================================================================
+Run #2 final, 13:55 (semua sumber sudah final; sumber terbaru 13:54:43 < build 13:55:23):
+public/build/assets/ProductGrid-C6jbWhDc.js        6.49 kB │ gzip:   2.61 kB
+public/build/assets/Home-BESFh4uW.js              13.37 kB │ gzip:   4.32 kB
+public/build/assets/Index-C30Y4olL.js             15.76 kB │ gzip:   5.12 kB
+public/build/assets/Show-BtI4i1WE.js              17.02 kB │ gzip:   5.53 kB
+public/build/assets/app-8YrCIWOJ.js              360.52 kB │ gzip: 112.97 kB
+✓ built in 10.66s
+EXIT=0 ; 33 artefak di public/build/assets
+
+Chunk sebelum perbaikan (QA-001): ProductGrid-BSmUR2l-.js memuat 0 definisi `PriceBlock`
+tetapi 1 pemakaian `jsx(PriceBlock,{...})`.
+Chunk sesudah perbaikan: ProductGrid-C6jbWhDc.js memuat 0 identifier `PriceBlock` (Rollup
+meng-inline komponennya sebagai lokal chunk) dan memuat markup khas PriceBlock:
+  jsx("span",{className:"text-meta text-slate-400 line-through",...})
+  jsx("span",{className:"rounded-sm bg-sale-500/10 px-1.5 py-0.5 text-badge font-semibold text-sale-500",...})
+Cek sinkron sumber vs artefak: `find resources/js -type f -newer public/build/assets/ProductGrid-C6jbWhDc.js`
+-> kosong (tidak ada sumber lebih baru dari build).
+
+================================================================================
+3. SAPU KELAS BUG "KOMPONEN JSX TANPA IMPORT"
+================================================================================
+3a. Sumber — tmp/cek-komponen-tanpa-import.py (stdlib, tanpa dependensi)
+    $ python tmp/cek-komponen-tanpa-import.py C:/Users/LENOVO/Downloads/toko-kulot
+    file diperiksa: 70
+    resources/js/app.jsx: App                       <- bukan bug: `App` = parameter destructuring
+                                                       `setup({ el, App, props })` (bukan komponen tanpa import)
+    resources/js/Components/ProductCard.jsx: PriceBlock   <- bug Critical (sudah diperbaiki)
+    (setelah perbaikan: hanya tinggal temuan app.jsx di atas)
+
+3b. Bundel hasil build — tmp/cek-bundel-identifier-bebas.py
+    $ python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build
+    chunk .js diperiksa: 32
+    OK: tidak ada identifier komponen JSX tanpa import/definisi di bundel.
+
+Header.jsx / Footer.jsx (kelas bug yang sama sebelumnya) ikut tersapu bersih.
+
+================================================================================
+4. SMOKE BROWSER NYATA (Chrome via CDP, reload penuh, kolektor window.onerror +
+   console.error + unhandledrejection dipasang sebelum document start)
+================================================================================
+halaman                                        viewport   console.error  body.innerText  "Rp"  elemen <article>
+/                                              360/768/1280   0 (3x)       2027-2054 char   11    20
+/produk                                        360/768/1280   0 (3x)       1791-1906 char   25    48
+/produk/setelan-kulot-linen-lengan-panjang     360/768/1280   0 (3x)       1329-1352 char    9     8
+
+Contoh isi halaman `/` (360 px): "Lewati ke konten utama / Gratis ongkir untuk pembelian di atas
+Rp300.000 / Koleksi Daster Terbaru ..."
+Tautan produk nyata yang dirender: /produk/daster-batik-pekalongan-lengan-pendek,
+/produk/kulot-plisket-premium, /produk/daster-santorini-katun-jumbo, ...
+Tidak ada teks "NaN", "undefined", "null", atau "[CONTOH]" pada ketiga halaman.
+HTTP status ketiga halaman: 200 (curl -s -o /dev/null -w '%{http_code}').
+
+================================================================================
+5. JALUR HARGA CORET + BADGE POTONGAN (data sintetis, tanpa menyentuh DB)
+================================================================================
+$ node node_modules/esbuild/bin/esbuild tmp/priceblock-check.mjs --bundle --platform=node \
+      --format=esm --jsx=automatic --loader:.jsx=jsx --external:react --external:react-dom \
+      --external:react-dom/server --outfile=tmp/priceblock-check.bundle.mjs
+$ node tmp/priceblock-check.bundle.mjs
+compare_price kosong (null): teks="Rp169.000" | coret=false | badge=false | nan=false
+compare_price > harga: teks="Rp169.000 Rp220.000 -23%" | coret=true | badge=true | nan=false
+compare_price < harga (tidak boleh ada badge): teks="Rp169.000" | coret=false | badge=false | nan=false
+harga string dari server: teks="Rp169.000 Rp220.000 -23%" | coret=true | badge=true | nan=false
+harga kosong: teks="Rp0" | coret=false | badge=false | nan=false
+HASIL: tidak ada NaN/undefined pada semua kasus   (EXIT=0)
+
+Kontrak props server (dibaca dari HTML `<script data-page="app" type="application/json">`):
+- /produk  : component Public/Products/Index, key `products` (12 item) — key produk[0] lengkap:
+             base_price, compare_price, wholesale_price, min_wholesale_qty, images, variants, ...
+             nilai `compare_price` = null pada 12/12 produk -> harga coret belum tampil di data nyata
+             (bukan karena key hilang; kolom tersedia dan sudah dibaca komponen).
+- detail   : component Public/Products/Show, key `product` + `related` (2) + `reviews` (0) + `variants` (2);
+             compare_price = null.
+Kesimpulan: wiring benar; jalur tampilan harga coret TIDAK dapat diuji dengan data seed saat ini.
+
+================================================================================
+6. SUITE PHP (regresi backend) — php artisan test
+================================================================================
+$ PHP_INI_SCAN_DIR="<scratch>/php-ini" php artisan test     # sqlite :memory:, php.ini/.env tidak disentuh
+  Tests:    2 incomplete, 173 passed (996 assertions)
+  Duration: 53.21s
+  EXIT=0
+(2 incomplete = baseline sengaja dari QA K15: 22 rute admin t_70c96acd & konflik metode admin.messages.read t_d98cf23d.)
+
+Catatan lingkungan: sesi ini tidak punya pdo_sqlite di php.ini global (hanya pdo_mysql), jadi suite
+dijalankan dengan PHP_INI_SCAN_DIR ke direktori scratch berisi 99-sqlite.ini (2 baris extension).
+php.ini global, .env, dan .env.example tidak diubah.
+
+================================================================================
+7. BELUM DIUJI (jujur, bukan klaim)
+================================================================================
+- keyboard/tab order, zoom 200%, kontras WCAG, pembaca layar: butuh audit manual/alat terpisah.
+- Halaman di luar lingkup kartu ini (keranjang, checkout, bayar, sukses, login admin) masih blank
+  karena komponen halamannya belum ada -> kartu t_4dd28407 (QA-002), sengaja tidak disentuh.
+- LCP/Lighthouse (DoD §16): tidak ada alat ukur di sesi ini.
+
+================================================================================
+8. TEMUAN MINOR (di luar lingkup kartu, tidak diperbaiki)
+================================================================================
+PriceBlock mengubah `price` null/'' menjadi 0 sehingga tampil "Rp0", sedangkan lib/format.rupiah()
+mengembalikan null untuk nilai kosong (pemanggil disarankan menampilkan "-"). Dampak kosmetik karena
+kolom `products.base_price` non-null; dicatat sebagai komentar di kartu t_6b722a49.
+
+================================================================================
+9. SMOKE ULANG FINAL (14:03, artefak build 13:55:23 yang sama — manifest tidak berubah)
+================================================================================
+Kolektor error dipasang sebelum document start; 3 halaman x 2 viewport (360, 1280):
+
+360px  /                                            errors=[] text_len=2027 Rp=11 article=5  h1="Koleksi Daster Terbaru"
+360px  /produk                                      errors=[] text_len=1791 Rp=25 article=12 h1="Produk Daster & Kulot"
+360px  /produk/setelan-kulot-linen-lengan-panjang     errors=[] text_len=1329 Rp=9  article=2  h1="Setelan Kulot Linen Lengan Panjang"
+1280px /                                            errors=[] text_len=2054 Rp=11 article=5
+1280px /produk                                      errors=[] text_len=1906 Rp=25 article=12
+1280px /produk/setelan-kulot-linen-lengan-panjang     errors=[] text_len=1352 Rp=9  article=2
+TOTAL: 6 kasus, 0 console error, 0 error runtime.
+
+Catatan penanda `[CONTOH]`: muncul di ketiga halaman, tetapi berasal dari teks data seed server
+(`database/seeders/{Category,Product,...}Seeder.php`), bukan dari kode frontend — `grep -rn CONTOH
+resources/js` kosong. Sesuai aturan, teks server ditampilkan apa adanya dan penanda `[CONTOH]`
+dipertahankan sampai pemilik mengisi konten nyata. Tidak ada teks `NaN`/`undefined` di layar.

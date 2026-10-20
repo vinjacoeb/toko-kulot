@@ -1,0 +1,221 @@
+BUKTI PERBAIKAN KONTRAS NON-BADGE - kartu t_90759be9 (induk t_67576fb2)
+Waktu: 2026-10-20 15:40:49 +0700
+
+=== SEBELUM: jumlah text-slate-400 di resources/js ===
+65
+
+=== SEBELUM: daftar lengkap text-slate-400 ===
+resources/js/Components/BottomSheet.jsx:56:                            className="rounded-sm p-2 text-slate-400 transition-colors duration-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+resources/js/Components/Breadcrumb.jsx:31:            <ol className="flex h-full items-center gap-2 text-meta text-slate-400">
+resources/js/Components/CartLine.jsx:76:                    {variantLabel && <p className="mt-1 text-meta text-slate-400">{variantLabel}</p>}
+resources/js/Components/CartLine.jsx:79:                        {unitPrice ?? '-'} <span className="text-slate-400">/ pcs</span>
+resources/js/Components/CartLine.jsx:114:                        <p className="text-meta text-slate-400 lg:hidden">Subtotal</p>
+resources/js/Components/CartLine.jsx:117:                            <span className="mt-1 flex items-center gap-2 text-meta text-slate-400 lg:justify-end">
+resources/js/Components/CategoryCard.jsx:26:                <span className="flex h-full w-full items-center justify-center bg-surface text-slate-400">
+resources/js/Components/ChartCard.jsx:126:                {range && <p className="text-meta text-slate-400">{range}</p>}
+resources/js/Components/ChartCard.jsx:260:                        <div className="mt-2 flex justify-between text-meta text-slate-400" aria-hidden="true">
+resources/js/Components/ChartCard.jsx:267:                    <p className="mt-1 text-meta text-slate-400">Tertinggi {compact(axisMax)}</p>
+resources/js/Components/EmptyState.jsx:25:            {description && <p className="max-w-sm text-meta text-slate-400">{description}</p>}
+resources/js/Components/ErrorState.jsx:28:            {description && <p className="max-w-sm text-meta text-slate-400">{description}</p>}
+resources/js/Components/FaqAccordion.jsx:48:                <p className="text-meta text-slate-400" role="alert">
+resources/js/Components/Field.jsx:34:                <p id={hintId} className="mt-1.5 text-meta text-slate-400">
+resources/js/Components/FilterPanel.jsx:17:            <h3 className="mb-2.5 text-meta font-semibold uppercase tracking-wide text-slate-400">{title}</h3>
+resources/js/Components/FilterPanel.jsx:58:                                <span className="text-meta text-slate-400">{formatNumber(category.product_count)}</span>
+resources/js/Components/FilterPanel.jsx:91:                    <p className="mt-2 text-meta text-slate-400">
+resources/js/Components/HeroCarousel.jsx:105:                <div className="absolute inset-0 flex items-center justify-center bg-surface text-slate-400">
+resources/js/Components/Input.jsx:5:    'w-full h-field rounded-md border border-line bg-white px-3.5 text-body text-ink transition-colors duration-hover placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-[3px] focus:ring-brand/15 disabled:cursor-not-allowed disabled:bg-surface';
+resources/js/Components/NavDrawer.jsx:51:                    <span className="text-badge uppercase text-slate-400">{title}</span>
+resources/js/Components/OrderSummary.jsx:71:            {note && <p className="mt-3 text-meta text-slate-400">{note}</p>}
+resources/js/Components/Pagination.jsx:55:                className={cn(base, 'text-slate-400 hover:bg-surface disabled:cursor-not-allowed disabled:opacity-45')}
+resources/js/Components/Pagination.jsx:71:                                <span className="px-1 text-meta text-slate-400" aria-hidden="true">
+resources/js/Components/Pagination.jsx:97:                className={cn(base, 'text-slate-400 hover:bg-surface disabled:cursor-not-allowed disabled:opacity-45')}
+resources/js/Components/PriceBlock.jsx:22:                    <span className="text-meta text-slate-400 line-through">{rupiah(compare)}</span>
+resources/js/Components/ProductCard.jsx:71:                    <span className="flex h-full w-full items-center justify-center text-slate-400">
+resources/js/Components/ProductCard.jsx:93:                    <p className="text-badge uppercase text-slate-400">{product.category.name}</p>
+resources/js/Components/ProductCard.jsx:112:                    <span className="text-meta text-slate-400">{`(${formatNumber(ratingCount)})`}</span>
+resources/js/Components/ProductGallery.jsx:31:            <div className={cn('flex aspect-square w-full items-center justify-center rounded-md bg-surface text-slate-400', className)}>
+resources/js/Components/ProductGallery.jsx:42:                    <div className="flex h-full w-full items-center justify-center text-slate-400">
+resources/js/Components/ProductGallery.jsx:71:                                <span className="flex h-full w-full items-center justify-center bg-surface text-slate-400">
+resources/js/Components/QrisPanel.jsx:99:                <p className="mt-4 text-meta text-slate-400">
+resources/js/Components/QrisPanel.jsx:121:                <p className="mt-2 flex items-center justify-center gap-2 text-meta text-slate-400">
+resources/js/Components/QrisPanel.jsx:143:                            <span className="text-meta text-slate-400">Kode QR belum tersedia</span>
+resources/js/Components/QrisPanel.jsx:150:            <p className="mt-2 text-center text-meta text-slate-400">
+resources/js/Components/RatingSummary.jsx:37:                    <span className="text-meta text-slate-400">
+resources/js/Components/RatingSummary.jsx:47:                            <span className="w-8 shrink-0 text-meta text-slate-400">{bar.star} bintang</span>
+resources/js/Components/RatingSummary.jsx:54:                            <span className="w-9 shrink-0 text-right text-meta text-slate-400">{bar.percent}%</span>
+resources/js/Components/ReviewCard.jsx:45:                        {date && <time className="text-meta text-slate-400">{date}</time>}
+resources/js/Components/ReviewForm.jsx:148:            {variantLabel && <span className="text-meta font-normal text-slate-400"> · {variantLabel}</span>}
+resources/js/Components/SearchInput.jsx:34:            <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true">
+resources/js/Components/SearchInput.jsx:44:                className="h-field w-full rounded-md border border-line bg-white pl-10 pr-10 text-body text-ink transition-colors duration-hover placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-[3px] focus:ring-brand/15"
+resources/js/Components/SearchInput.jsx:51:                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-1.5 text-slate-400 transition-colors duration-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+resources/js/Components/Select.jsx:30:                className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+resources/js/Components/StarRating.jsx:48:                    <span className="text-meta text-slate-400">({formatNumber(count)})</span>
+resources/js/Components/Textarea.jsx:5:    'w-full min-h-[120px] resize-y rounded-md border border-line bg-white px-3.5 py-3 text-body text-ink transition-colors duration-hover placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-[3px] focus:ring-brand/15 disabled:cursor-not-allowed disabled:bg-surface';
+resources/js/Pages/Admin/Login.jsx:116:                <p className="mt-5 text-center text-meta text-slate-400">Khusus pengelola</p>
+resources/js/Pages/Admin/Messages/Index.jsx:506:                                <p className="mt-1 text-meta text-slate-400">
+resources/js/Pages/Admin/Reviews/Index.jsx:265:                                <p className="mt-1 text-meta text-slate-400">{formatDateTime(row.replied_at)}</p>
+resources/js/Pages/Admin/Reviews/Index.jsx:459:                                <span className="text-meta text-slate-400">
+resources/js/Pages/Admin/Settings/Index.jsx:224:                className={cn('flex shrink-0 items-center justify-center rounded-md border border-line bg-surface text-slate-400', className)}
+resources/js/Pages/Admin/Settings/Index.jsx:293:                    <p className="text-meta text-slate-400">
+resources/js/Pages/Public/Checkout.jsx:275:                                <span id="metode-qris-hint" className="mt-1 block pl-7 text-meta text-slate-400">
+resources/js/Pages/Public/Checkout.jsx:281:                            <p className="mt-2 text-meta text-slate-400">Metode pembayaran lain belum tersedia.</p>
+resources/js/Pages/Public/CheckoutPay.jsx:165:                                        <span className="block text-meta text-slate-400">
+resources/js/Pages/Public/CheckoutPay.jsx:201:                            <p className="mt-1 text-meta text-slate-400">{pesanan.customer_phone ?? '-'}</p>
+resources/js/Pages/Public/CheckoutPay.jsx:208:                                <p className="mt-3 text-meta text-slate-400">Catatan: {pesanan.note}</p>
+resources/js/Pages/Public/CheckoutSuccess.jsx:92:                        <p className="mt-1 text-meta text-slate-400">Dibayar {formatDateTime(pesanan.paid_at)}</p>
+resources/js/Pages/Public/CheckoutSuccess.jsx:118:                                    <span className="block text-meta text-slate-400">
+resources/js/Pages/Public/CheckoutSuccess.jsx:149:                            <p className="mt-1 text-meta text-slate-400">{pesanan.customer_phone ?? '-'}</p>
+resources/js/Pages/Public/Contact.jsx:248:                                <div className="flex h-map w-full items-center justify-center rounded-md border border-line bg-surface p-4 text-center text-meta text-slate-400">
+resources/js/Pages/Public/Products/Index.jsx:245:                                    <p className="mt-4 text-meta text-slate-400" aria-live="polite">
+resources/js/Pages/Public/Products/Show.jsx:234:                                className="text-badge uppercase tracking-wide text-slate-400 hover:text-brand"
+resources/js/Pages/Public/Products/Show.jsx:242:                        <div className="mt-2 flex flex-wrap items-center gap-2 text-meta text-slate-400">
+resources/js/Pages/Public/Products/Show.jsx:380:                                    <thead className="text-slate-400">
+resources/css/app.css:51:               placeholder:text-slate-400 focus:border-brand focus:ring-[3px]
+
+=== SEBELUM: token state sebagai teks/ikon ===
+resources/js/Components/Badge.jsx:11: *   success → `bg-success/10 text-success-strong` (5,33:1; token dasar hanya 2,96:1 — dilarang)
+resources/js/Components/Badge.jsx:12: *   warning → `bg-warning/10 text-warning-strong` (5,34:1; token dasar hanya 2,86:1 — dilarang)
+resources/js/Components/Badge.jsx:13: *   danger  → `bg-danger/10 text-danger-strong` (5,95:1 di atas tint; token dasar 4,13:1 — dilarang)
+resources/js/Components/Badge.jsx:20:    success: 'bg-success/10 text-success-strong',
+resources/js/Components/Badge.jsx:21:    warning: 'bg-warning/10 text-warning-strong',
+resources/js/Components/Badge.jsx:22:    danger: 'bg-danger/10 text-danger-strong',
+resources/js/Components/CartLine.jsx:126:                        className="text-danger disabled:opacity-45"
+resources/js/Components/Countdown.jsx:51:            className={cn('inline-flex items-center gap-1.5 text-meta font-mono', expired ? 'text-danger' : 'text-ink', className)}
+resources/js/Components/ErrorState.jsx:24:            <span className="text-danger" aria-hidden="true">
+resources/js/Components/Field.jsx:26:                        <span className="text-danger" aria-hidden="true">
+resources/js/Components/Field.jsx:39:                <p id={errorId} className="mt-1.5 text-meta text-danger" role="alert">
+resources/js/Components/InlineNotice.jsx:21:    success: 'text-success',
+resources/js/Components/InlineNotice.jsx:22:    warning: 'text-warning',
+resources/js/Components/InlineNotice.jsx:23:    error: 'text-danger',
+resources/js/Components/KpiCard.jsx:55:                                hasDelta && numericDelta > 0 && 'text-success',
+resources/js/Components/KpiCard.jsx:56:                                hasDelta && numericDelta < 0 && 'text-danger',
+resources/js/Components/QrisPanel.jsx:65:                <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success/10 text-success" aria-hidden="true">
+resources/js/Components/QrisPanel.jsx:178:                <p role="status" className="mt-2 text-center text-meta text-success">
+resources/js/Components/StatusBadge.jsx:25:    warning: 'bg-warning/10 text-warning-strong',
+resources/js/Components/StatusBadge.jsx:26:    success: 'bg-success/10 text-success-strong',
+resources/js/Components/StatusBadge.jsx:27:    danger: 'bg-danger/10 text-danger-strong',
+resources/js/Components/Toast.jsx:7:    success: { bar: 'border-l-success', icon: CheckIcon, color: 'text-success' },
+resources/js/Components/Toast.jsx:8:    warning: { bar: 'border-l-warning', icon: AlertIcon, color: 'text-warning' },
+resources/js/Components/Toast.jsx:9:    error: { bar: 'border-l-danger', icon: AlertIcon, color: 'text-danger' },
+resources/js/Pages/Admin/Dashboard.jsx:208:                                        <span className="shrink-0 text-meta font-semibold text-danger">
+resources/js/Pages/Admin/Dashboard.jsx:263:                                        <p className="flex items-center gap-1 text-meta text-warning">
+resources/js/Pages/Admin/Messages/Index.jsx:304:                    <StatusBadge status="sudah dibaca" label="Sudah dibaca" className="bg-success/10 text-success-strong" />
+resources/js/Pages/Admin/Messages/Index.jsx:306:                    <StatusBadge status="belum dibaca" label="Belum dibaca" className="bg-warning/10 text-warning-strong" />
+resources/js/Pages/Admin/Reviews/Index.jsx:279:                    className={row.is_visible ? 'bg-success/10 text-success-strong' : undefined}
+resources/js/Pages/Admin/Settings/Index.jsx:315:                <IconButton label={removeLabel} onClick={onRemove} className="text-danger">
+resources/js/Pages/Admin/Settings/Index.jsx:1720:                                        className="mt-6 text-danger"
+resources/js/Pages/Public/Auth/Register.jsx:129:            <p id="register-terms-error" role="alert" className="mt-1.5 text-meta text-danger">
+resources/js/Pages/Public/CheckoutSuccess.jsx:77:                        className="mt-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-success/10 text-success"
+resources/js/Pages/Public/Products/Show.jsx:260:                                <p className="mt-1 text-meta text-success">
+resources/js/Pages/Public/Products/Show.jsx:317:                        <p className={soldOut ? 'mt-4 text-meta text-danger' : 'mt-4 text-meta text-success'}>
+resources/js/Pages/Public/Products/Show.jsx:329:                            <p className="mt-3 text-meta text-danger" role="alert">
+resources/js/Pages/Public/Products/Show.jsx:368:                            <p className="mt-2 text-meta text-warning" role="status">
+resources/js/Pages/Public/Products/Show.jsx:397:                                            <td className="py-1.5 text-right font-semibold text-success">
+token tidak ditemukan di tailwind.config.js: slate-400
+token tidak ditemukan (config maupun palet tailwind): success-strong
+token surface=#F6F6F4 slate-400=#94a3b8 slate-500=#64748b success-strong=#166534 warning-strong=#92400E danger-strong=#991B1B
+
+baris                                                 rasio minimum lulus
+T1/T2 sebelum: slate-400 pada putih                   2.56:1     4.5 GAGAL
+T1/T2 sesudah: slate-500 pada putih                   4.76:1     4.5 LULUS
+T1/T2 sesudah: slate-500 pada surface                 4.40:1     4.5 GAGAL
+T1 placeholder: slate-500 pada putih                  4.76:1     4.5 LULUS
+T3 sesudah: success-strong pada putih                 7.13:1     4.5 LULUS
+T3 sesudah: warning-strong pada putih                 7.09:1     4.5 LULUS
+T4 sesudah: danger-strong pada putih                  8.31:1     4.5 LULUS
+T4 sesudah: danger-strong pada bg-danger/10           7.11:1     4.5 LULUS
+T3 sesudah: success-strong pada bg-success/10         6.40:1     4.5 LULUS
+T6 sesudah: success-strong pada bg-success/10         6.40:1     3.0 LULUS
+T6 sesudah: warning-strong pada bg-warning/10         6.36:1     3.0 LULUS
+T6 sisa (dibiarkan): danger pada bg-danger/10         4.13:1     3.0 LULUS
+T6 sisa (dibiarkan): danger pada putih                4.83:1     3.0 LULUS
+
+=== APA YANG DIUBAH (skrip baris-eksak: <scratch>/perbaikan-kontras-t_90759be9.py) ===
+71 edit baris pada 37 berkas (36 di resources/js + resources/css/app.css); 52 di antaranya baris ber-`text-slate-400`.
+Label: T1 50, T2 2, T3 6, T4 5, T3/T4 2, T6 6 (T5 badge diskon TIDAK disentuh - milik kartu t_67576fb2).
+Aturan sisip: setiap edit = penggantian SATU BARIS UTUH (bukan sed sebagian), diverifikasi baris lama ada tepat sekali dan baris baru belum ada.
+Verifikasi penerapan (skrip <scratch>/verifikasi-edit.py): 71/71 diterapkan - 0 baris lama tersisa, semua baris baru ada; 0 edit perlu diperiksa.
+Sebaran per berkas: Pages/Public/Products/Show.jsx 8; Components/QrisPanel.jsx 6; Components/CartLine.jsx 4; Pages/Public/CheckoutSuccess.jsx 4;
+Components/{ChartCard,FilterPanel,RatingSummary}.jsx 3 masing-masing; Pages/Public/CheckoutPay.jsx 3; Components/{Field,ProductCard}.jsx 2; Pages/Admin/{Reviews/Index,Dashboard}.jsx 2;
+Pages/Public/Checkout.jsx 2; Components/{KpiCard,InlineNotice,Toast}.jsx 2 masing-masing; 21 berkas lain 1 edit (Breadcrumb, EmptyState, ErrorState, FaqAccordion, Input, NavDrawer,
+OrderSummary, PriceBlock, ReviewCard, ReviewForm, SearchInput, StarRating, Textarea, Countdown, Pages/Admin/{Login,Messages/Index,Settings/Index}.jsx, Pages/Public/{Contact,Products/Index}.jsx,
+Pages/Public/Auth/Register.jsx, resources/css/app.css).
+Pada PriceBlock.jsx hanya baris 22 (harga coret, T2) yang disentuh; baris 23 (badge diskon) milik kartu t_67576fb2 - tidak diubah kartu ini.
+
+=== HASIL EDIT TOKEN STATE (T3/T4/T6) - daftar file:baris ===
+Pages/Admin/Dashboard.jsx                            208    text-danger-strong">     T3/T4 angka stok rendah (teks)
+Pages/Admin/Dashboard.jsx                            263    text-warning-strong">    T3 rating ulasan terbaru (teks)
+Pages/Public/Auth/Register.jsx                       129    text-danger-strong">     T4 galat validasi (teks)
+Components/Countdown.jsx                             51                              T4 teks kedaluwarsa (design 2.6 butir 5)
+Pages/Public/CheckoutSuccess.jsx                     77     text-success-strong"     T6 ikon dalam chip bertint
+Components/KpiCard.jsx                               55                              T3 delta naik (teks)
+Components/KpiCard.jsx                               56                              T4 delta turun (teks)
+Pages/Public/Products/Show.jsx                       260    text-success-strong">    T3 label ketersediaan (teks)
+Pages/Public/Products/Show.jsx                       317    text-danger-strong' text-success-strong'}> T3/T4 status stok (teks)
+Pages/Public/Products/Show.jsx                       329    text-danger-strong"      T4 galat kuantitas (teks)
+Pages/Public/Products/Show.jsx                       368    text-warning-strong"     T3 peringatan stok (teks)
+Pages/Public/Products/Show.jsx                       397    text-success-strong">    T3 harga grosir per pcs (teks)
+Components/InlineNotice.jsx                          21                              T6 ikon di dalam chip bertint
+Components/InlineNotice.jsx                          22                              T6 ikon di dalam chip bertint
+Components/Field.jsx                                 39     text-danger-strong"      T4 galat validasi kolom (teks)
+Components/QrisPanel.jsx                             65     text-success-strong"     T6 ikon dalam chip bertint
+Components/QrisPanel.jsx                             178    text-success-strong">    T3 status pembayaran QRIS (teks)
+Components/Toast.jsx                                 7                               T6 ikon success toast
+Components/Toast.jsx                                 8                               T6 ikon warning toast
+
+TOTAL edit token state: 19
+
+=== SESUDAH: `grep -rn "text-slate-400" resources/js` = 14 baris (dari 65) ===
+51 baris hilang, 0 baris baru (banding berkas+isi unik: 64 -> 13, 0 muncul baru; skrip <scratch>/banding-sisa.py).
+Semuanya dipertahankan sengaja karena BUKAN teks informatif (aturan §2.1: "slate-400 hanya untuk elemen non-teks/aria-hidden/teks disabled"):
+  1. Components/BottomSheet.jsx:56             ikon tombol tutup (hover:text-ink) - non-teks
+  2. Components/CategoryCard.jsx:26            ikon pengganti gambar (bg-surface) - non-teks, §11 D2
+  3. Components/HeroCarousel.jsx:105           ikon pengganti gambar gagal (bg-surface) - non-teks, §11 D2
+  4. Components/Pagination.jsx:55              ikon panah "sebelumnya" tombol disabled - non-teks + disabled (§4.21)
+  5. Components/Pagination.jsx:71              elipsis paginasi, aria-hidden="true" - dikecualikan §2.1
+  6. Components/Pagination.jsx:97              ikon panah "berikutnya" tombol disabled - non-teks + disabled
+  7. Components/ProductCard.jsx:71             ikon pengganti gambar - non-teks, §11 D2
+  8. Components/ProductGallery.jsx:31          ikon placeholder galeri (bg-surface) - non-teks, §11 D2
+  9. Components/ProductGallery.jsx:42          ikon pengganti gambar utama - non-teks, §11 D2
+ 10. Components/ProductGallery.jsx:71          ikon thumbnail pengganti gambar - non-teks, §11 D2
+ 11. Components/SearchInput.jsx:34             ikon kaca pembesar (pointer-events-none) - non-teks, aria-hidden
+ 12. Components/SearchInput.jsx:51             ikon tombol bersihkan isian - non-teks
+ 13. Components/Select.jsx:30                  ikon chevron (pointer-events-none) - non-teks
+ 14. Pages/Admin/Settings/Index.jsx:224        ikon placeholder unggah logo (border-line, tanpa teks) - non-teks
+`grep -rn "slate-400" resources/css resources/views` -> tidak ada hasil (bersih).
+`grep -rn "text-slate-500" resources/js` dipakai untuk teks meta informatif (breadcrumb, hint, jumlah kategori, harga coret, EmptyState/ErrorState, catatan) sesuai §11.4 T1/T2.
+
+=== VERIFIKASI PERINTAH (dijalankan 20 Okt 2026, disalin apa adanya) ===
+- `npm run build` -> exit 0; "✓ built in 3.86s"; 50 artefak; manifest.json 18.817 B 15:48:17; public/build/assets/app-DJeiCYJZ.js 361.816 B; app-C4SfSLQH.css 57.446 B.
+- `node token-check.mjs` -> exit 0; "OK: semua 55 token ter-resolve"; fontSize.display = clamp(40px, 2.55vw + 30.8px, 64px); container padding {"DEFAULT":"16px","lg":"50px"} | screens.xl = 1300px.
+- `python docs/qa/kontras-badge.py` -> EXIT 0 (skrip TIDAK diubah); "SEMUA angka tabel §4.21 cocok dengan hitungan WCAG 2.1 (toleransi 0,006) — 7 tone + 7 tone solid"; baris success-strong #166534 OK / warning-strong #92400E OK / danger-strong #991B1B OK.
+- `python tmp/cek-komponen-tanpa-import.py .` -> 81 berkas diperiksa; satu-satunya temuan `resources\js\app.jsx: App` = false positive parameter `setup({el, App, props})` (pola yang sama seperti kartu lain).
+- `python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build` -> 49 chunk JS diperiksa; "OK: tidak ada identifier komponen JSX tanpa import/definisi di bundel."
+- Tidak ada perintah test/lint di package.json (scripts hanya `build` dan `dev`), jadi tidak ada test unit yang bisa dijalankan untuk perubahan kelas CSS ini.
+
+=== TEMUAN YANG DIKEMBALIKAN KE UIUX (bukan diputuskan sendiri) ===
+`text-slate-500` di atas `bg-surface` (#F6F6F4) = **4,40:1**, di bawah ambang WCAG AA 4,5:1 untuk teks normal.
+§2.1 menulis "teks meta informatif minimal `slate-500` (4,76:1)" - angka 4,76:1 itu terukur **di atas putih**, dan §11.4 T1/T2 juga menyebut "di atas putih".
+Sembilan titik hasil edit kartu ini memakai `text-slate-500` di atas `bg-surface` (bukan putih):
+  1. resources/js/Pages/Public/Contact.jsx:248           kotak `bg-surface` info kunjungan
+  2. resources/js/Components/QrisPanel.jsx:99            varian kedaluwarsa `card bg-surface p-6`
+  3. resources/js/Pages/Admin/Messages/Index.jsx:506     blok catatan internal `bg-surface p-3`
+  4. resources/js/Pages/Admin/Reviews/Index.jsx:265      blok balasan toko `bg-surface p-2`
+  5. resources/js/Pages/Admin/Reviews/Index.jsx:459      blok `bg-surface p-4` di modal balasan
+  6. resources/js/Components/StarRating.jsx:48           instance di dalam blok `bg-surface` (Reviews modal, baris 459)
+  7. resources/js/Components/EmptyState.jsx:25           saat dirender langsung di latar halaman admin (`AdminLayout` root `bg-surface`): Settings/Index.jsx:2115
+  8. resources/js/Components/ErrorState.jsx:28           idem: Dashboard.jsx:139, Settings/Index.jsx:2092
+  9. resources/js/Components/Field.jsx:39 / Input.jsx:5 / Textarea.jsx:5 (placeholder) - hanya bila field berada di atas `bg-surface`; seluruh pemakaian saat ini di dalam kartu putih/form putih
+Catatan: §4.24 (tabel) memang menetapkan header tabel `text-badge uppercase text-slate-500` di atas `bg surface`, jadi kombinasi "slate-500 di atas surface" bukan ciptaan kartu ini - sudah dipakai desain lebih dulu.
+Dua alternatif yang diserahkan (bukan diimplementasikan kartu ini):
+  A. Biarkan `slate-500` (bentuk sekarang, persis kolom "kelas pengganti" §11.4 T1/T2) -> 4,40:1, gagal AA tipis (0,10) di 9 titik di atas surface.
+  B. Tetapkan token teks meta khusus di atas `surface` (mis. `slate-600` #475569 = 6,17:1 di atas `slate-200/60`, dan dihitung ulang untuk `#F6F6F4`) lalu perbarui §2.1/§11.4 + tabel §4.21 -> lulus AA, tetapi menambah satu peran token dan menyentuh dokumen desain.
+Kartu ini TIDAK memutuskan; laporan dikirim ke kartu UIUX `t_8cd61512` (pemilik §2.1/§11.4) dan menjadi komentar di kartu ini.
+
+=== STATUS GIT ===
+`git status --porcelain -- resources/js resources/css` -> 53 baris (M/??); total repo 230 baris. Tidak ada commit dari kartu ini (R8: keputusan Tech Lead + `resources/js/Pages/**` masih untracked; berkas bersama kartu lain seperti PriceBlock.jsx, Dashboard.jsx, Messages/Index.jsx, Reviews/Index.jsx).
+Berkas bukti ini dan `docs/catatan-frontend.md` adalah satu-satunya dokumen yang ditulis kartu ini.
+
+=== BELUM DIUJI ===
+Tampilan nyata di browser belum diuji (butuh browser + server milik pemilik; agent tidak menyalakan server). Belum tercakup: pengukuran rasio kontras di layar (di sini dihitung dari token repo, bukan diukur), responsif 360/768/1024/1280 px, zoom 200%, keyboard/fokus, `prefers-reduced-motion` (tidak ada animasi yang diubah).
+Instruksi aman untuk pemilik: jalankan server yang biasa dipakai, lalu periksa http://127.0.0.1:8000 -> teks meta (breadcrumb, hint, jumlah kategori) dan harga coret kini lebih gelap (slate-500); di /admin ulas "pesanan" dan "ulasan": angka stok rendah merah tua (`danger-strong`), delta KPI hijau/coklat tua, label "Stok tersedia" hijau tua; halaman /checkout-selesai: ikon centang di chip hijau tua.

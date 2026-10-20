@@ -1,0 +1,18 @@
+BUKTI RUTE ADMIN UNTUK TAMU (DoD PRD §15.3) — kartu devops t_5a330224
+Waktu   : 2026-10-20 15:23:52 +0700
+Server  : http://127.0.0.1:8000 (server pemilik; devops tidak menyalakan server)
+Metode  : halaman /admin/login dibuka sebagai TAMU, token CSRF diambil dari form halaman itu,
+          lalu fetch ke rute admin dengan ID 999999 (tidak ada) -> tidak ada data yang bisa berubah.
+Harapan : tamu ditolak AUTH (302 -> /admin/login), bukan 404 karena model binding jalan lebih dulu.
+
+token CSRF ditemukan di halaman: ya
+metode  url                                status akhir                   panjang ke /admin/login
+----------------------------------------------------------------------------------------------------
+GET     /admin/stok                           200 /admin/login               4524 YA
+GET     /admin/produk                         200 /admin/login               4524 YA
+POST    /admin/stok/999999/masuk              404 /admin/stok/999999/masuk     6659 TIDAK
+POST    /admin/stok/999999/keluar             404 /admin/stok/999999/keluar     6659 TIDAK
+PUT     /admin/akun/999999                    404 /admin/akun/999999         6659 TIDAK
+DELETE  /admin/akun/999999                    404 /admin/akun/999999         6659 TIDAK
+
+Ringkasan: 2 dari 6 permintaan berakhir di /admin/login (gerbang auth bekerja).

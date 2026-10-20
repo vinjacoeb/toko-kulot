@@ -23,6 +23,32 @@ export const formatNumber = (value) => {
     return Number.isFinite(number) ? number.toLocaleString('id-ID') : '0';
 };
 
+/** Tanggal ISO -> "20 Okt 2026". Nilai kosong/tidak valid -> "-". */
+export const formatDate = (value) => {
+    if (!value) return '-';
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) return '-';
+
+    return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+};
+
+/** Tanggal ISO -> "20 Okt 2026, 14.05". Nilai kosong/tidak valid -> "-". */
+export const formatDateTime = (value) => {
+    if (!value) return '-';
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) return '-';
+
+    return `${date.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    })}, ${date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
+};
+
 /**
  * Kolom JSON dari pengaturan admin bisa datang sebagai array atau string JSON.
  * Selalu kembalikan array agar map() aman.
