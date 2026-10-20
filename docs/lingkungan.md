@@ -98,12 +98,37 @@ INFO  The [public\storage] link has been connected to [storage\app/public].
 
 Berhasil, jadi tidak ada langkah manual untuk pemilik di bagian ini.
 
+### 5. Koneksi database (setelah pemilik mengisi `.env`)
+
+Dijalankan setelah kartu di-Unblock oleh pemilik. Baca-saja: tidak ada migrasi,
+seed, atau reset yang dijalankan DevOps.
+
+```
+$ php artisan migrate:status
+Migration name .................................................... Batch / Status
+  0001_01_01_000000_create_users_table ................................... [1] Ran
+  0001_01_01_000001_create_cache_table ................................... [1] Ran
+  0001_01_01_000002_create_jobs_table .................................... [1] Ran
+  2026_10_20_000001_create_admins_table .................................. [2] Ran
+```
+
+Kesimpulan: koneksi MySQL 8 ke database `toko-kulot` berhasil; keempat migrasi
+sudah dijalankan pemilik/backend (batch 1 kerangka, batch 2 tabel `admins`).
+
+### 6. Pemeriksaan ulang setelah database aktif
+
+```
+$ php artisan route:list   -> Showing [6] routes (sama seperti bagian 2)
+$ npm run build            -> ✓ 636 modules transformed, built in 2.80s
+$ git ls-files | grep -E '(^|/)\.env($|\.)'
+.env.example               -> hanya contoh; .env tidak ter-commit
+```
+
 ## Yang belum diuji (dan alasannya)
 
 | Hal | Alasan |
 |---|---|
-| Koneksi database | Menunggu pemilik membuat database `toko-kulot` dan mengisi `.env` (titik berhenti kartu ini) |
-| `php artisan migrate` | Migrasi dijalankan setelah database siap; tugas backend/owner, bukan setup |
+| `php artisan migrate` / `db:seed` | Dilarang untuk DevOps (aturan kartu); sudah dijalankan pemilik (batch 1-2 di `migrate:status`) |
 | `php artisan test` | Belum ada test fungsional; suite default butuh database |
 | `php artisan serve` / `npm run dev` | Dilarang dijalankan oleh DevOps; pemilik yang menyalakan |
 | Midtrans QRIS sungguhan | Butuh kredensial Midtrans di `.env` (milik pemilik) |

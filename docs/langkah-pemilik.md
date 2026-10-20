@@ -95,6 +95,11 @@ Lalu buka:
 Balas **"sudah"** pada kartu kanban ini, lalu tekan **Unblock**. DevOps akan
 memeriksa koneksi database (baca-saja, tanpa migrasi) dan menutup kartu.
 
+**Status per 2026-10-20:** pemilik sudah membalas "sudah". Koneksi database
+diperiksa dengan `php artisan migrate:status` — berhasil, 4 migrasi berstatus
+`Ran` (batch 1 kerangka, batch 2 tabel `admins`). Kartu setup ditutup; langkah
+di atas tidak perlu diulang.
+
 ## Catatan versi kerangka
 
 Kerangka terpasang memakai **Laravel 12.70.0** dan **React 19.3.1**, sedangkan

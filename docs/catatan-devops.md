@@ -52,5 +52,18 @@ rencana).
 
 ## Belum diuji
 
-Koneksi database, migrasi, seed, test fungsional, dan server pengembangan — menunggu
-pemilik mengisi `.env` dan membuat database `toko-kulot`.
+Koneksi database sudah diuji setelah kartu di-Unblock: `php artisan migrate:status`
+berhasil, 4 migrasi `Ran`. Seed, test fungsional, dan server pengembangan tetap
+belum diuji — seed dan server adalah wewenang pemilik/backend, test belum ada.
+
+## Verifikasi penutup (run 2, setelah Unblock)
+
+```
+$ php artisan migrate:status   -> 4 migrasi [1] Ran x3, [2] Ran (tabel admins)
+$ php artisan route:list       -> Showing [6] routes, GET|HEAD / -> home
+$ npm run build                -> ✓ 636 modules transformed, built in 2.80s
+$ git ls-files | grep .env     -> hanya .env.example (aman)
+```
+
+`docs/lingkungan.md` bagian 5-6 dan `docs/langkah-pemilik.md` bagian 6 sudah
+diperbarui dengan hasil ini.
