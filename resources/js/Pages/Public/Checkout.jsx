@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import PublicLayout from '../../Layouts/PublicLayout';
 import Breadcrumb from '../../Components/Breadcrumb';
+import Button from '../../Components/Button';
 import Field from '../../Components/Field';
 import InlineNotice from '../../Components/InlineNotice';
 import Input from '../../Components/Input';
@@ -10,35 +11,96 @@ import Textarea from '../../Components/Textarea';
 
 const PHONE_PATTERN = /^(\+62|62|0)8[0-9]{7,12}$/;
 const POSTAL_PATTERN = /^\d{5}$/;
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** Validasi ringan di klien (kontrak §7.6); server tetap sumber kebenaran. */
+/** Urutan kolom formulir — dipakai menentukan "kolom pertama" yang bermasalah (design §5.7 state `error-field`). */
+const URUTAN_KOLOM = [
+    'customer_name',
+    'customer_phone',
+    'customer_email',
+    'customer_address',
+    'customer_city',
+    'customer_postal_code',
+    'note',
+];
+
+/** Label kolom persis seperti yang tampil di formulir, supaya pengguna bisa menemukan kolom yang dimaksud. */
+const LABEL_KOLOM = {
+    customer_name: 'Nama Penerima',
+    customer_phone: 'Nomor WhatsApp',
+    customer_email: 'Email',
+    customer_address: 'Alamat Lengkap',
+    customer_city: 'Kota/Kecamatan',
+    customer_postal_code: 'Kode Pos',
+    note: 'Catatan',
+};
+
+/**
+ * Validasi ringan di klien (kontrak §7.6). Aturan **dan pesannya disamakan dengan server**
+ * (`app/Http/Requests/CheckoutRequest.php`) supaya pembeli tidak kena 422 tanpa melihat sebabnya;
+ * server tetap sumber kebenaran.
+ */
 function validate(values) {
     const errors = {};
+    const teks = (nilai) => String(nilai ?? '').trim();
 
-    if (String(values.customer_name).trim() === '') errors.customer_name = 'Nama penerima wajib diisi.';
-    if (String(values.customer_phone).trim() === '') errors.customer_phone = 'Nomor WhatsApp wajib diisi.';
-    else if (!PHONE_PATTERN.test(String(values.customer_phone).trim())) errors.customer_phone = 'Nomor WhatsApp tidak valid.';
+    const nama = teks(values.customer_name);
+    if (nama === '') errors.customer_name = 'Nama penerima wajib diisi.';
+    else if (nama.length < 3) errors.customer_name = 'Nama penerima minimal 3 karakter.';
+    else if (nama.length > 100) errors.customer_name = 'Nama penerima maksimal 100 karakter.';
 
-    if (String(values.customer_email).trim() === '') errors.customer_email = 'Email wajib diisi.';
-    else if (!EMAIL_PATTERN.test(String(values.customer_email).trim())) errors.customer_email = 'Email tidak valid.';
+    const telepon = teks(values.customer_phone);
+    if (telepon === '') errors.customer_phone = 'Nomor WhatsApp wajib diisi.';
+    else if (!PHONE_PATTERN.test(telepon)) errors.customer_phone = 'Nomor WhatsApp tidak valid.';
 
-    if (String(values.customer_address).trim() === '') errors.customer_address = 'Alamat lengkap wajib diisi.';
-    if (String(values.customer_city).trim() === '') errors.customer_city = 'Kota/kecamatan wajib diisi.';
+    const email = teks(values.customer_email);
+    if (email === '') errors.customer_email = 'Email wajib diisi.';
+    else if (!EMAIL_PATTERN.test(email)) errors.customer_email = 'Email tidak valid.';
+    else if (email.length > 150) errors.customer_email = 'Email maksimal 150 karakter.';
 
-    if (String(values.customer_postal_code).trim() === '') errors.customer_postal_code = 'Kode pos wajib diisi.';
-    else if (!POSTAL_PATTERN.test(String(values.customer_postal_code).trim())) errors.customer_postal_code = 'Kode pos harus 5 angka.';
+    const alamat = teks(values.customer_address);
+    if (alamat === '') errors.customer_address = 'Alamat lengkap wajib diisi.';
+    else if (alamat.length < 10) errors.customer_address = 'Alamat terlalu singkat. Tulis jalan, nomor, RT/RW.';
+    else if (alamat.length > 500) errors.customer_address = 'Alamat maksimal 500 karakter.';
 
-    if (String(values.note).length > 500) errors.note = 'Catatan maksimal 500 karakter.';
+    const kota = teks(values.customer_city);
+    if (kota === '') errors.customer_city = 'Kota/kecamatan wajib diisi.';
+    else if (kota.length < 3) errors.customer_city = 'Nama kota/kecamatan terlalu singkat.';
+    else if (kota.length > 100) errors.customer_city = 'Kota/kecamatan maksimal 100 karakter.';
+
+    const kodePos = teks(values.customer_postal_code);
+    if (kodePos === '') errors.customer_postal_code = 'Kode pos wajib diisi.';
+    else if (!POSTAL_PATTERN.test(kodePos)) errors.customer_postal_code = 'Kode pos harus 5 angka.';
+
+    if (teks(values.note).length > 500) errors.note = 'Catatan maksimal 500 karakter.';
 
     return errors;
+}
+
+/** Gulir (opsional: sekalian fokuskan) satu kolom formulir; gerak dihormati `prefers-reduced-motion` (design §6). */
+function gulirKeKolom(id, { fokus = true } = {}) {
+    if (!id || typeof document === 'undefined') return;
+
+    const elemen = document.getElementById(id);
+    if (!elemen || typeof elemen.scrollIntoView !== 'function') return;
+
+    const gerakDikurangi =
+        typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+            ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+            : false;
+
+    elemen.scrollIntoView({ behavior: gerakDikurangi ? 'instant' : 'smooth', block: 'center' });
+
+    if (fokus && typeof elemen.focus === 'function') elemen.focus({ preventScroll: true });
 }
 
 /**
  * `/checkout` — kontrak props §7.5/§7.6, design §5.7.
  * Props: `{ keranjang, prefill, pembayaran, midtrans }`. Formulir dua kolom,
  * `OrderSummary` sticky mengirim formulir yang sama lewat atribut `form` (anti kirim ganda
- * dijaga `processing`).
+ * dijaga `processing`). State `error-field` (§5.7): kolom bermasalah diumumkan lewat
+ * `InlineNotice` di atas formulir **dan** tepat di atas CTA, dengan tombol "Perbaiki kolom"
+ * yang menggulir dan memfokuskan kolom pertama.
  */
 export default function Checkout({ keranjang = null, prefill = null, pembayaran = null, flash = null }) {
     const [clientErrors, setClientErrors] = useState({});
@@ -59,6 +121,23 @@ export default function Checkout({ keranjang = null, prefill = null, pembayaran 
     const expiryMinutes = Number(pembayaran?.expiry_minutes ?? 0) || null;
 
     const fieldError = (key) => clientErrors[key] ?? form.errors?.[key] ?? null;
+
+    /** Kolom bermasalah (klien + server), urut sesuai formulir; nilai kosong dari klien diabaikan. */
+    const kolomBermasalah = URUTAN_KOLOM.filter((key) => Boolean(fieldError(key)));
+    const kolomPertama = kolomBermasalah[0] ?? null;
+    const jumlahBermasalah = kolomBermasalah.length;
+
+    /**
+     * design §5.7 state `error-field`: galat yang datang dari server (422 yang lolos validasi klien)
+     * digulirkan otomatis ke kolom pertama; fokus tidak direbut agar pembaca layar tidak tersentak.
+     */
+    const kunciGalatServer = URUTAN_KOLOM.filter((key) => Boolean(form.errors?.[key])).join(',');
+
+    useEffect(() => {
+        if (kunciGalatServer === '') return;
+
+        gulirKeKolom(kunciGalatServer.split(',')[0], { fokus: false });
+    }, [kunciGalatServer]);
 
     const update = (key, value) => {
         form.setData(key, value);
@@ -85,6 +164,31 @@ export default function Checkout({ keranjang = null, prefill = null, pembayaran 
                 return undefined;
             },
         });
+    };
+
+    /**
+     * Ringkasan kolom bermasalah: kolom pertama + jumlahnya (design §5.7 `error-field`).
+     * Dipakai dua kali — di atas formulir dan tepat di atas CTA di dalam `OrderSummary`.
+     */
+    const noticeValidasi = (className) => {
+        if (jumlahBermasalah === 0) return null;
+
+        const label = LABEL_KOLOM[kolomPertama] ?? kolomPertama;
+        const pesan = fieldError(kolomPertama);
+        const ringkas = jumlahBermasalah === 1 ? `Kolom ${label}: ${pesan}` : `Kolom pertama ${label}: ${pesan}`;
+
+        return (
+            <InlineNotice
+                tone="error"
+                className={className}
+                title={`Ada ${jumlahBermasalah} kolom yang perlu diperbaiki`}
+            >
+                <p>{ringkas}</p>
+                <Button variant="secondary" className="mt-3" onClick={() => gulirKeKolom(kolomPertama)}>
+                    Perbaiki kolom
+                </Button>
+            </InlineNotice>
+        );
     };
 
     return (
@@ -127,6 +231,8 @@ export default function Checkout({ keranjang = null, prefill = null, pembayaran 
                         <p>{throttle}</p>
                     </InlineNotice>
                 )}
+
+                {noticeValidasi('mt-4')}
 
                 <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-10">
                     <form
@@ -295,7 +401,9 @@ export default function Checkout({ keranjang = null, prefill = null, pembayaran 
                             loading={form.processing}
                             disabled={form.processing || isEmpty}
                             note="Pembayaran QRIS"
-                        />
+                        >
+                            {noticeValidasi('mt-4')}
+                        </OrderSummary>
                     </div>
                 </div>
             </div>

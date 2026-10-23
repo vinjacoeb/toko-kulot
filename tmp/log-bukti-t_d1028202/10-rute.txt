@@ -1,0 +1,22 @@
+### H. Rute & kontrak (backend kartu t_b078318d)
+$ grep -n 'resi' routes/admin.php
+138:    // Nomor resi manual (PRD A15, kontrak props §12.18a).
+139:    Route::patch('/pesanan/{order}/resi', [OrderController::class, 'resi'])
+141:        ->name('orders.resi');
+$ grep -n 'function resi' -A 5 app/Http/Controllers/Admin/OrderController.php
+142:    public function resi(UpdateOrderTrackingRequest $request, Order $order): RedirectResponse
+143-    {
+144-        $order->update(['tracking_number' => $request->validated('tracking_number')]);
+145-
+146-        return back()->with('success', 'Nomor resi pesanan diperbarui.');
+147-    }
+$ grep -n 'rules\|messages\|nullable' app/Http/Requests/Admin/UpdateOrderTrackingRequest.php
+26:            'tracking_number' => ['nullable', 'string', 'max:60'],
+36:            'tracking_number.string' => 'Nomor resi harus berupa teks.',
+37:            'tracking_number.max' => 'Nomor resi maksimal 60 karakter.',
+$ grep -n 'tracking_number' docs/kontrak-props.md | head -5
+1373:    "tracking_number": "JX1234567890",
+1389:`tracking_number` = nomor resi kurir yang diisi manual admin (PRD A15); `null` bila belum diisi.
+1402:Field: `tracking_number` (opsional, teks, maks 60; kosong/`null` = menghapus nomor resi).
+1403:Galat: `errors.tracking_number` (`Nomor resi maksimal 60 karakter.` /
+1404:`Nomor resi harus berupa teks.`). Efek: hanya `orders.tracking_number` yang berubah — status

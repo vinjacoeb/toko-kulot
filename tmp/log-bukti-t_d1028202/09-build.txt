@@ -1,0 +1,14 @@
+### G. npm run build
+[2mpublic/build/[22m[36massets/Index-C5SFKFMO.js            [39m[1m[2m  9.84 kB[22m[1m[22m[2m │ gzip:   3.61 kB[22m
+[2mpublic/build/[22m[36massets/Dashboard-De8g9Cm9.js        [39m[1m[2m 10.52 kB[22m[1m[22m[2m │ gzip:   3.80 kB[22m
+[2mpublic/build/[22m[36massets/Index-upoyv10m.js            [39m[1m[2m 11.46 kB[22m[1m[22m[2m │ gzip:   4.12 kB[22m
+[2mpublic/build/[22m[36massets/CheckoutPay-Dg0neSi4.js      [39m[1m[2m 11.61 kB[22m[1m[22m[2m │ gzip:   3.93 kB[22m
+[2mpublic/build/[22m[36massets/Index-DJ2P0tTV.js            [39m[1m[2m 11.85 kB[22m[1m[22m[2m │ gzip:   4.12 kB[22m
+[2mpublic/build/[22m[36massets/Index-QTBVGFcf.js            [39m[1m[2m 11.95 kB[22m[1m[22m[2m │ gzip:   4.33 kB[22m
+[2mpublic/build/[22m[36massets/Home-BtrdeR97.js             [39m[1m[2m 13.50 kB[22m[1m[22m[2m │ gzip:   4.38 kB[22m
+[2mpublic/build/[22m[36massets/Show-BMyVOu7Z.js             [39m[1m[2m 14.04 kB[22m[1m[22m[2m │ gzip:   4.82 kB[22m
+[2mpublic/build/[22m[36massets/ProdukForm-DIk_Owlb.js       [39m[1m[2m 14.70 kB[22m[1m[22m[2m │ gzip:   4.28 kB[22m
+[2mpublic/build/[22m[36massets/Index-DWMU-q9b.js            [39m[1m[2m 49.86 kB[22m[1m[22m[2m │ gzip:  11.82 kB[22m
+[2mpublic/build/[22m[36massets/app-B-OUK3pm.js              [39m[1m[2m364.45 kB[22m[1m[22m[2m │ gzip: 114.28 kB[22m
+[32m✓ built in 14.07s[39m
+$ echo ${PIPESTATUS[0]}  ->  0

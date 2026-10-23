@@ -4,15 +4,27 @@ import { SOCIAL_ICONS, MailIcon, MapPinIcon, PhoneIcon } from './icons';
 
 /**
  * Footer — docs/design.md §3.2 + §4.31, kontrak props docs/komponen.md §1.
- * Props: `about`, `links`, `social`, `contact`, `storeName`.
+ * Props: `about`, `links`, `social`, `contact`, `storeName`, `copyright`.
  * Kolom tanpa data tidak dirender (tidak mengarang tautan atau kontak).
+ * `copyright` berasal dari `settings.footer_copyright` (docs/kontrak-props.md §4):
+ * boleh kosong → `© {tahun} {storeName}`; placeholder `{tahun}` dan `{toko}` diganti otomatis
+ * (docs/rencana-perbaikan-5.md butir 5).
  */
+const formatCopyright = (template, year, storeName) => {
+    const raw = typeof template === 'string' ? template.trim() : '';
+
+    if (raw === '') return `© ${year} ${storeName}`;
+
+    return raw.split('{tahun}').join(String(year)).split('{toko}').join(storeName);
+};
+
 export default function Footer({
     about = null,
     links = [],
     social = [],
     contact = null,
     storeName = 'Toko Kulot',
+    copyright = null,
 }) {
     const {
         phone = null,
@@ -56,6 +68,7 @@ export default function Footer({
     ].filter(Boolean);
 
     const year = new Date().getFullYear();
+    const copyrightText = formatCopyright(copyright, year, storeName);
 
     return (
         <footer className="bg-footer pb-8 pt-section text-white/75">
@@ -147,9 +160,7 @@ export default function Footer({
                 </div>
 
                 <div className="mt-10 border-t border-white/15 pt-6">
-                    <p className="text-meta text-white/60">
-                        {`© ${year} ${storeName}. Semua hak dilindungi.`}
-                    </p>
+                    <p className="text-meta text-white/60">{copyrightText}</p>
                 </div>
             </div>
         </footer>

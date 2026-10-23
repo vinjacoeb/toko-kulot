@@ -1,0 +1,7 @@
+### H. Sapu regresi impor & bundel
+$ python tmp/cek-komponen-tanpa-import.py .
+file diperiksa: 95
+resources\js\app.jsx: App
+$ python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build
+chunk .js diperiksa: 70
+DropzoneGalery-CEzyM6YO.js -> FREE: P  (import: B, D, a, p, w)

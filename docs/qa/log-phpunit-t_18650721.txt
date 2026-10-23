@@ -1,0 +1,16 @@
+
+Warning: Module "pdo_sqlite" is already loaded in Unknown on line 0
+PHPUnit 11.5.57 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.3.32
+Configuration: C:\Users\LENOVO\Downloads\toko-kulot\phpunit.xml
+
+...............................................................  63 / 258 ( 24%)
+............................................................... 126 / 258 ( 48%)
+............................................................... 189 / 258 ( 73%)
+............................................................... 252 / 258 ( 97%)
+......                                                          258 / 258 (100%)
+
+Time: 00:31.296, Memory: 70.00 MB
+
+OK (258 tests, 2041 assertions)

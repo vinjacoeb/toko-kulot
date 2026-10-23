@@ -1,0 +1,7 @@
+OK    P1 PublicLayout tamu: drawer dapat footer dua pintu (div space-y-2, 2 tautan) -> anak=2
+OK    P2 PublicLayout tamu: pintu tamu hanya dari props.footer, header tetap menerima tamu -> tautan_luar_footer=0
+OK    P3 Drawer terbuka: footer asli berada di dalam panel, Daftar sebelum Masuk -> posisi daftar=1551 masuk=1623
+OK    P4 PublicLayout pembeli: footer drawer = "Masuk sebagai ...", tanpa pintu tamu
+GAGAL P5 Halaman pembeli tetap memakai header, footer, dan pengumuman publik -> badge keranjang bukan 2: 0
+
+ringkasan: 4/5 pemeriksaan lulus

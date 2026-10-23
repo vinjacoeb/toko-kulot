@@ -1,0 +1,150 @@
+# Bukti Frontend — t_082b15aa (header DataTable sticky)
+
+Tanggal: 22 Oktober 2026, 10:00–10:13 WIB · profil `frontenddeveloper`
+Workspace: `C:\Users\LENOVO\Downloads\toko-kulot` (Laravel 11 + Inertia + React, Vite)
+Dev server pemilik: `http://127.0.0.1:8000` (dipakai, tidak dinyalakan ulang oleh agent)
+Login uji: akun admin pengembangan di `docs/akun-dev.md` (owner), dibuka lewat browser tool.
+
+## Perubahan (path:baris)
+
+- `resources/js/Components/DataTable.jsx:89` — wrapper tabel:
+  `<div className="max-h-[70vh] overflow-auto">` (sebelumnya `overflow-x-auto`).
+- `resources/js/Components/DataTable.jsx:108` — `<th>`:
+  `sticky top-0 z-10 h-tableHead whitespace-nowrap border-b border-line bg-surface px-4 text-label uppercase text-slate-600`
+- `resources/js/Components/DataTable.jsx:9-18` — komentar alasan (wadah gulir + latar sel sticky).
+- Tidak ada perubahan halaman pemakai, props, kontrak, rute, backend, token, atau komponen lain.
+
+## Build
+
+Perintah: `npm run build` (dijalankan 2x pada 10:05 dan 10:12 WIB)
+
+```
+> build
+> vite build
+
+vite v6.4.4 building for production...
+transforming...
+✓ 730 modules transformed.
+...
+✓ built in 11.18s
+EXIT:0
+```
+
+CSS hasil build `public/build/assets/app-CCUgQ5mf.css` memuat kelas yang dipakai:
+
+```
+.sticky{position:sticky}
+.top-0{top:0}
+.z-10{z-index:10}
+max-h-\[70vh\]{max-height:70vh}
+.bg-surface{--tw-bg-opacity: 1;background-color:rgb(246 246 244 / var(--tw-bg-opacity, 1))}
+```
+
+## Uji browser nyata (Chrome via browser tool)
+
+### 1) `/admin/pesanan`, viewport 1262×568, 13 baris
+
+```
+location.pathname = /admin/pesanan
+tbody tr = 13
+thClass = sticky top-0 z-10 h-tableHead whitespace-nowrap border-b border-line bg-surface px-4 text-label uppercase text-slate-600 text-left
+computed th: position=sticky, top=0px, z-index=10, background-color=rgb(246, 246, 244)
+wrapper: class="max-h-[70vh] overflow-auto", max-height=397.6px, overflow-y=auto
+wrapper: clientHeight=383, scrollHeight=773  -> wadah menggulir vertikal
+thTopRelative=0, thHeight=44
+```
+
+### 2) Daftar 20 baris (klon baris pada halaman nyata, DOM)
+
+```
+baris=20
+wrapper: clientHeight=383, scrollHeight=1165, maxHeight=397.6px
+wrapper.scrollTop=500
+thTopRelative=0, thVisibleHeight=44, tdPertamaTopRelative=-455
+th: position=sticky, backgroundColor=rgb(246, 246, 244)
+hit-test 3 titik di area header -> TH:Kode pesanan (bukan TD)
+```
+
+### 3) Tabel pendek `/admin` (Dashboard, 5 baris) — tidak berubah
+
+```
+baris=5, clientHeight=324, scrollHeight=324, maxHeight=397.6px,
+overflowX=auto, overflowY=auto, th.position=sticky
+```
+
+Tidak ada scrollbar dalam karena tinggi isi (324px) < batas 70vh; tampilan sama seperti sebelumnya.
+
+### 4) Responsif 360 / 768 / 1024 px (`/admin/pesanan`)
+
+```
+360px : vw=360, pageScrollW=360, pageClientW=360, wrapClientW=326, wrapScrollW=1026,
+        scrollTop=200 & scrollLeft=120 -> thTopRelative=0, position=sticky
+768px : pageScrollW=753, pageClientW=753, wrapClientW=704, wrapScrollW=1050,
+        wrapClientH=615, wrapScrollH=773, thTopRelative=0, position=sticky
+1024px: pageScrollW=1009, pageClientW=1009, wrapClientW=704, wrapScrollW=1065,
+        wrapClientH=615, wrapScrollH=773, thTopRelative=0, position=sticky
+```
+
+Tidak ada overflow horizontal halaman; gulir horizontal tabel tetap tersedia di wrapper.
+
+### 5) Halaman digulir — topbar tidak tertutup
+
+```
+scrollY=566
+topbar: z-index=20, bottom=64
+th: z-index=10
+wrapperTop=146, thTop=146
+elementFromPoint di tengah topbar -> HEADER.sticky (topbar.contains(hit)=true)
+elementFromPoint di area header tabel -> TH:Kode pesanan
+```
+
+## 6. Verifikasi ulang (run 4) — 22 Okt 2026, 10:15–10:25 WIB
+
+Provenance: §1–§5 ditulis run sebelumnya (10:00–10:13) memakai login admin di dev server
+pemilik. Run 4 **tidak mengulang login admin** (tool browser tidak dipakai mengetik
+kredensial); run ini memverifikasi komponen nyata lewat SSR + CSS hasil build:
+
+- Harness: `tmp/sticky-entry-t_082b15aa.jsx` + `tmp/build-sticky-t_082b15aa.mjs` →
+  `tmp/sticky-harness-t_082b15aa.html`. Isi: `DataTable` asli dirender
+  `renderToStaticMarkup` (React 19.3.1) dengan 20 baris + topbar tiruan
+  `sticky top-0 z-20` (`AdminLayout.jsx:172`) + kontrol negatif markup lama.
+  Halaman memuat CSS build `public/build/assets/app-CCUgQ5mf.css`, jadi kelas yang
+  diukur identik dengan bundel rilis.
+- `npm run build` (run ini) → exit 0, "✓ built in 10.32s"; CSS
+  `app-CCUgQ5mf.css` memuat `.sticky{position:sticky}`, `.top-0{top:0}`,
+  `.z-10{z-index:10}`, `.max-h-\[70vh\]{max-height:70vh}`,
+  `.bg-surface{…rgb(246 246 244)…}`, `.h-tableHead{height:44px}`.
+
+Chrome 1262×568, DataTable 20 baris:
+
+```
+th.computed: position=sticky, top=0px, z-index=10, background-color=rgb(246, 246, 244), height=44px
+wrapper: className="max-h-[70vh] overflow-auto", max-height=397.6px, overflow-y=auto,
+         clientHeight=398, scrollHeight=1165  -> wadah menggulir
+wrapper.scrollTop=400 -> thTopRelative=0, thHeight=44, td pertama topRelative=-355.5
+hit-test tengah header -> BUTTON "Kode pesanan↑" (isi header, bukan TD)
+halaman digulir 320px -> topbar top=0..64 z-index=20; hit di topbar = SPAN topbar (bukan th);
+                         th z-index=10 tetap terpotong wadah, tidak menembus topbar
+```
+
+Viewport 360×640 (CDP `Emulation.setDeviceMetricsOverride`):
+
+```
+vw=360, pageScrollWidth=345, pageClientWidth=345  -> tidak ada overflow horizontal halaman
+wrapper: clientWidth=280, scrollWidth=356         -> gulir horizontal tabel tetap ada
+scrollTop=200, scrollLeft=76 -> thTopRelative=0, position=sticky, bg=rgb(246, 246, 244)
+```
+
+Kontrol negatif (markup lama `overflow-x-auto`, `<th>` tanpa sticky):
+
+```
+th.computed: position=static, top=auto
+wrapper: clientHeight=1165 = scrollHeight=1165 -> tidak dapat digulir; scrollTop tetap 0
+```
+
+Kontrol negatif ini mereproduksi O-1 (`position: static`) dan membuktikan perubahan
+wrapper + `sticky top-0` adalah yang membuat header bertahan.
+
+Belum diuji pada run ini: login admin nyata/end-to-end di `/admin/*`, zoom 200%,
+Safari/iOS (`border-collapse` + sticky), dan data produksi. §1–§5 (run sebelumnya)
+memuat pengukuran halaman admin nyata bila diperlukan QA.

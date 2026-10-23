@@ -90,4 +90,73 @@ trait WritesSeedImages
 
         return (int) imagecolorallocate($image, $red, $green, $blue);
     }
+
+    /**
+     * Tulis favicon cadangan `public/favicon.ico` (ICO 32×32 berisi PNG) bila
+     * berkas belum ada atau masih 0 byte. Berkas milik pemilik tidak ditimpa.
+     * Dipakai `SettingSeeder` sebagai fallback sebelum admin mengunggah favicon.
+     */
+    protected function seedFaviconIco(string $relativePath = 'favicon.ico'): string
+    {
+        if (! extension_loaded('gd')) {
+            throw new RuntimeException(
+                'Ekstensi GD wajib aktif untuk membuat favicon seed (public/favicon.ico).'
+            );
+        }
+
+        $relativePath = ltrim(str_replace('\\', '/', $relativePath), '/');
+        $absolute = public_path($relativePath);
+        $url = '/'.$relativePath;
+
+        if (is_file($absolute) && filesize($absolute) > 0) {
+            return $url;
+        }
+
+        $directory = dirname($absolute);
+
+        if (! is_dir($directory) && ! mkdir($directory, 0755, true) && ! is_dir($directory)) {
+            throw new RuntimeException("Tidak bisa membuat folder favicon seed: {$directory}");
+        }
+
+        $size = 32;
+        $image = imagecreatetruecolor($size, $size);
+
+        if ($image === false) {
+            throw new RuntimeException('Gagal membuat kanvas favicon seed.');
+        }
+
+        $background = $this->allocateHex($image, '#1F3D2B');
+        $accent = $this->allocateHex($image, '#F5B301');
+        $white = $this->allocateHex($image, '#FFFFFF');
+
+        imagefilledrectangle($image, 0, 0, $size, $size, $background);
+        imagefilledrectangle($image, 0, $size - 4, $size, $size, $accent);
+
+        $font = 5;
+        $text = 'TK';
+        $textX = (int) round(($size - imagefontwidth($font) * strlen($text)) / 2);
+        $textY = (int) round(($size - imagefontheight($font)) / 2);
+        imagestring($image, $font, $textX, $textY, $text, $white);
+
+        ob_start();
+        $encoded = imagepng($image, null, 9);
+        $png = ob_get_clean();
+
+        imagedestroy($image);
+
+        if ($encoded === false || ! is_string($png) || $png === '') {
+            throw new RuntimeException("Gagal meng-encode favicon seed: {$absolute}");
+        }
+
+        // Struktur ICO: ICONDIR (6 byte) + ICONDIRENTRY (16 byte) + data PNG.
+        $icon = pack('vvv', 0, 1, 1)
+            .pack('CCCCvvVV', $size, $size, 0, 0, 1, 32, strlen($png), 22)
+            .$png;
+
+        if (file_put_contents($absolute, $icon) === false) {
+            throw new RuntimeException("Gagal menulis favicon seed: {$absolute}");
+        }
+
+        return $url;
+    }
 }

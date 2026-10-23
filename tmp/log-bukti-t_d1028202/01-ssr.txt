@@ -1,0 +1,17 @@
+### A. Harness SSR/statik: tmp/uji-ssr-resi-t_d1028202.mjs
+$ md5sum InfoResi.jsx  (sebelum)
+fe5ad888c3091869a7a8339b38703361
+OK    | R1 resi terisi: nilai awal isian + baris status `Tersimpan:` + teks beku D12    | 
+OK    | R2 `tracking_number` null -> input kosong + `Belum ada nomor resi.` (DoD)       | 
+OK    | R3 `tracking_number` string kosong -> sama seperti null, tanpa `Tersimpan:`     | 
+OK    | R4 galat server `errors.tracking_number` tampil di bawah input + aria terhubung | 
+OK    | R5 galat field lain tidak menempel di isian resi                                | 
+OK    | R6 pesanan tanpa id / props hilang -> aman, tanpa kontrol mati                  | 
+OK    | R7 notice lama F5 hilang dan tidak ada teks karangan                            | 
+OK    | R8 nilai janggal dari server (angka, spasi) tidak menghasilkan NaN/undefined    | 
+OK    | R9 Show mengirim props `pesanan` ke InfoResi (nilai resi dari props server)     | 
+OK    | R10 Show dengan tracking_number null -> isian kosong + status kosong            | 
+OK    | R11 sapu kotor di semua markup yang sudah diambil                               | 
+
+RINGKASAN: 11/11 uji lulus
+$ echo $?  ->  0

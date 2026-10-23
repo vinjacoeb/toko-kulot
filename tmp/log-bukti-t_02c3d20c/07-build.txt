@@ -1,0 +1,14 @@
+### F. npm run build
+[2mpublic/build/[22m[36massets/Index-CfMx9vF5.js            [39m[1m[2m  9.84 kB[22m[1m[22m[2m │ gzip:   3.62 kB[22m
+[2mpublic/build/[22m[36massets/Dashboard-CpMthWkP.js        [39m[1m[2m 10.52 kB[22m[1m[22m[2m │ gzip:   3.81 kB[22m
+[2mpublic/build/[22m[36massets/Index-Dc9vF31b.js            [39m[1m[2m 11.46 kB[22m[1m[22m[2m │ gzip:   4.13 kB[22m
+[2mpublic/build/[22m[36massets/CheckoutPay-nXiKqEM1.js      [39m[1m[2m 11.77 kB[22m[1m[22m[2m │ gzip:   3.94 kB[22m
+[2mpublic/build/[22m[36massets/Index-B5ietkMq.js            [39m[1m[2m 11.85 kB[22m[1m[22m[2m │ gzip:   4.12 kB[22m
+[2mpublic/build/[22m[36massets/Index-DzmbrW_Y.js            [39m[1m[2m 11.95 kB[22m[1m[22m[2m │ gzip:   4.34 kB[22m
+[2mpublic/build/[22m[36massets/Home-DSFpuzVJ.js             [39m[1m[2m 13.50 kB[22m[1m[22m[2m │ gzip:   4.39 kB[22m
+[2mpublic/build/[22m[36massets/Show-j5_kyYDd.js             [39m[1m[2m 14.04 kB[22m[1m[22m[2m │ gzip:   4.83 kB[22m
+[2mpublic/build/[22m[36massets/ProdukForm-DCIYWJ7z.js       [39m[1m[2m 14.70 kB[22m[1m[22m[2m │ gzip:   4.28 kB[22m
+[2mpublic/build/[22m[36massets/Index-DKYFDGY_.js            [39m[1m[2m 50.76 kB[22m[1m[22m[2m │ gzip:  12.15 kB[22m
+[2mpublic/build/[22m[36massets/app-Dyl9odRh.js              [39m[1m[2m364.49 kB[22m[1m[22m[2m │ gzip: 114.32 kB[22m
+[32m✓ built in 15.28s[39m
+$ echo ${PIPESTATUS[0]}  ->  0

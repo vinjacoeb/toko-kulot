@@ -1,0 +1,2 @@
+sisa_sabotase_url=0
+md5_setelah_pulih=7a0367438c19e80d7ac25fd2443bbcb5

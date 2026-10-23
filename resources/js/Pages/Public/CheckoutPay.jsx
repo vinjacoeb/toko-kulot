@@ -22,8 +22,11 @@ const POLL_MS = 5000;
  * `/checkout/{order}/bayar` — kontrak props §7.7/§7.8, design §5.8.
  * Panel QRIS terpusat `max-w-qris`; "Cek Status" + polling 5 detik ke
  * `GET /checkout/{order}/status` (JSON) berhenti saat status final.
+ * `midtrans` (kontrak §7.7) diteruskan apa adanya ke `QrisPanel` supaya mode
+ * pembayaran efektif terlihat pembeli (mode uji = QRIS tidak bisa ditransfer,
+ * design §11.3 D9); `pembayaran.galat` (§7.7) diteruskan sebagai `galat`.
  */
-export default function CheckoutPay({ pesanan = null, pembayaran = null, flash = null }) {
+export default function CheckoutPay({ pesanan = null, pembayaran = null, midtrans = null, flash = null }) {
     const orderId = pesanan?.id ?? null;
     const [status, setStatus] = useState(() => STATUS_MAP[pembayaran?.status] ?? 'pending');
     const [paidAt, setPaidAt] = useState(pembayaran?.paid_at ?? null);
@@ -139,6 +142,8 @@ export default function CheckoutPay({ pesanan = null, pembayaran = null, flash =
                         expiresAt={expiresAt}
                         paidAt={paidAt}
                         reason={pembayaran?.status ?? null}
+                        midtrans={midtrans}
+                        galat={pembayaran?.galat ?? null}
                         onCheck={check}
                         onExpire={() => setLocalExpired(true)}
                         successHref={orderId ? `/checkout/${orderId}/selesai` : null}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import Announcement from '../Components/Announcement';
 import Footer from '../Components/Footer';
 import Header from '../Components/Header';
@@ -8,8 +8,18 @@ import NavDrawer from '../Components/NavDrawer';
 /**
  * PublicLayout — docs/komponen.md §2.
  * Props: `settings` (store_name, store_tagline, contact_*, header_nav, footer_*), `cartCount`, `user`, `children`.
- * `settings` dibagikan lewat HandleInertiaRequests.
+ * Dasar identitas = props bersama `settings` dari `HandleInertiaRequests` (docs/kontrak-props.md §1),
+ * lalu prop `settings` eksplisit halaman (bila ada) menimpa per key. Dengan begitu halaman yang
+ * controller-nya tidak mengirim `settings` — /keranjang, /checkout, /checkout/{order}/bayar,
+ * /checkout/{order}/selesai — tetap memakai nama toko, logo, dan copyright dari pengaturan
+ * (docs/rencana-perbaikan-5.md butir 5).
  * Kontrak settings memakai `url` untuk tautan (docs/kontrak-props.md §2); `href` lama tetap dibaca.
+ *
+ * Badge keranjang: sumber utama = props bersama `cart.count` (kontrak §1/§7,
+ * `HandleInertiaRequests` membagikan `cart_count` sesi = jumlah qty item). Urutan:
+ * `cart.count` → prop halaman `cartCount` → `settings.cart_count` → `0`.
+ * Semua aksi keranjang (POST/PATCH/DELETE `/keranjang`) adalah kunjungan Inertia penuh dan
+ * `usePage()` ikut memperbarui props, jadi badge terbaru tanpa reload manual. Angka 0 = badge tidak dirender.
  */
 const DEFAULT_NAV = [
     { label: 'Beranda', href: '/' },
@@ -19,11 +29,29 @@ const DEFAULT_NAV = [
 
 const hrefOf = (item) => item?.url ?? item?.href ?? null;
 
-export default function PublicLayout({ settings = {}, cartCount = 0, user = null, children }) {
+/** Jumlah item yang aman ditampilkan: `null` bila nilai tidak tersedia, `0` bila kosong/tidak sah. */
+const toCount = (value) => {
+    if (value === null || value === undefined || value === '') return null;
+
+    const parsed = Number(value);
+
+    return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0;
+};
+
+export default function PublicLayout({ settings: settingsProp = null, cartCount = null, user = null, children }) {
     const [drawerOpen, setDrawerOpen] = useState(false);
+    const [loggingOut, setLoggingOut] = useState(false);
     const page = usePage();
 
-    const storeName = settings?.store_name ?? 'Toko Kulot';
+    /* Dasar: props bersama `settings` (kontrak §1). Prop eksplisit halaman menimpa per key;
+       nilai kosong dari halaman tidak menghapus identitas yang dibagikan server. */
+    const sharedSettings = page?.props?.settings;
+    const settings = {
+        ...(sharedSettings && typeof sharedSettings === 'object' ? sharedSettings : {}),
+        ...(settingsProp && typeof settingsProp === 'object' ? settingsProp : {}),
+    };
+
+    const storeName = settings.store_name || 'Toko Kulot';
     const rawNav = settings?.header_nav;
     const nav =
         Array.isArray(rawNav) && rawNav.length > 0
@@ -38,9 +66,15 @@ export default function PublicLayout({ settings = {}, cartCount = 0, user = null
         ? hrefOf(announcement)
         : settings?.announcement_href ?? null;
 
-    const sharedCart = page?.props?.cart?.count;
     const currentUser = user ?? page?.props?.auth?.user ?? null;
-    const count = Number(cartCount ?? sharedCart ?? settings?.cart_count ?? 0) || 0;
+    const count = toCount(page?.props?.cart?.count) ?? toCount(cartCount) ?? toCount(settings?.cart_count) ?? 0;
+
+    const keluar = () => {
+        if (loggingOut) return;
+
+        setLoggingOut(true);
+        router.post('/logout', {}, { onFinish: () => setLoggingOut(false) });
+    };
 
     return (
         <div className="flex min-h-screen flex-col bg-white text-ink">
@@ -69,13 +103,37 @@ export default function PublicLayout({ settings = {}, cartCount = 0, user = null
                 title="Menu"
                 footer={
                     currentUser ? (
-                        <p className="text-meta text-ink-soft">
-                            {`Masuk sebagai ${currentUser.name ?? currentUser.email ?? 'Akun'}`}
-                        </p>
+                        <div className="flex flex-col gap-3">
+                            <p className="text-meta text-ink-soft">
+                                {`Masuk sebagai ${currentUser.name ?? currentUser.email ?? 'Akun'}`}
+                            </p>
+                            <Link
+                                href="/history"
+                                onClick={() => setDrawerOpen(false)}
+                                className="btn-secondary w-full justify-center"
+                            >
+                                Riwayat pesanan
+                            </Link>
+                            <button
+                                type="button"
+                                onClick={keluar}
+                                disabled={loggingOut}
+                                aria-busy={loggingOut || undefined}
+                                className="btn-ghost w-full justify-center disabled:cursor-not-allowed disabled:opacity-45"
+                            >
+                                {loggingOut ? 'Memproses…' : 'Keluar'}
+                            </button>
+                        </div>
                     ) : (
-                        <Link href="/login" className="btn-primary w-full justify-center">
-                            Masuk
-                        </Link>
+                        <div className="flex flex-col gap-2">
+                            {/* Dua pintu untuk tamu: Daftar (primary) + Masuk (secondary) — deviasi D15 (design.md §3.1/§11.3, kartu UIUX t_46901364; kartu t_e3f68f7f). */}
+                            <Link href="/register" className="btn-primary w-full justify-center">
+                                Daftar
+                            </Link>
+                            <Link href="/login" className="btn-secondary w-full justify-center">
+                                Masuk
+                            </Link>
+                        </div>
                     )
                 }
             />
@@ -95,6 +153,7 @@ export default function PublicLayout({ settings = {}, cartCount = 0, user = null
                     address: settings?.contact_address ?? null,
                 }}
                 storeName={storeName}
+                copyright={settings.footer_copyright ?? null}
             />
         </div>
     );

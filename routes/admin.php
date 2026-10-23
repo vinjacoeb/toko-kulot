@@ -129,12 +129,20 @@ Route::middleware('admin')->group(function () {
         ->middleware('throttle:admin-write')
         ->name('stocks.out');
 
-    // Pesanan (kontrak props §12.16–§12.18).
+    // Pesanan (kontrak props §12.16–§12.18a, §12.24).
     Route::get('/pesanan', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/pesanan/{order}', [OrderController::class, 'show'])->name('orders.show');
     Route::patch('/pesanan/{order}/status', [OrderController::class, 'status'])
         ->middleware('throttle:admin-write')
         ->name('orders.status');
+    // Nomor resi manual (PRD A15, kontrak props §12.18a).
+    Route::patch('/pesanan/{order}/resi', [OrderController::class, 'resi'])
+        ->middleware('throttle:admin-write')
+        ->name('orders.resi');
+    // Sinkronkan status pembayaran dari Midtrans (kontrak props §12.24).
+    Route::patch('/pesanan/{order}/sinkron-pembayaran', [OrderController::class, 'syncPayment'])
+        ->middleware('throttle:admin-write')
+        ->name('orders.sinkron-pembayaran');
 
     // Akun admin (kontrak props §12.19–§12.22).
     Route::get('/akun', [AccountController::class, 'index'])->name('accounts.index');

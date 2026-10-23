@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\MidtransNotificationController;
@@ -69,6 +70,20 @@ Route::middleware('guest:web')->group(function () {
 Route::post('/logout', [AuthController::class, 'logout'])
     ->middleware('auth:web')
     ->name('logout');
+
+/*
+|--------------------------------------------------------------------------
+| Riwayat pesanan pembeli — Perbaikan 5 baris 1, kontrak props §13
+|--------------------------------------------------------------------------
+|
+| Rute tambahan di luar tabel PRD §5.1 (keputusan `docs/rencana-perbaikan-5.md`).
+| Wajib login guard `web`; tamu diarahkan middleware ke `/login`. Hanya pesanan
+| milik user login yang dibaca (tidak ada `user_id` dari klien).
+|
+*/
+Route::get('/history', [HistoryController::class, 'index'])
+    ->middleware('auth:web')
+    ->name('history.index');
 
 /*
 |--------------------------------------------------------------------------

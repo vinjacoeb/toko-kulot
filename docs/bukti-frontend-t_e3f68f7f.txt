@@ -1,0 +1,294 @@
+# Bukti frontend — kartu t_e3f68f7f (pintu Daftar tamu + tautan silang auth; deviasi D14/D15/D16)
+Dibangun: 2026-10-21 23:40:26 SEAST
+
+## md5 berkas yang diubah (setelah pemulihan kontrol negatif)
+e2073ac8d02f7b3adbf39793586f1dc0 *resources/js/Components/Header.jsx
+d6299379dbb553317ad463beb2014f49 *resources/js/Layouts/PublicLayout.jsx
+742752706ab9a9b432e4adb9607a3b93 *resources/js/Pages/Public/Auth/Login.jsx
+e7ce61b652346ca083b8e4d73f6283dd *resources/js/Pages/Public/Auth/Register.jsx
+
+## grep -rn D13 resources/js/ (harus 0; D13 milik kartu admin t_8e89556f)
+0
+
+## git status --short resources/js docs
+ M docs/asumsi.md
+ M docs/catatan-backend.md
+ M docs/catatan-devops.md
+ M docs/catatan-frontend.md
+ M docs/catatan-techlead.md
+ M docs/checklist-rilis.md
+ M docs/db.md
+ M docs/deploy.md
+ M docs/design.md
+ M docs/kontrak-props.md
+ M docs/langkah-pemilik.md
+ M docs/laporan-qa.md
+ M docs/pertanyaan-pemilik.md
+ M docs/traceability.md
+ M resources/js/Components/Countdown.jsx
+ M resources/js/Components/Header.jsx
+ M resources/js/Components/QrisPanel.jsx
+ M resources/js/Layouts/PublicLayout.jsx
+ M resources/js/Pages/Admin/Orders/Index.jsx
+ M resources/js/Pages/Admin/Products/Index.jsx
+ M resources/js/Pages/Admin/Settings/Index.jsx
+ M resources/js/Pages/Admin/Stocks/Index.jsx
+ M resources/js/Pages/Public/Auth/Login.jsx
+ M resources/js/Pages/Public/Auth/Register.jsx
+ M resources/js/Pages/Public/Checkout.jsx
+ M resources/js/Pages/Public/CheckoutPay.jsx
+ M resources/js/Pages/Public/CheckoutSuccess.jsx
+?? docs/bukti-backend-t_45344e00.txt
+?? docs/bukti-backend-t_b078318d.txt
+?? docs/bukti-backend-t_c374a29b.txt
+?? docs/bukti-baseline-t_9f4b6aee.txt
+?? docs/bukti-build-d1-t_e83922f2.txt
+?? docs/bukti-frontend-t_018b2723.txt
+?? docs/bukti-frontend-t_02c3d20c.txt
+?? docs/bukti-frontend-t_2de36f29.txt
+?? docs/bukti-frontend-t_321bf03c.txt
+?? docs/bukti-frontend-t_5988a39e.txt
+?? docs/bukti-frontend-t_7ebfca05.txt
+?? docs/bukti-frontend-t_a98f17d4.txt
+?? docs/bukti-frontend-t_d1028202.txt
+?? docs/bukti-frontend-t_e3f68f7f.txt
+?? docs/bukti-frontend-t_e60e7733.txt
+?? docs/bukti-migrate-g2.txt
+?? docs/bukti-qa-t_2c9f8b01.txt
+?? docs/bukti-qa-t_4ef6e8bd.txt
+?? docs/bukti-suite-t_9f4b6aee.txt
+?? docs/bukti-suite-t_e35050e8.txt
+?? docs/bukti-t_9f4b6aee.txt
+?? docs/bukti-t_e35050e8-test.txt
+?? docs/bukti-uiux-t_0729c67f.txt
+?? docs/bukti-uiux-t_99424f19.txt
+?? docs/catatan-uiux.md
+?? docs/keputusan-a15-resi.md
+?? docs/keputusan-f4-stok.md
+?? docs/keputusan-f6-ulasan-boleh.md
+?? docs/qa/jalankan-uji-admin-t_3a240a11.mjs
+?? docs/qa/jalankan-uji-badge-t_3a240a11.mjs
+?? docs/qa/jalankan-uji-gate-t_4ef6e8bd.mjs
+?? docs/qa/log-http-t_3a240a11.txt
+?? docs/qa/log-phpunit-penuh-t_3a240a11.txt
+?? docs/qa/log-phpunit-terarah-t_3a240a11.txt
+?? docs/qa/log-phpunit-ulasan-boleh-t_4ef6e8bd.txt
+?? docs/qa/log-suite-penuh-t_4ef6e8bd.txt
+?? docs/qa/log-uji-admin-t_3a240a11.txt
+?? docs/qa/log-uji-badge-t_3a240a11.txt
+?? docs/qa/log-uji-gate-boleh-t_4ef6e8bd.txt
+?? docs/qa/stub-inertia-badge-t_3a240a11.mjs
+?? docs/qa/stub-inertia-qa-t_4ef6e8bd.mjs
+?? docs/qa/uji-admin-index-t_3a240a11.mjs
+?? docs/qa/uji-badge-keranjang-t_3a240a11.mjs
+?? docs/qa/uji-gate-boleh-t_4ef6e8bd.mjs
+?? docs/qa/uji-http-t_3a240a11.py
+?? docs/review-2.md
+?? docs/review.md
+?? docs/usulan.md
+?? resources/js/Pages/Admin/Orders/Show.jsx
+?? resources/js/Pages/Admin/Orders/partials/
+?? resources/js/Pages/Admin/Products/Create.jsx
+?? resources/js/Pages/Admin/Products/Edit.jsx
+?? resources/js/Pages/Admin/Products/Show.jsx
+?? resources/js/Pages/Admin/Products/partials/
+?? resources/js/Pages/Admin/Stocks/History.jsx
+?? resources/js/Pages/Admin/Stocks/partials/
+?? resources/js/lib/midtrans.js
+
+## harness: bundel + SSR + pohon elemen
+== bundel harness ==
+bundel harness siap: tmp/uji-ssr-daftar-t_e3f68f7f.bundle.mjs, tmp/uji-pohon-daftar-t_e3f68f7f.bundle.mjs
+
+== render statis (SSR) header, layout, /login, /register ==
+OK    A1 Header tamu merender tanpa galat
+OK    A2 Header tamu: tepat satu tautan /register bertulis "Daftar"
+OK    A3 Header tamu: kelas tautan Daftar persis pola aksi header (D14)
+OK    A4 Header tamu: tautan Daftar disembunyikan < md (hidden + md:inline-flex)
+OK    A5 Header tamu: ikon Masuk tetap ada dan Daftar berada di sebelah kanannya
+OK    A6 Header tamu: navigasi, hamburger, cari, keranjang tidak berubah
+OK    A7 Header pembeli: tidak ada pintu Daftar/Masuk, nama + Keluar tetap
+OK    B1 PublicLayout tamu: skip link + konten + tepat satu pintu Daftar dari header
+OK    B2 PublicLayout pembeli: tanpa pintu Daftar/Masuk di halaman
+OK    C1 Login: tepat satu tautan /register, teks "Belum punya akun? Daftar"
+OK    C2 Login: tautan silang setelah </form>, tautan lupa sandi tetap
+OK    C3 Login: gaya tautan silang sama dengan tautan lupa sandi
+OK    C4 Login: field, tombol, dan galat per kolom tidak berubah
+OK    D1 Register: tepat satu tautan /login, teks "Sudah punya akun? Masuk"
+OK    D2 Register: tautan silang setelah </form>, tidak menautkan ke dirinya sendiri
+OK    D3 Register: gaya tautan silang sama dengan gaya tautan auth lain
+OK    D4 Register: 6 field + tombol Daftar tidak berubah
+OK    D5 Register: galat per kolom tetap tampil apa adanya
+OK    D6 Tidak ada NaN/undefined/[CONTOH]/lorem di markup halaman auth
+OK    E1 Tidak ada Ziggy/route(), localStorage, atau innerHTML di kode 4 berkas
+OK    E2 URL literal sesuai PRD §15.2 dan tidak ada rute karangan
+OK    E3 Register: impor @inertiajs/react tunggal berisi Link + useForm
+OK    E4 Jejak deviasi D14/D15/D16 tercatat di berkas yang tepat
+
+ringkasan: 23/23 pemeriksaan lulus
+
+== pohon elemen drawer + markup drawer terbuka ==
+OK    P1 PublicLayout tamu: drawer dapat footer dua pintu (div flex flex-col gap-2, 2 tautan) -> anak=2
+OK    P2 PublicLayout tamu: pintu tamu hanya dari props.footer, header tetap menerima tamu -> tautan_luar_footer=0
+OK    P3 Drawer terbuka: footer asli berada di dalam panel, Daftar sebelum Masuk -> posisi daftar=1561 masuk=1633
+OK    P4 PublicLayout pembeli: footer drawer = "Masuk sebagai ...", tanpa pintu tamu
+OK    P5 Halaman pembeli: header/footer/pengumuman tetap, cart.count halaman menang atas prop
+
+ringkasan: 5/5 pemeriksaan lulus
+
+HASIL: semua pemeriksaan harness lulus
+exit=0
+
+## kontrol negatif (sabotase sementara: href /register -> /daftar-sabotase + gap-2 -> gap-4)
+== bundel harness ==
+bundel harness siap: tmp/uji-ssr-daftar-t_e3f68f7f.bundle.mjs, tmp/uji-pohon-daftar-t_e3f68f7f.bundle.mjs
+
+== render statis (SSR) header, layout, /login, /register ==
+OK    A1 Header tamu merender tanpa galat
+GAGAL A2 Header tamu: tepat satu tautan /register bertulis "Daftar" -> jumlah href="/register" = 0
+GAGAL A3 Header tamu: kelas tautan Daftar persis pola aksi header (D14) -> anchor /register tidak ditemukan
+GAGAL A4 Header tamu: tautan Daftar disembunyikan < md (hidden + md:inline-flex) -> anchor /register tidak ditemukan
+GAGAL A5 Header tamu: ikon Masuk tetap ada dan Daftar berada di sebelah kanannya -> urutan salah: login@2790, register@-1
+OK    A6 Header tamu: navigasi, hamburger, cari, keranjang tidak berubah
+OK    A7 Header pembeli: tidak ada pintu Daftar/Masuk, nama + Keluar tetap
+GAGAL B1 PublicLayout tamu: skip link + konten + tepat satu pintu Daftar dari header -> jumlah href="/register" di halaman tamu = 0
+OK    B2 PublicLayout pembeli: tanpa pintu Daftar/Masuk di halaman
+OK    C1 Login: tepat satu tautan /register, teks "Belum punya akun? Daftar"
+OK    C2 Login: tautan silang setelah </form>, tautan lupa sandi tetap
+OK    C3 Login: gaya tautan silang sama dengan tautan lupa sandi
+OK    C4 Login: field, tombol, dan galat per kolom tidak berubah
+OK    D1 Register: tepat satu tautan /login, teks "Sudah punya akun? Masuk"
+OK    D2 Register: tautan silang setelah </form>, tidak menautkan ke dirinya sendiri
+OK    D3 Register: gaya tautan silang sama dengan gaya tautan auth lain
+OK    D4 Register: 6 field + tombol Daftar tidak berubah
+OK    D5 Register: galat per kolom tetap tampil apa adanya
+OK    D6 Tidak ada NaN/undefined/[CONTOH]/lorem di markup halaman auth
+OK    E1 Tidak ada Ziggy/route(), localStorage, atau innerHTML di kode 4 berkas
+GAGAL E2 URL literal sesuai PRD §15.2 dan tidak ada rute karangan -> Header: tautan /register hilang
+OK    E3 Register: impor @inertiajs/react tunggal berisi Link + useForm
+OK    E4 Jejak deviasi D14/D15/D16 tercatat di berkas yang tepat
+
+ringkasan: 17/23 pemeriksaan lulus
+
+== pohon elemen drawer + markup drawer terbuka ==
+GAGAL P1 PublicLayout tamu: drawer dapat footer dua pintu (div flex flex-col gap-2, 2 tautan) -> kelas footer tamu: flex flex-col gap-4
+OK    P2 PublicLayout tamu: pintu tamu hanya dari props.footer, header tetap menerima tamu -> tautan_luar_footer=0
+OK    P3 Drawer terbuka: footer asli berada di dalam panel, Daftar sebelum Masuk -> posisi daftar=1561 masuk=1633
+OK    P4 PublicLayout pembeli: footer drawer = "Masuk sebagai ...", tanpa pintu tamu
+OK    P5 Halaman pembeli: header/footer/pengumuman tetap, cart.count halaman menang atas prop
+
+ringkasan: 4/5 pemeriksaan lulus
+
+HASIL: ada pemeriksaan yang gagal
+
+## npm run build
+[2mpublic/build/[22m[36massets/Home-LlrxsCeo.js             [39m[1m[2m 13.50 kB[22m[1m[22m[2m │ gzip:   4.39 kB[22m
+[2mpublic/build/[22m[36massets/Show-DeVVCZBb.js             [39m[1m[2m 14.04 kB[22m[1m[22m[2m │ gzip:   4.83 kB[22m
+[2mpublic/build/[22m[36massets/ProdukForm-Bkg8dFdn.js       [39m[1m[2m 14.70 kB[22m[1m[22m[2m │ gzip:   4.28 kB[22m
+[2mpublic/build/[22m[36massets/Index-PqhnwWnL.js            [39m[1m[2m 50.76 kB[22m[1m[22m[2m │ gzip:  12.14 kB[22m
+[2mpublic/build/[22m[36massets/app-C9D8JKkG.js              [39m[1m[2m364.49 kB[22m[1m[22m[2m │ gzip: 114.31 kB[22m
+[32m✓ built in 4.13s[39m
+build_exit=0
+
+## sapu regresi: komponen tanpa import + identifier bebas di bundel
+file diperiksa: 95
+resources\js\app.jsx: App
+chunk .js diperiksa: 70
+DropzoneGalery-CMCzjnEw.js -> FREE: P  (import: B, D, a, p, w)
+
+## Potongan kode + nomor baris (keadaan akhir)
+
+### resources/js/Components/Header.jsx:110-121 — pintu Daftar tamu (D14)
+ 110|                                 <UserIcon size={20} />
+ 111|                             </Link>
+ 112| 
+ 113|                             {/* Pintu Daftar untuk tamu >= md — deviasi D14 (design.md §3.1/§11.3, kartu UIUX t_46901364; kartu t_e3f68f7f). */}
+ 114|                             <Link
+ 115|                                 href="/register"
+ 116|                                 className="hidden text-meta text-brand underline underline-offset-4 md:inline-flex"
+ 117|                             >
+ 118|                                 Daftar
+ 119|                             </Link>
+ 120|                         </>
+ 121|                     )}
+
+### resources/js/Components/Header.jsx:92-101 — pembanding: pola teks aksi "Keluar" (kelas yang sama)
+  92|                                 {user.name ?? user.email ?? 'Akun'}
+  93|                             </span>
+  94|                             <button
+  95|                                 type="button"
+  96|                                 onClick={() => router.post('/logout')}
+  97|                                 className="text-meta text-brand underline underline-offset-4"
+  98|                             >
+  99|                                 Keluar
+ 100|                             </button>
+ 101|                         </div>
+
+### resources/js/Layouts/PublicLayout.jsx:86-100 — footer drawer tamu (D15)
+  86|                         <p className="text-meta text-ink-soft">
+  87|                             {`Masuk sebagai ${currentUser.name ?? currentUser.email ?? 'Akun'}`}
+  88|                         </p>
+  89|                     ) : (
+  90|                         <div className="flex flex-col gap-2">
+  91|                             {/* Dua pintu untuk tamu: Daftar (primary) + Masuk (secondary) — deviasi D15 (design.md §3.1/§11.3, kartu UIUX t_46901364; kartu t_e3f68f7f). */}
+  92|                             <Link href="/register" className="btn-primary w-full justify-center">
+  93|                                 Daftar
+  94|                             </Link>
+  95|                             <Link href="/login" className="btn-secondary w-full justify-center">
+  96|                                 Masuk
+  97|                             </Link>
+  98|                         </div>
+  99|                     )
+ 100|                 }
+
+### resources/js/Pages/Public/Auth/Login.jsx:88-105 — tautan silang ke /register (D16)
+  88|           Masuk
+  89|         </Button>
+  90|       </form>
+  91| 
+  92|       <p className="mt-4 text-meta">
+  93|         <Link href="/forgot-password" className="text-brand underline underline-offset-4">
+  94|           Lupa kata sandi?
+  95|         </Link>
+  96|       </p>
+  97| 
+  98|       {/* Tautan silang Masuk↔Daftar — deviasi D16 (design.md §5.5/§11.3; kartu t_e3f68f7f). */}
+  99|       <p className="mt-4 text-meta">
+ 100|         Belum punya akun?{' '}
+ 101|         <Link href="/register" className="text-brand underline underline-offset-4">
+ 102|           Daftar
+ 103|         </Link>
+ 104|       </p>
+ 105|     </AuthLayout>
+
+### resources/js/Pages/Public/Auth/Register.jsx:132-147 — tautan silang ke /login (D16)
+ 132|             </p>
+ 133|           )}
+ 134|         </div>
+ 135| 
+ 136|         <Button type="submit" fullWidth loading={processing}>
+ 137|           Daftar
+ 138|         </Button>
+ 139|       </form>
+ 140| 
+ 141|       {/* Tautan silang Daftar↔Masuk — deviasi D16 (design.md §5.5/§11.3; kartu t_e3f68f7f). */}
+ 142|       <p className="mt-4 text-meta">
+ 143|         Sudah punya akun?{' '}
+ 144|         <Link href="/login" className="text-brand underline underline-offset-4">
+ 145|           Masuk
+ 146|         </Link>
+ 147|       </p>
+
+### grep -n penanda penting
+resources/js/Components/Header.jsx:16: * Tamu >=md: ikon Masuk + tautan teks "Daftar" ke `/register` — deviasi **D14** (design.md §3.1/§11.3,
+resources/js/Components/Header.jsx:113:                            {/* Pintu Daftar untuk tamu >= md — deviasi D14 (design.md §3.1/§11.3, kartu UIUX t_46901364; kartu t_e3f68f7f). */}
+resources/js/Components/Header.jsx:115:                                href="/register"
+resources/js/Layouts/PublicLayout.jsx:91:                            {/* Dua pintu untuk tamu: Daftar (primary) + Masuk (secondary) — deviasi D15 (design.md §3.1/§11.3, kartu UIUX t_46901364; kartu t_e3f68f7f). */}
+resources/js/Layouts/PublicLayout.jsx:92:                            <Link href="/register" className="btn-primary w-full justify-center">
+resources/js/Layouts/PublicLayout.jsx:95:                            <Link href="/login" className="btn-secondary w-full justify-center">
+resources/js/Pages/Public/Auth/Login.jsx:13: * Tautan silang ke `/register` (teks "Belum punya akun? Daftar") — deviasi D16, kartu t_e3f68f7f.
+resources/js/Pages/Public/Auth/Login.jsx:98:      {/* Tautan silang Masuk↔Daftar — deviasi D16 (design.md §5.5/§11.3; kartu t_e3f68f7f). */}
+resources/js/Pages/Public/Auth/Login.jsx:101:        <Link href="/register" className="text-brand underline underline-offset-4">
+resources/js/Pages/Public/Auth/Register.jsx:14: * Tautan silang ke `/login` (teks "Sudah punya akun? Masuk") — deviasi D16, kartu t_e3f68f7f.
+resources/js/Pages/Public/Auth/Register.jsx:141:      {/* Tautan silang Daftar↔Masuk — deviasi D16 (design.md §5.5/§11.3; kartu t_e3f68f7f). */}
+resources/js/Pages/Public/Auth/Register.jsx:144:        <Link href="/login" className="text-brand underline underline-offset-4">

@@ -1,0 +1,75 @@
+Bukti backend — kartu t_bc89df6d
+"Fix product variant data contract (size/color) exposed to /produk/barang"
+Tanggal: 22 Oktober 2026. Tanpa migrasi, tanpa .env, tanpa server.
+
+A. Data nyata di DB pengembangan (baca saja, sebelum perubahan)
+   Perintah: php artisan tinker --execute='...Product::with("variants")->latest("id")->take(6)...'
+   Keluaran (potongan):
+     13 | baju tidur pola kucing | active=1 | varian=4 |
+        L/Hijau/stok:6/aktif:1, XL/Hijau/stok:10/aktif:1,
+        L/Merah/stok:8/aktif:1, XL/Merah/stok:10/aktif:1
+   Artinya: varian ukuran × warna TERSIMPAN (bukan hilang saat create). Produk ini
+   persis kasus laporan: 2 ukuran × 2 warna.
+
+   Serialisasi lama (ProductPresenter::detail produk 13) — tidak ada color_hex:
+     {"id":39,"size":"L","color":"Merah","sku":"BJU-TDR-KCG-L-MRH",
+      "price_delta":0,"stock":8,"is_active":true}
+
+B. Setelah perubahan (baca saja, DB pengembangan yang sama)
+   Perintah: php artisan tinker --execute='...app(ProductPresenter::class)->detail(Product::find(13))...'
+   Keluaran:
+     L  | Hijau | '#16A34A' | urutan key: id,size,color,color_hex,sku,price_delta,stock,is_active
+     L  | Merah | '#DC2626' | urutan key: id,size,color,color_hex,sku,price_delta,stock,is_active
+     XL | Hijau | '#16A34A' | urutan key: id,size,color,color_hex,sku,price_delta,stock,is_active
+     XL | Merah | '#DC2626' | urutan key: id,size,color,color_hex,sku,price_delta,stock,is_active
+   Empat kombinasi tetap empat baris (tidak digabung), tiap warna dapat hex nyata.
+
+C. Test unit (berjalan)
+   Perintah: php artisan test tests/Unit/Support/VariantColorTest.php
+   Hasil:   Tests: 5 passed (34 assertions), Duration 0.43s
+   Cakupan: nama baku (Merah/Navy/Krem), semua warna seeder (Cokelat, Navy, Biru Muda,
+   Sage, Hitam, Maroon, Krem, Merah, Hijau), kata kunci terpanjang (Biru Muda/Biru
+   Dongker/Merah Marun), hex mentah (#0ea5e9 → #0EA5E9, #fff → #FFFFFF), kosong/tak
+   dikenal → null.
+
+D. Test fitur (berjalan)
+   Berkas: tests/Feature/Catalog/ProductVariantColorPropsTest.php (3 test):
+   - admin POST /admin/produk 4 varian (L/XL × Hijau/Merah) → props /produk/{slug}
+     memuat 4 varian, urut ukuran baku + warna, color_hex benar, key persis kontrak;
+   - kartu /produk juga membawa color_hex;
+   - color null / "Motif Bunga" → color_hex null tanpa mengubah bentuk.
+   Perintah: php -d extension=pdo_sqlite vendor/bin/phpunit tests/Unit/Support/VariantColorTest.php tests/Feature/Catalog/ProductVariantColorPropsTest.php
+   Hasil:   OK (8 tests, 48 assertions), 0.73s
+
+   Catatan lingkungan: `php -m` bawaan tidak memuat pdo_sqlite, sehingga `php artisan test`
+   (yang men-spawn PHP_BINARY tanpa flag) gagal `could not find driver`. DLL tersedia di
+   C:\laragon\bin\php\php-8.3.32-Win32-vs16-x64\ext\php_pdo_sqlite.dll, jadi test dijalankan
+   dengan `php -d extension=pdo_sqlite vendor/bin/phpunit` — tanpa mengubah php.ini, .env,
+   maupun phpunit.xml. DB tetap SQLite :memory: (tidak menyentuh DB pengembangan).
+
+D2. Regresi seluruh suite (berjalan)
+   Perintah: php -d extension=pdo_sqlite vendor/bin/phpunit
+   Hasil:   OK (258 tests, 2041 assertions), 31.7s
+   Termasuk tests/Feature/Catalog/CatalogIndexTest.php yang diperbarui: assert key varian
+   kartu kini memuat `color_hex` dan nilainya `#111827` untuk warna "Hitam" (baris 362-365).
+
+E. Sintaks & gaya
+   php -l app/Support/VariantColor.php            → No syntax errors detected
+   php -l app/Services/ProductPresenter.php       → No syntax errors detected
+   php -l tests/Unit/Support/VariantColorTest.php → No syntax errors detected
+   php -l tests/Feature/Catalog/ProductVariantColorPropsTest.php → No syntax errors detected
+   pint --test (4 berkas)                          → {"result":"passed"}
+
+F. Rute (tidak ada rute baru)
+   php artisan route:list --name=products →
+     GET|HEAD  produk                    products.index › ProductController@index
+     GET|HEAD  produk/{slug}             products.show  › ProductController@show
+   Tidak ada rute /produk/barang; sebutan pemilik merujuk katalog /produk + detail
+   /produk/{slug} (dicatat di kontrak §11.1).
+
+G. Kesimpulan lingkup
+   Backend sudah benar menyimpan & mengirim seluruh varian; yang kurang adalah
+   representasi warna (kini color_hex). Tombol ukuran/warna yang saling mengunci di
+   resources/js/Pages/Public/Products/Show.jsx adalah bug frontend (kartu t_7a62c713):
+   saat ukuran & warna sama-sama >1, tombol ukuran butuh warna terpilih dan tombol
+   warna butuh ukuran terpilih → keduanya disabled. Tidak diubah di card backend ini.

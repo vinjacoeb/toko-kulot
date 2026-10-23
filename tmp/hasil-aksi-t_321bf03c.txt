@@ -1,0 +1,19 @@
+=== UJI INTERAKSI kartu t_321bf03c ===
+[OK]   A1 tombol urut tabel mengirim query urut ke server
+[OK]   A2 filter status, kategori, dan urutan lewat router.get literal
+[OK]   A3 pencarian menunggu debounce 300ms sebelum memanggil server
+[OK]   A4 reset filter mengembalikan query ke kosong
+[OK]   A5 memuat -> galat -> Coba lagi: tiga keadaan berbeda
+[OK]   A6 paginasi mengirim page hanya bila > 1
+[OK]   A7 aksi baris membuka modal stok masuk/keluar dan modal Setel
+[OK]   B1 validasi klien: pesan per kondisi, tanpa memanggil server
+[OK]   B2 kirim sah: URL literal, data form, opsi Inertia, tutup saat sukses
+[OK]   B3 mode keluar: URL keluar, judul, hint stok saat ini, dan tombolnya
+[OK]   B4 jumlah dikirim sekali saja saat server masih memproses
+[OK]   B5 varian null: tombol simpan mati dan tidak ada URL /null/
+[OK]   B6 galat server per kolom terhubung aria-describedby, galat lain jadi notice
+[OK]   C1 filter riwayat: tipe, varian, dan reset
+[OK]   C2 galat riwayat tidak menyamar sebagai riwayat kosong + Coba lagi
+[OK]   C3 pencarian riwayat ikut debounce dan memakai query q
+
+TOTAL: 16 uji, 0 gagal

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { cn, formatDateTime, rupiah } from '../lib/format';
+import { midtransMode } from '../lib/midtrans';
 import Button from './Button';
 import Countdown from './Countdown';
 import InlineNotice from './InlineNotice';
@@ -17,6 +18,11 @@ const EXPIRED_MESSAGES = {
  * Panel pembayaran QRIS — design §4.4, §5.8; kontrak §7.7 dan §7.8.
  * `status`: pending | checking | paid | expired | error (design §5.8).
  * QR dirender dari `qrString` (kontrak §7.7: `qr_string` bila `qris_url` null).
+ * `midtrans`: status mode pembayaran efektif (kontrak §7.5/§7.7). Saat mode uji
+ * (`fake`) panel menampilkan penanda "Mode uji" + `alasan` + `langkah_perbaikan`
+ * dari server di atas kode QR (design §11.3 D9, kartu F2); saat `fake=false`
+ * penanda tidak dirender. `galat` = `pembayaran.galat` (§7.7) yang siap tampil
+ * apa adanya sebagai galat di panel QRIS.
  */
 export default function QrisPanel({
     status = 'pending',
@@ -27,6 +33,8 @@ export default function QrisPanel({
     expiresAt = null,
     paidAt = null,
     reason = null,
+    midtrans = null,
+    galat = null,
     onCheck = null,
     onExpire = null,
     successHref = null,
@@ -40,6 +48,9 @@ export default function QrisPanel({
     const code = orderCode ?? '-';
     const amount = rupiah(total) ?? '-';
     const hasQr = Boolean(qrString) || (Boolean(qrUrl) && !qrFailed);
+    const mode = midtransMode(midtrans);
+    /** `pembayaran.galat` (§7.7): teks galat siap tampil apa adanya di panel QRIS. */
+    const galatText = typeof galat === 'string' && galat.trim() !== '' ? galat : null;
 
     const copy = async () => {
         if (!orderCode) return;
@@ -112,7 +123,7 @@ export default function QrisPanel({
         <section className={cn('card p-6', className)} aria-label="Pembayaran QRIS">
             <h2 className="text-center text-h2 text-ink">Selesaikan Pembayaran</h2>
 
-            {status === 'pending' && expiresAt && (
+            {(status === 'pending' || status === 'error') && expiresAt && (
                 <div className="mt-2 text-center">
                     <Countdown expiresAt={expiresAt} onExpire={onExpire} label="Sisa waktu pembayaran" />
                 </div>
@@ -122,6 +133,28 @@ export default function QrisPanel({
                     <Spinner label="Memeriksa status pembayaran" className="text-brand" />
                     Memeriksa status pembayaran…
                 </p>
+            )}
+
+            {galatText && (
+                <InlineNotice tone="error" title="Pembayaran QRIS bermasalah" className="mt-5">
+                    <p>{galatText}</p>
+                </InlineNotice>
+            )}
+
+            {mode.uji && (
+                <InlineNotice tone="warning" title="Mode uji" className="mt-5">
+                    <p>{mode.alasan ?? 'Mode uji aktif: tagihan QRIS dibuat lokal (tanpa Midtrans) sehingga tidak bisa ditransfer.'}</p>
+                    {mode.langkah.length > 0 ? (
+                        <>
+                            <p className="mt-2 font-semibold text-ink">Langkah perbaikan untuk pemilik:</p>
+                            <ol className="mt-1 list-decimal pl-4">
+                                {mode.langkah.map((langkah, index) => (
+                                    <li key={index}>{langkah}</li>
+                                ))}
+                            </ol>
+                        </>
+                    ) : null}
+                </InlineNotice>
             )}
 
             <div className="mt-5 flex justify-center">

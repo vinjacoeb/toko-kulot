@@ -1,0 +1,6 @@
+### J. Berkas tersentuh kartu ini
+$ git status --short resources/js/Pages/Public/CheckoutSuccess.jsx docs/catatan-frontend.md
+ M docs/catatan-frontend.md
+ M resources/js/Pages/Public/CheckoutSuccess.jsx
+$ git status --short | wc -l
+163

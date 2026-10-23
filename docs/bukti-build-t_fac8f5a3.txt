@@ -1,0 +1,229 @@
+BUKTI BUILD BEKU — kartu t_fac8f5a3 (devops)
+Disusun   : 2026-10-22 06:40 +07:00 (waktu sistem)
+Repo      : C:/Users/LENOVO/Downloads/toko-kulot
+HEAD      : 66527ce ("first commit") — working tree belum di-commit (sesuai keadaan papan)
+Alat      : node v26.7.0 | npm 11.19.0 | vite v6.4.4
+Lingkup   : membekukan public/build untuk rilis setelah QA putaran 2 lulus (parent t_43d8bcd7).
+            Tidak ada kode aplikasi, konfigurasi, migrasi, atau .env yang diubah oleh kartu ini.
+Prasyarat : QA2 lulus (237 tests / 1791 assertions, exit 0). Kartu backend yang masih berjalan saat
+            pembekuan (t_3bfe3165 B4 Midtrans SDK, t_f39eba9d P3 pesan validasi) hanya menyentuh PHP;
+            `find resources/js -mmin -120` kosong, jadi bundel frontend tidak bergerak sesudah build.
+
+SECTION 1 — KEADAAN public/build SEBELUM BUILD
+$ stat -c '%y %s' public/build/manifest.json
+2026-10-22 00:52:57.646334000 +0700 32800
+$ sha256sum public/build/manifest.json
+223b5514a842558e7c5563dfe4d4e010b0fe333515015af1c2ef5f9a5b73cc39 *public/build/manifest.json
+$ find public/build/assets -type f | wc -l
+72
+$ ls public/build
+assets
+manifest.json
+$ find resources app routes config database tests -type f -newer public/build/manifest.json
+(kosong — tidak ada kode sumber lebih baru dari manifest sebelum build)
+
+SECTION 2 — SAPUAN BERKAS RINTISAN / SKRIP DEBUG DI resources/js
+$ find resources/js -type f \( -iname "*stub*" -o -iname "*debug*" -o -iname "*test*" -o -iname "*tmp*" \
+    -o -iname "*.bak" -o -iname "*.orig" -o -iname "*copy*" \)
+(kosong)
+$ find resources/js -type f ! -name "*.jsx" ! -name "*.js"
+resources/js/Components/.gitkeep
+resources/js/Layouts/.gitkeep
+resources/js/Pages/Admin/.gitkeep
+(hanya penanda folder bawaan repo; bukan rintisan)
+$ grep -rn -E "console\.(log|debug|trace)|debugger;|\bdd\(|var_dump\(" resources/js resources/views
+(kosong)
+$ find resources/js -type f \( -iname "*coba*" -o -iname "*sementara*" -o -iname "*backup*" -o -iname "*old*" \
+    -o -iname "*dummy*" -o -iname "*fix*" -o -iname "*scratch*" \)
+(kosong)
+Catatan: `tmp/` di root repo memuat harness uji milik agent (mis. admin-messages-harness.jsx) — itu di luar
+resources/js dan tidak ikut bundel Vite (input hanya resources/js/app.jsx). Sudah tercatat sebagai temuan
+Low di docs/checklist-rilis.md 15.10; tidak diubah oleh kartu ini.
+
+SECTION 3 — PERINTAH BUILD DAN KELUARAN MENTAH
+$ npm run build        (dijalankan 2026-10-22 06:37, cwd = root repo)
+EXIT CODE: 0
+--- keluaran mentah (lengkap) ---
+
+> build
+> vite build
+
+[36mvite v6.4.4 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 730 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mpublic/build/[22m[32mmanifest.json                         [39m[1m[2m 32.80 kB[22m[1m[22m[2m │ gzip:   2.88 kB[22m
+[2mpublic/build/[22m[35massets/app-DpcrjTSz.css               [39m[1m[2m 58.63 kB[22m[1m[22m[2m │ gzip:  10.46 kB[22m
+[2mpublic/build/[22m[36massets/Skeleton-CzrZ4X-b.js           [39m[1m[2m  0.40 kB[22m[1m[22m[2m │ gzip:   0.30 kB[22m
+[2mpublic/build/[22m[36massets/midtrans-DhMFajGi.js           [39m[1m[2m  0.47 kB[22m[1m[22m[2m │ gzip:   0.29 kB[22m
+[2mpublic/build/[22m[36massets/Badge-DjJVve6m.js              [39m[1m[2m  0.52 kB[22m[1m[22m[2m │ gzip:   0.32 kB[22m
+[2mpublic/build/[22m[36massets/Spinner-C4lh7k_h.js            [39m[1m[2m  0.55 kB[22m[1m[22m[2m │ gzip:   0.38 kB[22m
+[2mpublic/build/[22m[36massets/Input-nj9T3O9g.js              [39m[1m[2m  0.57 kB[22m[1m[22m[2m │ gzip:   0.39 kB[22m
+[2mpublic/build/[22m[36massets/KartuBagian-D9RflPKd.js        [39m[1m[2m  0.59 kB[22m[1m[22m[2m │ gzip:   0.35 kB[22m
+[2mpublic/build/[22m[36massets/Textarea-PTlj27Sk.js           [39m[1m[2m  0.60 kB[22m[1m[22m[2m │ gzip:   0.40 kB[22m
+[2mpublic/build/[22m[36massets/IconButton-D_saVMdK.js         [39m[1m[2m  0.65 kB[22m[1m[22m[2m │ gzip:   0.41 kB[22m
+[2mpublic/build/[22m[36massets/Field-BS3ZEnDv.js              [39m[1m[2m  0.66 kB[22m[1m[22m[2m │ gzip:   0.38 kB[22m
+[2mpublic/build/[22m[36massets/EmptyState-D2voaT-m.js         [39m[1m[2m  0.78 kB[22m[1m[22m[2m │ gzip:   0.43 kB[22m
+[2mpublic/build/[22m[36massets/StatusBadge-Ckf0729j.js        [39m[1m[2m  0.88 kB[22m[1m[22m[2m │ gzip:   0.49 kB[22m
+[2mpublic/build/[22m[36massets/VariantChip-DZIBOfeG.js        [39m[1m[2m  0.89 kB[22m[1m[22m[2m │ gzip:   0.54 kB[22m
+[2mpublic/build/[22m[36massets/ErrorState-CcQOiS1m.js         [39m[1m[2m  0.91 kB[22m[1m[22m[2m │ gzip:   0.51 kB[22m
+[2mpublic/build/[22m[36massets/Select-DYBvTADF.js             [39m[1m[2m  0.95 kB[22m[1m[22m[2m │ gzip:   0.58 kB[22m
+[2mpublic/build/[22m[36massets/Create-BVtopnkv.js             [39m[1m[2m  0.99 kB[22m[1m[22m[2m │ gzip:   0.56 kB[22m
+[2mpublic/build/[22m[36massets/SyncPaymentButton-TLkCqPKk.js  [39m[1m[2m  1.01 kB[22m[1m[22m[2m │ gzip:   0.62 kB[22m
+[2mpublic/build/[22m[36massets/Breadcrumb-D5Zp1AKB.js         [39m[1m[2m  1.05 kB[22m[1m[22m[2m │ gzip:   0.49 kB[22m
+[2mpublic/build/[22m[36massets/format-CZMha6Op.js             [39m[1m[2m  1.06 kB[22m[1m[22m[2m │ gzip:   0.43 kB[22m
+[2mpublic/build/[22m[36massets/Accordion-DbcAnL4g.js          [39m[1m[2m  1.07 kB[22m[1m[22m[2m │ gzip:   0.59 kB[22m
+[2mpublic/build/[22m[36massets/Edit-D8iovTBu.js               [39m[1m[2m  1.10 kB[22m[1m[22m[2m │ gzip:   0.64 kB[22m
+[2mpublic/build/[22m[36massets/InlineNotice-DuPvxojK.js       [39m[1m[2m  1.18 kB[22m[1m[22m[2m │ gzip:   0.61 kB[22m
+[2mpublic/build/[22m[36massets/Button-DCoGc-7i.js             [39m[1m[2m  1.27 kB[22m[1m[22m[2m │ gzip:   0.67 kB[22m
+[2mpublic/build/[22m[36massets/Toast-DP0Mm2XV.js              [39m[1m[2m  1.37 kB[22m[1m[22m[2m │ gzip:   0.73 kB[22m
+[2mpublic/build/[22m[36massets/InfoResi-CjtGSZZj.js           [39m[1m[2m  1.38 kB[22m[1m[22m[2m │ gzip:   0.78 kB[22m
+[2mpublic/build/[22m[36massets/ForgotPassword-eZWHvRi-.js     [39m[1m[2m  1.45 kB[22m[1m[22m[2m │ gzip:   0.73 kB[22m
+[2mpublic/build/[22m[36massets/OrderSummary-BpK-3WEc.js       [39m[1m[2m  1.50 kB[22m[1m[22m[2m │ gzip:   0.64 kB[22m
+[2mpublic/build/[22m[36massets/Modal-3ExxIn_A.js              [39m[1m[2m  1.62 kB[22m[1m[22m[2m │ gzip:   0.83 kB[22m
+[2mpublic/build/[22m[36massets/RatingSummary-BdJs8Y5m.js      [39m[1m[2m  1.64 kB[22m[1m[22m[2m │ gzip:   0.77 kB[22m
+[2mpublic/build/[22m[36massets/StarRating-D1RW51_E.js         [39m[1m[2m  1.76 kB[22m[1m[22m[2m │ gzip:   0.93 kB[22m
+[2mpublic/build/[22m[36massets/KpiCard-DwgSiuyr.js            [39m[1m[2m  1.80 kB[22m[1m[22m[2m │ gzip:   0.84 kB[22m
+[2mpublic/build/[22m[36massets/QtyStepper-CMW6HgnO.js         [39m[1m[2m  1.83 kB[22m[1m[22m[2m │ gzip:   0.83 kB[22m
+[2mpublic/build/[22m[36massets/ResetPassword-opk2xj-e.js      [39m[1m[2m  2.05 kB[22m[1m[22m[2m │ gzip:   0.85 kB[22m
+[2mpublic/build/[22m[36massets/hooks-BCs7Lygh.js              [39m[1m[2m  2.17 kB[22m[1m[22m[2m │ gzip:   0.81 kB[22m
+[2mpublic/build/[22m[36massets/Login-B7a8sgDT.js              [39m[1m[2m  2.22 kB[22m[1m[22m[2m │ gzip:   0.94 kB[22m
+[2mpublic/build/[22m[36massets/BuktiPembayaran-Br02MmWQ.js    [39m[1m[2m  2.39 kB[22m[1m[22m[2m │ gzip:   1.09 kB[22m
+[2mpublic/build/[22m[36massets/AuthLayout-D9gX3OpI.js         [39m[1m[2m  2.40 kB[22m[1m[22m[2m │ gzip:   1.04 kB[22m
+[2mpublic/build/[22m[36massets/DataTable-M9z6044V.js          [39m[1m[2m  2.67 kB[22m[1m[22m[2m │ gzip:   1.21 kB[22m
+[2mpublic/build/[22m[36massets/Login-vqynKDDl.js              [39m[1m[2m  2.85 kB[22m[1m[22m[2m │ gzip:   1.21 kB[22m
+[2mpublic/build/[22m[36massets/StokAksiModal-ChFCFJ5V.js      [39m[1m[2m  3.00 kB[22m[1m[22m[2m │ gzip:   1.53 kB[22m
+[2mpublic/build/[22m[36massets/Register-CzpUtYRj.js           [39m[1m[2m  3.13 kB[22m[1m[22m[2m │ gzip:   1.16 kB[22m
+[2mpublic/build/[22m[36massets/UbahStatusModal-D0mVgkwj.js    [39m[1m[2m  3.23 kB[22m[1m[22m[2m │ gzip:   1.46 kB[22m
+[2mpublic/build/[22m[36massets/Pagination-DHk79sYi.js         [39m[1m[2m  3.45 kB[22m[1m[22m[2m │ gzip:   1.47 kB[22m
+[2mpublic/build/[22m[36massets/DropzoneGalery-CR5cU0GV.js     [39m[1m[2m  3.75 kB[22m[1m[22m[2m │ gzip:   1.81 kB[22m
+[2mpublic/build/[22m[36massets/VarianEditor-B82Go9gu.js       [39m[1m[2m  4.94 kB[22m[1m[22m[2m │ gzip:   1.51 kB[22m
+[2mpublic/build/[22m[36massets/ProductGrid-Cr9bQxOz.js        [39m[1m[2m  4.97 kB[22m[1m[22m[2m │ gzip:   2.08 kB[22m
+[2mpublic/build/[22m[36massets/Contact-ucWNddkS.js            [39m[1m[2m  5.81 kB[22m[1m[22m[2m │ gzip:   2.12 kB[22m
+[2mpublic/build/[22m[36massets/Cart-CiZc-6ak.js               [39m[1m[2m  6.08 kB[22m[1m[22m[2m │ gzip:   2.41 kB[22m
+[2mpublic/build/[22m[36massets/QrCode-8SbBNI3s.js             [39m[1m[2m  6.17 kB[22m[1m[22m[2m │ gzip:   2.87 kB[22m
+[2mpublic/build/[22m[36massets/PageHeader-DzP3Xrpu.js         [39m[1m[2m  6.17 kB[22m[1m[22m[2m │ gzip:   2.12 kB[22m
+[2mpublic/build/[22m[36massets/Show-BPWbAQ_g.js               [39m[1m[2m  6.24 kB[22m[1m[22m[2m │ gzip:   2.43 kB[22m
+[2mpublic/build/[22m[36massets/Show-Du1rnR3F.js               [39m[1m[2m  6.74 kB[22m[1m[22m[2m │ gzip:   2.34 kB[22m
+[2mpublic/build/[22m[36massets/History-BQcuCyER.js            [39m[1m[2m  7.13 kB[22m[1m[22m[2m │ gzip:   2.74 kB[22m
+[2mpublic/build/[22m[36massets/icons-DfhgNHx4.js              [39m[1m[2m  7.23 kB[22m[1m[22m[2m │ gzip:   2.14 kB[22m
+[2mpublic/build/[22m[36massets/Index-DjoHLceX.js              [39m[1m[2m  7.99 kB[22m[1m[22m[2m │ gzip:   2.84 kB[22m
+[2mpublic/build/[22m[36massets/Index-C_Kh1wiy.js              [39m[1m[2m  8.29 kB[22m[1m[22m[2m │ gzip:   2.98 kB[22m
+[2mpublic/build/[22m[36massets/CheckoutSuccess-BdEPd5uf.js    [39m[1m[2m  8.47 kB[22m[1m[22m[2m │ gzip:   2.86 kB[22m
+[2mpublic/build/[22m[36massets/Checkout-D7IyTOFC.js           [39m[1m[2m  9.40 kB[22m[1m[22m[2m │ gzip:   3.29 kB[22m
+[2mpublic/build/[22m[36massets/Index-xOltw_Uw.js              [39m[1m[2m  9.63 kB[22m[1m[22m[2m │ gzip:   3.61 kB[22m
+[2mpublic/build/[22m[36massets/Index-BuOAC3VS.js              [39m[1m[2m  9.77 kB[22m[1m[22m[2m │ gzip:   3.53 kB[22m
+[2mpublic/build/[22m[36massets/PublicLayout-BYxGwBMm.js       [39m[1m[2m  9.78 kB[22m[1m[22m[2m │ gzip:   3.28 kB[22m
+[2mpublic/build/[22m[36massets/Index-Biazmt12.js              [39m[1m[2m  9.84 kB[22m[1m[22m[2m │ gzip:   3.61 kB[22m
+[2mpublic/build/[22m[36massets/Dashboard-D-Wzp-l3.js          [39m[1m[2m 10.52 kB[22m[1m[22m[2m │ gzip:   3.80 kB[22m
+[2mpublic/build/[22m[36massets/Index-CX9myFdt.js              [39m[1m[2m 11.46 kB[22m[1m[22m[2m │ gzip:   4.13 kB[22m
+[2mpublic/build/[22m[36massets/CheckoutPay-DGKt7J4e.js        [39m[1m[2m 11.77 kB[22m[1m[22m[2m │ gzip:   3.93 kB[22m
+[2mpublic/build/[22m[36massets/Index-B-3QCOVT.js              [39m[1m[2m 11.85 kB[22m[1m[22m[2m │ gzip:   4.12 kB[22m
+[2mpublic/build/[22m[36massets/Index-ByVZ8YTX.js              [39m[1m[2m 11.95 kB[22m[1m[22m[2m │ gzip:   4.34 kB[22m
+[2mpublic/build/[22m[36massets/Home-DRpL3ZfJ.js               [39m[1m[2m 13.50 kB[22m[1m[22m[2m │ gzip:   4.38 kB[22m
+[2mpublic/build/[22m[36massets/Show-Clb62TXI.js               [39m[1m[2m 14.04 kB[22m[1m[22m[2m │ gzip:   4.82 kB[22m
+[2mpublic/build/[22m[36massets/ProdukForm-Cfhocq_3.js         [39m[1m[2m 14.70 kB[22m[1m[22m[2m │ gzip:   4.28 kB[22m
+[2mpublic/build/[22m[36massets/Index-BuQtlxKJ.js              [39m[1m[2m 50.76 kB[22m[1m[22m[2m │ gzip:  12.14 kB[22m
+[2mpublic/build/[22m[36massets/app-BCun0p-R.js                [39m[1m[2m364.67 kB[22m[1m[22m[2m │ gzip: 114.34 kB[22m
+[32m✓ built in 45.34s[39m
+--- akhir keluaran mentah ---
+
+SECTION 4 — KEADAAN public/build SESUDAH BUILD (bundel beku)
+$ stat -c '%y %s' public/build/manifest.json
+2026-10-22 06:37:13.748157600 +0700 32800
+$ sha256sum public/build/manifest.json
+223b5514a842558e7c5563dfe4d4e010b0fe333515015af1c2ef5f9a5b73cc39 *public/build/manifest.json
+$ grep -c '"file":' public/build/manifest.json
+72
+$ find public/build/assets -type f | wc -l          -> 72
+$ find public/build/assets -type f -name '*.js' | wc -l -> 71
+$ find public/build/assets -type f -name '*.css' | wc -l -> 1
+$ sha256sum public/build/assets/app-BCun0p-R.js public/build/assets/app-DpcrjTSz.css
+b13b319a8d5e4d9b736b2cdb79b7b399b6acf7630d3433d632ef9c4a01357f3c *public/build/assets/app-BCun0p-R.js
+f702e362e2a6a74c127a194289d56660d1330adc3de991fcdffa36fcdc01df7e *public/build/assets/app-DpcrjTSz.css
+$ ls -la public/build/assets/app-*
+-rw-r--r-- 1 LENOVO 197121 364674 Oct 22 06:37 public/build/assets/app-BCun0p-R.js
+-rw-r--r-- 1 LENOVO 197121  58625 Oct 22 06:37 public/build/assets/app-DpcrjTSz.css
+
+Keterangan vite (dari SECTION 3): vite v6.4.4, 730 modul ditransformasi, "✓ built in 45.34s", exit 0.
+Manifest 32.800 B, 72 entri; 72 berkas di public/build/assets = 71 .js + 1 .css (Vite mengosongkan outDir,
+tidak ada berkas sisa build lama).
+
+$ find resources app routes config database tests vite.config.js tailwind.config.js package.json composer.json \
+    -type f -newer public/build/manifest.json
+(kosong — 0 berkas kode sumber lebih baru dari manifest; build benar-benar berhenti di sini)
+
+$ find public/build -type f ! -newermt "2026-10-22 06:37:00"
+(kosong — tidak ada artefak stale)
+
+Halaman wajib ada di manifest (11/11):
+$ for p in ...; do grep -q "$p.jsx" public/build/manifest.json; done
+ADA  Pages/Public/Home                 ADA  Pages/Admin/Dashboard
+ADA  Pages/Public/Products/Index       ADA  Pages/Admin/Products/Index
+ADA  Pages/Public/Products/Show        ADA  Pages/Admin/Orders/Index
+ADA  Pages/Public/Cart                 ADA  Pages/Admin/Orders/Show
+ADA  Pages/Public/Checkout
+ADA  Pages/Public/CheckoutPay
+ADA  Pages/Public/CheckoutSuccess
+
+Catatan penting: sha256 manifest SESUDAH build identik dengan SEBELUM build (223b5514…). Artinya tidak ada
+satu pun berkas resources/js yang berubah sejak build 00:52; build ini mengonfirmasi bundel yang sama dan
+membekukannya pada keadaan pasca-QA2. Nama berkas ber-hash (app-BCun0p-R.js) tetap sama.
+
+SECTION 5 — BUNDEL YANG BENAR-BENAR DILAYANI SERVER PEMILIK (baca-saja, server tidak dinyalakan kartu ini)
+$ curl -s -o /dev/null -w "GET / => %{http_code}\n" --max-time 5 http://127.0.0.1:8000/
+GET / => 200
+$ curl -s http://127.0.0.1:8000/ | grep -o 'build/assets/app-[A-Za-z0-9_-]*\.\(js\|css\)' | sort -u
+build/assets/app-BCun0p-R.js
+build/assets/app-DpcrjTSz.css
+
+Server dev milik pemilik (sudah menyala sebelum kartu ini) menyajikan bundel beku ini — sama persis dengan
+hasil build di SECTION 4. Devops tidak menyalakan/mematikan server.
+
+SECTION 6 — RINGKASAN
+1. `npm run build` exit 0 (vite v6.4.4, 730 modul, 45,34 s) → public/build DIBEKUKAN.
+   Manifest 32.800 B sha256 223b5514a842558e7c5563dfe4d4e010b0fe333515015af1c2ef5f9a5b73cc39, 72 entri,
+   chunk app-BCun0p-R.js (sha256 b13b319a…), css app-DpcrjTSz.css (sha256 f702e362…).
+2. resources/js bersih: 0 berkas rintisan/skrip debug/berkas non-JSX selain 3 `.gitkeep` penanda folder,
+   0 `console.log`/`debugger`/`dd(`/`var_dump(` di resources/js dan resources/views.
+3. 0 berkas kode sumber lebih baru dari manifest sesudah build; 0 artefak stale; 11/11 halaman wajib ada.
+4. Tidak ada perubahan kode aplikasi, konfigurasi, migrasi, atau .env oleh kartu ini — hanya public/build
+   (artefak build, di-.gitignore) + dokumen docs/.
+5. BELUM diuji di kartu ini (jujur): smoke browser/visual pada bundel ini (bukan lingkup kartu; angka smoke
+   terakhir di docs/checklist-rilis.md §15.6 diukur pada bundel 20 Okt), klik admin nyata, dan webhook
+   Midtrans (tidak bisa masuk ke localhost — lihat docs/deploy.md §5 dan docs/checklist-rilis.md §15.11).
+
+==============================================================================
+SECTION 7 — PEMERIKSAAN ULANG 2026-10-22 07:01 +07:00 (sesudah pembekuan)
+==============================================================================
+Latar: kartu backend yang masih berjalan (t_3bfe3165 B4 Midtrans SDK, t_f39eba9d P3 pesan validasi)
+terus menulis berkas PHP sesudah build 06:37. Pemeriksaan ini memastikan bundel frontend TIDAK ikut berubah.
+
+Perintah:
+  $ find resources/js resources/css resources/views vite.config.js tailwind.config.js package.json \
+         -type f -newer public/build/manifest.json
+  -> (tidak ada keluaran = 0 berkas FRONTEND lebih baru dari manifest)
+
+  $ find app tests -type f -name '*.php' -newer public/build/manifest.json -printf '%TY-%Tm-%Td %TH:%TM %p\n' | sort
+  -> 2026-10-22 06:55 tests/Feature/Checkout/CheckoutTest.php
+     2026-10-22 06:56 tests/Feature/Checkout/MidtransSdkShapeTest.php
+     2026-10-22 06:57 app/Http/Requests/CheckoutRequest.php
+     2026-10-22 06:59 app/Services/Midtrans/SdkMidtransApi.php
+
+  $ stat -c '%y %s' public/build/manifest.json ; sha256sum public/build/manifest.json
+  -> 2026-10-22 06:37:13.748157600 +0700, 32800 B
+     223b5514a842558e7c5563dfe4d4e010b0fe333515015af1c2ef5f9a5b73cc39  (sama dengan SECTION 4)
+
+  $ sha256sum public/build/assets/app-BCun0p-R.js public/build/assets/app-DpcrjTSz.css
+  -> b13b319a8d5e4d9b736b2cdb79b7b399b6acf7630d3433d632ef9c4a01357f3c  app-BCun0p-R.js
+     f702e362e2a6a74c127a194289d56660d1330adc3de991fcdffa36fcdc01df7e  app-DpcrjTSz.css  (sama)
+
+Kesimpulan:
+- Bundel public/build masih SAH sebagai bundel rilis: 0 berkas frontend (resources/js, resources/css,
+  resources/views, vite.config.js, tailwind.config.js, package.json) lebih baru dari manifest, dan
+  sha256 manifest + kedua chunk tidak berubah sejak build 06:37.
+- Empat berkas PHP yang berubah (CheckoutRequest, SdkMidtransApi, 2 berkas test) adalah pekerjaan kartu
+  backend; perubahannya tidak mempengaruhi hasil build Vite dan tidak memerlukan build ulang.
+- Build ulang hanya diperlukan bila ada perubahan di resources/js, resources/css, resources/views, atau
+  konfigurasi Vite/Tailwind/package.json setelah 06:37.

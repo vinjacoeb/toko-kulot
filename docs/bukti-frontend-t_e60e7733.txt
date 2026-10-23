@@ -1,0 +1,41 @@
+Bukti verifikasi frontend — kartu t_e60e7733 (F2: penanda mode uji + hitung mundur)
+Waktu: 2026-10-21T12:27:02.005Z
+Cara: esbuild (bundle harness uji SSR) + node, stub @inertiajs/react; SSR murni tanpa server pengembangan.
+Hasil: 36/36 uji OK
+
+[OK]    A1 midtransMode: mode uji lengkap — uji=true, alasan & 3 langkah terisi
+[OK]    A2 midtransMode: mode asli menihilkan alasan/langkah — alasan=null, langkah=[]
+[OK]    A3 midtransMode: fake sebagai string "true" tetap terbaca uji — fake="true" → uji=true
+[OK]    A4 midtransMode: prop null / bukan objek tidak melempar — null & string → uji=false, diketahui=false tanpa galat
+[OK]    A5 midtransMode: alasan kosong/spasi jadi null (anti "undefined" di layar) — alasan=null, langkah tersaring → 1
+[OK]    A6 midtransMode: `diketahui` hanya true bila server benar-benar menyebut mode — {} & mode asing → diketahui=false; fake=false & mode=uji → true
+[OK]    B1 Countdown: 5 menit → warna normal `text-ink-soft`, tanpa denyut — text-ink-soft
+[OK]    B2 Countdown: 2 menit 58 detik → `text-danger` + `animate-pulse` + `motion-reduce:animate-none` — text-danger + animate-pulse + motion-reduce:animate-none, sisa 02:5x
+[OK]    B3 Countdown: 3 menit 2 detik → masih normal (ambang kurang dari 3 menit) — text-ink-soft di 03:0x
+[OK]    B4 Countdown: lewat waktu → `Kedaluwarsa` + `text-danger-strong` — Kedaluwarsa + text-danger-strong
+[OK]    B5 Countdown: waktu sisa terbaca screen reader (bukan hanya label) — sr-only memuat sisa waktu (02:5x)
+[OK]    B6 Countdown: `expires_at` null / tidak sah → tidak dirender, tanpa NaN — '' untuk null & 'bukan-tanggal'
+[OK]    C1 QrisPanel pending + mode uji: penanda "Mode uji" + alasan + langkah perbaikan di atas QR — penanda + alasan + 3 langkah tampil di atas QR, hitung mundur tetap ada
+[OK]    C2 QrisPanel pending + mode asli: tanpa penanda apa pun — tidak ada teks "Mode uji"
+[OK]    C3 QrisPanel tanpa prop midtrans: tidak melempar & tanpa penanda — render normal, 0 penanda kotor
+[OK]    C4 QrisPanel state error + asli: hitung mundur tetap jalan (design §4.4) — hitung mundur + pesan galat + Coba lagi
+[OK]    C5 QrisPanel state error + mode uji: penanda tetap tampil (QR belum hilang) — penanda Mode uji tampil
+[OK]    C6 QrisPanel checking + mode uji: penanda tampil, spinner ada — penanda + spinner
+[OK]    C7 QrisPanel paid/expired: penanda tidak muncul (QR sudah tidak ditampilkan) — paid & expired bersih dari penanda
+[OK]    C8 QrisPanel mode uji tanpa `alasan` (bentuk menyimpang): pakai kalimat cadangan, tanpa "undefined" — kalimat cadangan tampil, tanpa undefined
+[OK]    C9 QrisPanel: angka dari server sebagai string tetap diformat, nilai kosong jadi "-" — kode "-", 0 penanda kotor
+[OK]    C10 QrisPanel: langkah_perbaikan kosong / berisi nilai tak sah → tanpa daftar, tanpa "undefined" — langkah [] & [null, "   ", 7] → tanpa <ol>, tanpa undefined
+[OK]    C11 QrisPanel: `pembayaran.galat` (kontrak §7.7) tampil apa adanya di atas QR, teks di-escape — galat apa adanya (ter-escape) di atas penanda mode uji
+[OK]    C12 QrisPanel: `galat` null / kosong / bukan teks → tidak ada notice galat — 6 bentuk kosong → 0 notice galat
+[OK]    D1 CheckoutPay: prop `midtrans` diteruskan ke QrisPanel — penanda + alasan tampil di halaman bayar
+[OK]    D2 CheckoutPay: tanpa prop `midtrans` tetap render, tanpa penanda — render normal, 0 penanda kotor
+[OK]    D3 CheckoutPay: mode asli tidak memunculkan penanda meski prop lengkap — bersih
+[OK]    D4 CheckoutPay: `pembayaran.galat` diteruskan ke QrisPanel (kontrak §7.7) — galat server tampil di halaman bayar
+[OK]    D5 CheckoutPay: `pembayaran.galat` null → tanpa notice galat — 0 notice galat, 0 penanda kotor
+[OK]    E1 tab Pembayaran + mode uji: badge, alasan, 3 langkah, sumber kredensial, catatan — badge + alasan + 3 langkah + sumber kredensial + catatan
+[OK]    E2 tab Pembayaran + mode asli: badge netral, tanpa notice mode uji — badge "Mode asli", 0 notice
+[OK]    E3 tab Pembayaran: hint kolom tidak lagi menyesatkan (D11) — hint lama hilang, hint catatan muncul 2x, label dipertahankan
+[OK]    E4 tab Pembayaran tanpa prop midtrans: baris status tidak dirender (tidak menebak mode) — blok tetap ada, 0 klaim mode
+[OK]    E4b tab Pembayaran dengan mode tak dikenal (mode="sandbox"): tidak mengklaim apa pun — 0 klaim mode untuk bentuk tak dikenal
+[OK]    E5 tab Pembayaran + bentuk menyimpang (alasan/langkah hilang): fallback, tanpa "undefined" — fallback tampil, 0 undefined
+[OK]    E6 penanda hanya di tab Pembayaran (tab lain tidak terpengaruh) — tab Umum bersih dari blok Midtrans

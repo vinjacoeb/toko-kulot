@@ -16,14 +16,21 @@ Sumber: `docs/PRD.md` §5 (rute), §6 (kolom), §7 (alur). Seeder yang mengisi b
 | `flash` | object | `success` (string\|null), `error` (string\|null) |
 | `auth.user` | object\|null | pembeli yang login (`id`, `name`, `email`) |
 
-`settings` hanya memuat key publik. Key sensitif (`midtrans_client_key`,
-`midtrans_is_production`) dibaca di server; `midtrans_client_key` boleh dikirim karena
-memang dipakai Snap di browser, sedangkan `MIDTRANS_SERVER_KEY` tidak pernah masuk `settings`.
+`settings` hanya memuat key publik. `midtrans_client_key` dan `midtrans_is_production` **hanya catatan
+admin** — jalur bayar membacanya dari `.env` (`MIDTRANS_*`), dan `MIDTRANS_SERVER_KEY` tidak pernah masuk
+`settings` (keputusan P3, `docs/pertanyaan-pemilik.md` §6 P10).
 
 Catatan implementasi (t_a696f5c6): `settings` benar-benar dikirim
 `HandleInertiaRequests::publicSettings()` — satu query `settings` per permintaan, nilai
 `type=json` di-decode menjadi array/object, dan bila tabel belum dimigrasi hasilnya `{}`
 sehingga halaman tetap tampil dengan nilai bawaan frontend.
+
+Catatan implementasi (t_101b9145, 23 Okt 2026): `publicSettings()` memakai `SettingService::all()`
+sehingga tipe `int`/`bool` juga sudah dikonversi, dan **selalu memuat** key `store_name`,
+`store_logo`, `store_favicon`, `footer_copyright` (nilai `null` bila kosong/belum ada). Key
+`midtrans_client_key` dan `midtrans_is_production` **tidak pernah** ikut props bersama — keduanya
+hanya catatan admin di §10.7.
+
 
 ## 2. Bentuk JSON pada `settings`
 
@@ -110,9 +117,11 @@ carousel/hero/promo 1600×900, logo 240×64.
 |---|---|---|---|
 | `store_name` | umum | text | `Toko Kulot` |
 | `store_logo` | umum | image | `/images/seed/logo.png` |
+| `store_favicon` | umum | image | `/images/seed/favicon.png` |
 | `store_tagline` | umum | text | `Daster & kulot nyaman untuk harian` |
 | `header_nav` | header | json | lihat §2 |
 | `footer_about` | footer | textarea | ringkasan toko |
+| `footer_copyright` | footer | text | kosong = frontend memakai `© {tahun} {nama_toko}` |
 | `footer_links` | footer | json | lihat §2 |
 | `footer_social` | footer | json | lihat §2 |
 | `contact_email` | kontak | text | `halo@tokokulot.test` |
@@ -130,6 +139,12 @@ carousel/hero/promo 1600×900, logo 240×64.
 
 `shipping_cost_default` dan `midtrans_is_production` disimpan sebagai string di tabel
 (`value` bertipe text); server meng-cast ke `int`/`bool` saat memakai.
+
+`store_favicon` dan `footer_copyright` adalah **tambahan** di luar daftar minimum PRD §6
+(kartu `t_101b9145`, 23 Okt 2026): favicon dibutuhkan agar tab browser mengikuti identitas toko,
+dan copyright footer dibutuhkan agar teks footer bisa diubah pemilik. Keduanya mengikuti mekanisme
+`settings` yang sama (grup `umum`/`footer`, dapat diubah lewat `/admin/pengaturan`).
+
 
 ## 5. Status
 
@@ -249,12 +264,53 @@ Akses: `auth:admin`. Sukses: `redirect()->route('admin.login')`, `flash.success`
 
 Akses: middleware `admin` (guard `admin`, akun aktif). Komponen: `Admin/Dashboard`.
 
+Seluruh angka dihitung ulang dari DB pada setiap request (**tanpa cache**); tidak ada nilai
+yang disimpan di sesi atau tabel `cache`.
+
 ```json
-{ "stats": { "orders_total": 0, "orders_pending": 0, "revenue_total": 0, "products_active": 0 } }
+{
+  "stats": { "orders_total": 13, "orders_pending": 7, "revenue_total": 884000, "products_active": 12 },
+  "sales_14d": [
+    { "date": "2026-10-09", "total": 0 },
+    { "date": "2026-10-10", "total": 0 }
+  ],
+  "low_stock": [
+    { "id": 28, "product_name": "Kulot Karet Pinggang Motif Garis", "size": "M", "color": "Hitam", "stock": 3 }
+  ],
+  "recent_orders": [
+    { "id": 16, "code": "TK-20261022-0004", "customer_name": "Budi", "total": 500, "status": "pending", "created_at": "2026-10-22T08:33:20+07:00" }
+  ],
+  "recent_reviews": [
+    { "id": 2, "user_name": "Budi", "product_name": "Kulot Plisket Premium", "rating": 4, "comment": "Nyaman dipakai.", "created_at": "2026-10-16T08:00:00+07:00" }
+  ],
+  "updated_at": "2026-10-22T08:47:44+07:00"
+}
 ```
 
-`revenue_total` = integer rupiah, jumlah `orders.total` berstatus `dibayar`, `diproses`,
-`dikirim`, `selesai`. Bentuk `stats` boleh diperluas kartu lanjutan (aditif).
+Aturan isi:
+
+- `stats.orders_total` = jumlah **semua** order (termasuk `batal`).
+- `stats.orders_pending` = jumlah order berstatus `pending`.
+- `stats.revenue_total` = jumlah `orders.total` berstatus `dibayar`, `diproses`, `dikirim`,
+  `selesai` (integer rupiah). `pending` dan `batal` tidak dihitung. Daftar status tunggal:
+  `App\Models\Order::REVENUE_STATUSES`.
+- `stats.products_active` = jumlah `products.is_active = true`.
+- `sales_14d` = tepat **14** entri, urut lama → baru, berakhir hari ini (zona `Asia/Jakarta`).
+  `date` = tanggal `orders.created_at` (`YYYY-MM-DD`), `total` = jumlah `orders.total` order
+  berstatus omzet pada tanggal itu. Tanggal tanpa order tetap dikirim dengan `total: 0`.
+- `low_stock` = maksimal **5** baris, urut `stock` menaik. Hanya varian `is_active = true` dari
+  produk `is_active = true` dengan `stock < 5` (termasuk `0`). `size`/`color` boleh `null`.
+- `recent_orders` = maksimal **5** order terbaru (`created_at` desc, lalu `id` desc), semua status
+  (termasuk `batal`). `total` integer rupiah.
+- `recent_reviews` = maksimal **5** ulasan terbaru (`created_at` desc, lalu `id` desc), termasuk
+  ulasan tersembunyi (`is_visible = false`) karena panel admin perlu memoderasinya.
+  `user_name` = `null` bila akun pembeli sudah dihapus; `comment` boleh `null`.
+- `updated_at` = waktu agregasi dihitung (ISO 8601 `Asia/Jakarta`), dipakai label "Diperbarui …".
+- `loading` (bool, bawaan `false`) dan `error` (string|null, bawaan `null`) adalah **state klien**,
+  bukan props server; halaman memakai nilai bawaannya saat sukses.
+- Semua uang dan jumlah dikirim sebagai integer, tanggal ISO 8601; tidak ada angka terformat.
+
+Status: **LOCKED** (dipakai `resources/js/Pages/Admin/Dashboard.jsx` sejak K13).
 
 ### 6.14 Aturan pemisahan tier (untuk frontend)
 
@@ -267,7 +323,8 @@ Akses: middleware `admin` (guard `admin`, akun aktif). Komponen: `Admin/Dashboar
 | Bagian | Status | Dipakai oleh |
 |---|---|---|
 | §6.1–§6.9 (auth pembeli) | DRAFT | K12, K13 |
-| §6.10–§6.13 (auth + dashboard admin) | DRAFT | K13 |
+| §6.10–§6.12 (auth admin) | DRAFT | K13 |
+| §6.13 (dashboard admin) | LOCKED | K13, t_1ef89050 |
 
 ---
 
@@ -369,12 +426,45 @@ Akses: `auth:web` (guest → redirect `login` + `intended`). Keranjang kosong �
     "customer_postal_code": "51111",
     "note": null
   },
-  "pembayaran": { "method": "qris", "label": "QRIS (semua e-wallet & m-banking)", "expiry_minutes": 15 },
-  "midtrans": { "client_key": null, "is_production": false, "fake": true }
+  "pembayaran": { "method": "qris", "label": "QRIS (semua e-wallet & m-banking)", "expiry_minutes": 5 },
+  "midtrans": {
+    "client_key": null, "is_production": false, "fake": true,
+    "mode": "uji", "alasan_kode": "fake_aktif",
+    "alasan": "MODE UJI aktif karena MIDTRANS_FAKE=true di .env: QRIS dibuat lokal (tanpa Midtrans) sehingga tidak bisa ditransfer.",
+    "langkah_perbaikan": [
+      "Ubah MIDTRANS_FAKE=false pada berkas .env.",
+      "Isi MIDTRANS_SERVER_KEY dan MIDTRANS_CLIENT_KEY dari dashboard Midtrans.",
+      "Jalankan php artisan config:clear, lalu muat ulang halaman ini."
+    ],
+    "server_key_terisi": false,
+    "sumber_kredensial": ".env (MIDTRANS_*)",
+    "catatan": "Kredensial efektif dibaca dari .env (MIDTRANS_*); kolom Midtrans pada tab Pembayaran admin belum dipakai jalur pembayaran ini."
+  }
 }
 ```
 
 `prefill` diisi dari akun pembeli (nama, email, `users.phone`), field lain `null`.
+
+`pembayaran.expiry_minutes` = masa berlaku tagihan QRIS dari `config/midtrans.php`
+(`MIDTRANS_EXPIRY_MINUTES`, bawaan **5 menit** — keputusan pemilik 21 Okt 2026, kartu `t_e35050e8`).
+Nilai yang sama dipakai `custom_expiry` Midtrans dan kolom `payments.expires_at`, jadi frontend cukup
+memakai satu angka ini untuk teks, dan `pembayaran.expires_at` (§7.6) untuk Countdown.
+
+Bentuk `midtrans` (baku, juga dipakai §7.7 dan §10.7) menjelaskan **mode efektif** pembayaran, supaya
+UI bisa memberi tahu kenapa QRIS tidak bisa ditransfer:
+
+| Key | Isi |
+|---|---|
+| `client_key` | `MIDTRANS_CLIENT_KEY` dari `.env`, `null` bila mode uji atau kosong |
+| `is_production` | `MIDTRANS_IS_PRODUCTION` dari `.env` (boolean) |
+| `fake` | `true` = server memakai tagihan lokal (mode uji), bukan Midtrans |
+| `mode` | `"uji"` bila `fake` `true`, `"asli"` bila `false` |
+| `alasan_kode` | `"fake_aktif"` (`.env MIDTRANS_FAKE=true`) / `"server_key_kosong"` (`MIDTRANS_SERVER_KEY` kosong) / `null` saat mode `asli` |
+| `alasan` | satu kalimat siap tampil berisi alasan, `null` saat mode `asli` |
+| `langkah_perbaikan` | daftar langkah untuk pemilik (array of string), `[]` saat mode `asli` |
+| `server_key_terisi` | boolean, apakah `MIDTRANS_SERVER_KEY` terisi (nilainya tidak pernah dikirim) |
+| `sumber_kredensial` | `".env (MIDTRANS_*)"` — tempat kredensial dibaca (bukan `settings`) |
+| `catatan` | satu kalimat tetap: jalur pembayaran membaca `.env`, kolom `settings.midtrans_*` (tab Pembayaran admin) belum dipakai |
 
 ### 7.6 `POST /checkout` — name `checkout.store`
 
@@ -397,7 +487,11 @@ Sukses: order `status = pending`, `payment_status = pending`, `payment_method = 
 
 Gagal (stok berubah / Midtrans error) → **tidak ada order setengah jadi** (transaksi di-rollback):
 `redirect()->back()` + `flash.error` = `Stok {nama varian} tersisa {n}. Perbarui keranjang.` atau
-`Gagal membuat pembayaran QRIS. Coba lagi.`
+`Gagal membuat pembayaran QRIS. Coba lagi.` atau — bila Midtrans menolak **semua** kanal QRIS dengan
+402 `Payment channel is not activated` — `Pembayaran QRIS belum bisa dibuat karena kanal QRIS belum
+aktif di akun Midtrans penjual. Hubungi penjual.`
+(Ketiga teks tetap `flash.error`; bentuk props tidak berubah. Teks ketiga ditambahkan kartu
+`t_2f443b75` — LOCKED §7.6 diperbarui aditif 22 Okt 2026, lihat §7.7.)
 
 ### 7.7 `GET /checkout/{order}/bayar` — name `checkout.pay`
 
@@ -424,14 +518,46 @@ Akses: pemilik order; order pembeli lain → **HTTP 404**. Komponen: `Public/Che
     "method": "qris", "label": "QRIS", "provider": "midtrans",
     "status": "pending", "gross_amount": 360000, "qr_string": "00020101021226...6304A1B2",
     "qris_url": null, "expires_at": "2026-10-20T14:20:00+07:00", "paid_at": null,
-    "fake": true
+    "fake": true, "galat": null
   },
-  "midtrans": { "client_key": null, "is_production": false, "fake": true }
+  "midtrans": {
+    "client_key": null,
+    "is_production": false,
+    "fake": true,
+    "mode": "uji",
+    "alasan_kode": "fake_aktif",
+    "alasan": "MODE UJI aktif karena MIDTRANS_FAKE=true di .env: QRIS dibuat lokal (tanpa Midtrans) sehingga tidak bisa ditransfer.",
+    "langkah_perbaikan": [ "Ubah MIDTRANS_FAKE=false pada berkas .env.", "…" ],
+    "server_key_terisi": false,
+    "sumber_kredensial": ".env (MIDTRANS_*)",
+    "catatan": "Kredensial efektif dibaca dari .env (MIDTRANS_*); kolom Midtrans pada tab Pembayaran admin belum dipakai jalur pembayaran ini."
+  }
 }
 ```
 
 `pembayaran.status`: `pending` | `settlement` | `expire` | `deny` | `cancel`.
 `qris_url` hanya terisi di mode Midtrans asli; frontend merender QR dari `qr_string` bila `qris_url` null.
+`pembayaran.fake` = tagihan yang sedang dipakai dibuat tanpa Midtrans. `pembayaran.galat` = `null`
+bila tidak ada masalah; bila diisi, teksnya siap ditampilkan sebagai galat di panel QRIS.
+Bentuk `midtrans` sama dengan §7.5 (baku).
+
+Tagihan mode uji yang tertinggal (mis. pesanan dibuat sebelum `MIDTRANS_FAKE=false` diisi) **dibuat ulang
+otomatis**: bila mode efektif `asli` sedangkan tagihan tersimpan masih mode uji dan masih `pending`,
+server membuat tagihan QRIS nyata ke **baris `payments` yang sama** (satu tagihan per pesanan, §7.5)
+sebelum halaman dirender — `qr_string`, `qris_url`, `transaction_id`, `expires_at`, dan `pembayaran.fake`
+ikut berubah. Gagal menghubungi Midtrans → halaman tetap tampil (HTTP 200), tagihan lama tidak diubah,
+dan `pembayaran.galat` = `Gagal membuat pembayaran QRIS. Coba lagi.`
+
+Bila Midtrans menolak **semua** kanal QRIS dengan 402 `Payment channel is not activated` (kanal QRIS
+belum aktif di akun merchant), `pembayaran.galat` =
+`Pembayaran QRIS belum bisa dibuat karena kanal QRIS belum aktif di akun Midtrans penjual. Hubungi
+penjual.` — teks yang sama dipakai `flash.error` §7.6. Server mencoba kanal dari
+`MIDTRANS_QRIS_ACQUIRER` (bawaan `gopay`) lalu acquirer sah satunya (`airpay shopee`) sebelum menyerah;
+kegagalan selain 402 tidak diulang. Bila percobaan pertama 402 lalu cadangan gagal dengan galat lain
+(mis. 413 payload ditolak), `pembayaran.galat` tetap teks kanal belum aktif itu — bukan pesan generik.
+`other_qris` bukan acquirer Core API (metode Snap), tidak dikirim di `qris.acquirer`, dan hanya diterima
+sebagai nilai config lama yang dipetakan ke `airpay shopee`.
+(Ditambahkan kartu `t_2f443b75`, diperbarui kartu `t_56062a5c`, 22 Okt 2026 — aditif, bentuk props tetap.)
 
 ### 7.8 `GET /checkout/{order}/status` — name `checkout.status` (JSON)
 
@@ -441,8 +567,10 @@ Akses: pemilik order (lain → 404). Polling ringan untuk `QrisPanel` (design §
 { "status": "pending", "paid_at": null, "expires_at": "2026-10-20T14:20:00+07:00" }
 ```
 
-`status` = status pembayaran. Bila masih `pending` dan bukan mode fake, server menanyakan status
-ke Midtrans sekali (best effort; gagal → tetap `pending`, tanpa 500).
+`status` = status pembayaran. Bila masih `pending` dan tagihan bukan mode uji, server menanyakan status
+ke Midtrans sekali (best effort; gagal → tetap `pending`, tanpa 500). Bila mode efektif `asli` sedangkan
+tagihan tersimpan masih mode uji, tagihan dibuat ulang dulu ke baris yang sama (aturan §7.7) — bila
+pembuatan ulang pun gagal, respons tetap `pending` tanpa 500. Bentuk respons tidak berubah.
 
 ### 7.9 `GET /checkout/{order}/selesai` — name `checkout.success`
 
@@ -467,7 +595,14 @@ Akses: pemilik order (lain → 404). Belum `settlement` → redirect `checkout.p
 }
 ```
 
-`ulasan.boleh` = order sudah `settlement` dan pembeli belum mengulas semua produk.
+`ulasan.boleh` = **`true` hanya bila server akan menerima minimal satu kiriman ulasan sekarang** (§9.1):
+order `payment_status = settlement`, `status` ∈ (`dibayar`, `diproses`, `dikirim`, `selesai`) — sama
+dengan `ReviewService::isEligible` — **dan** masih ada minimal satu `product_id` unik pada
+`pesanan.items` yang belum ada di `reviews` order itu. Jadi `boleh` tetap `true` pada pesanan
+multi-produk yang baru sebagian diulas, dan `false` hanya bila syarat §9.1 tidak terpenuhi atau
+semua produk sudah diulas. **Dibekukan 21 Okt 2026** (kartu `t_2b031326`, temuan F6
+`docs/catatan-frontend.md`; sebelumnya hanya berbunyi "order sudah `settlement` dan pembeli belum
+mengulas semua produk").
 `ulasan.sudah` = daftar `product_id` yang sudah diulas (kosong bila belum ada).
 Form ulasan (`POST /checkout/{order}/ulasan`) disediakan kartu **K9**.
 
@@ -494,6 +629,9 @@ Akses: publik, **di luar CSRF**, tanpa sesi. Body = payload Midtrans (JSON/form)
 |---|---|---|
 | §7.0–§7.9 | **LOCKED** (K8, terverifikasi 21 test) | K13 |
 | §7.10 | **LOCKED** (K8) | pemilik toko (URL webhook Midtrans) |
+| §7.5, §7.7 — prop `midtrans` (mode efektif + alasan), `pembayaran.fake`/`pembayaran.galat`, pembuatan ulang tagihan mode uji | **LOCKED** diperbarui 21 Okt 2026 (kartu `t_9f4b6aee`, temuan F-2 `docs/review.md`) | K13, F2 |
+| §7.5 — **nilai** `pembayaran.expiry_minutes` 15 → **5 menit** (keputusan pemilik 21 Okt 2026, `MIDTRANS_EXPIRY_MINUTES`); nama key, bentuk respons, dan key lain tidak berubah | **LOCKED** diperbarui 21 Okt 2026 (kartu `t_e35050e8`, temuan F-3 `docs/review.md`) | K13, F2 |
+| §7.9 — **definisi** `ulasan.boleh` (bukan bentuk respons): `true` hanya bila §9.1 menerima minimal satu kiriman ulasan — `settlement` + status boleh dinilai + masih ada produk belum diulas | **LOCKED** diperbarui 21 Okt 2026 (kartu `t_2b031326`, temuan F6 `docs/catatan-frontend.md`; keputusan `docs/keputusan-f6-ulasan-boleh.md`) | K12, K13, F6 |
 
 ---
 
@@ -562,7 +700,15 @@ Key aditif yang dipakai K11 (lihat §11.1–11.2):
 | Key aditif | Dipakai di | Aturan |
 |---|---|---|
 | `compare_price` | kartu katalog + detail | integer rupiah \| `null`; harga coret. Frontend (`PriceBlock`) menggambar coretan + badge diskon hanya bila `compare_price > base_price` |
-| `variants[]` | kartu katalog + detail | `{id, size, color, sku, price_delta, stock, is_active}`, urut ukuran baku lalu `color` lalu `id`; hanya varian `is_active = true`. Kartu katalog ikut mengirim agar tombol tambah tahu produk bervarian wajib dipilih dulu di halaman detail |
+| `variants[]` | kartu katalog + detail | `{id, size, color, color_hex, sku, price_delta, stock, is_active}`, urut ukuran baku lalu `color` lalu `id`; hanya varian `is_active = true`. Kartu katalog ikut mengirim agar tombol tambah tahu produk bervarian wajib dipilih dulu di halaman detail |
+
+**`variants[].color_hex`** (aditif, 22 Okt 2026, kartu `t_bc89df6d`): representasi warna siap pakai
+untuk swatch, `#RRGGBB` huruf besar, diturunkan server dari `variants.color` lewat peta baku
+`app/Support/VariantColor.php` (nama Indonesia/Inggris, tidak peka huruf besar-kecil dan spasi;
+isian `#RGB`/`#RRGGBB` diteruskan dalam huruf besar). `null` bila `color` kosong atau nama tidak
+dikenal — frontend menampilkan lingkaran netral + label nama, bukan warna karangan. Warna ganda
+**tidak digabung**: setiap kombinasi ukuran × warna tetap satu baris `variants[]`; daftar warna
+unik diturunkan frontend dari `variants[]`, bukan dari key baru.
 
 Key yang **hanya** dikirim di halaman detail (§11.2): `description`, `care`, `shipping_return`,
 `reviews[]`, `rating_distribution`.
@@ -623,6 +769,7 @@ Hanya `faqs.is_active = true`, urut `sort_order` lalu `id`, maksimum 6 baris (de
 |---|---|---|
 | §8 props `/` | DRAFT | K10 (sudah memakai), K11, K14 |
 | §8.3 bentuk produk publik | LOCKED | K11 (`/produk`, `/produk/{slug}`), K12, K14 |
+| §8.3 key aditif `variants[].color_hex` | **LOCKED** ditambahkan 22 Okt 2026 (kartu `t_bc89df6d`); key lain tidak berubah | K11, K12, K14 |
 
 ---
 
@@ -807,6 +954,7 @@ Props:
     "header": { "header_nav": [ { "label": "Beranda", "url": "/" } ] },
     "footer": {
       "footer_about": "…",
+      "footer_copyright": "© 2026 Toko Kulot. Semua hak dilindungi.",
       "footer_links": [ { "label": "Kontak", "url": "/kontak-kami" } ],
       "footer_social": [ { "label": "Instagram", "url": "https://instagram.com/…" } ]
     },
@@ -831,7 +979,19 @@ Props:
   "carousels": [
     { "id": 1, "title": "…", "subtitle": "…", "image": "/storage/carousels/…", "link": "/produk", "button_text": "Belanja", "sort_order": 1, "is_active": true }
   ],
-  "faqs": [ { "id": 1, "question": "…", "answer": "…", "sort_order": 1, "is_active": true } ]
+  "faqs": [ { "id": 1, "question": "…", "answer": "…", "sort_order": 1, "is_active": true } ],
+  "midtrans": {
+    "client_key": null,
+    "is_production": false,
+    "fake": true,
+    "mode": "uji",
+    "alasan_kode": "fake_aktif",
+    "alasan": "MODE UJI aktif karena MIDTRANS_FAKE=true di .env: QRIS dibuat lokal (tanpa Midtrans) sehingga tidak bisa ditransfer.",
+    "langkah_perbaikan": [ "Ubah MIDTRANS_FAKE=false pada berkas .env.", "…" ],
+    "server_key_terisi": false,
+    "sumber_kredensial": ".env (MIDTRANS_*)",
+    "catatan": "Kredensial efektif dibaca dari .env (MIDTRANS_*); kolom Midtrans pada tab Pembayaran admin belum dipakai jalur pembayaran ini."
+  }
 }
 ```
 
@@ -839,6 +999,12 @@ Nilai kosong dikirim `null`. `type = json` sudah di-decode menjadi objek/array.
 `shipping_cost_default` integer, `midtrans_is_production` boolean.
 Carousel urut `sort_order`, lalu `id`; FAQ urut `sort_order`, lalu `id` (semua baris, termasuk
 `is_active = false`, karena ini halaman admin).
+
+`midtrans` = status mode pembayaran efektif (bentuk baku, sama persis dengan §7.5). Tab **Pembayaran**
+memakainya untuk menjelaskan kenapa QRIS tidak bisa ditransfer dan apa yang harus diubah pemilik.
+Kolom `midtrans_client_key` / `midtrans_is_production` di atas **hanya catatan di halaman admin** —
+jalur pembayaran membaca `.env` (`MIDTRANS_*`) lewat `config/midtrans.php`; sumber itu ditulis di
+`midtrans.sumber_kredensial` dan `midtrans.catatan`.
 
 ### 10.8 `PUT /admin/pengaturan` — name `admin.settings.update`
 
@@ -855,6 +1021,7 @@ diizinkan = seluruh `settings` PRD §6 kecuali grup `landing` (lewat §10.9) dan
 | `hapus_store_logo` | boolean; `true` menghapus logo lama | — |
 | `header_nav` | array maks 8, tiap entri `label` (wajib, maks 40) + `url` (wajib, maks 255) | `Menu navigasi tidak valid.` |
 | `footer_about` | boleh kosong, teks, maks 500 | — |
+| `footer_copyright` | boleh kosong, teks, maks 200 (kosong = frontend memakai `© {tahun} {nama_toko}`) | `Copyright footer maksimal 200 karakter.` |
 | `footer_links` | array maks 8, `label` + `url` | `Tautan footer tidak valid.` |
 | `footer_social` | array maks 8, `label` + `url` | `Media sosial tidak valid.` |
 | `contact_email` | boleh kosong, email, maks 150 | `Email kontak tidak valid.` |
@@ -944,6 +1111,8 @@ Sukses: redirect kembali + `flash.success` = `FAQ disimpan.` / `FAQ diperbarui.`
 | §10.1–10.3 pesan masuk | LOCKED | K14 |
 | §10.4–10.6 penilaian | LOCKED | K14 |
 | §10.7–10.11 pengaturan, carousel, FAQ | LOCKED | K14 |
+| §10.7/§10.8 key `footer_copyright` + props bersama `store_favicon`/`footer_copyright` | LOCKED diperbarui 23 Okt 2026 (kartu `t_101b9145`) | FE-Identitas (`t_c915c033`), QA |
+| §10.7 prop `midtrans` (mode efektif + alasan) | LOCKED diperbarui 21 Okt 2026 (kartu `t_9f4b6aee`, temuan F-2 `docs/review.md`) | F2 |
 
 ---
 
@@ -953,6 +1122,10 @@ Tiga rute: `GET /produk`, `GET /produk/{slug}`, `GET /kontak-kami`. Semua publik
 memakai props bersama §1. Bentuk kartu produk mengikuti §8.3 termasuk key aditifnya.
 
 ### 11.1 `GET /produk` — name `products.index`
+
+Catatan penamaan: laporan pemilik menyebut halaman ini `/produk/barang`. Rute yang ada tetap
+`products.index` (`/produk`, katalog) dan `products.show` (`/produk/{slug}`, detail); tidak ada
+rute `/produk/barang` dan tidak dibuat.
 
 Query (semua opsional; nilai tidak dikenal atau tidak valid **diabaikan**, tidak memicu galat):
 
@@ -1285,6 +1458,7 @@ Query: `q` (kode/nama/telepon/email), `status` ∈ `semua`(bawaan)|`pending`|`di
     "payment_status": "settlement", "payment_label": "Lunas",
     "subtotal": 170000, "shipping_cost": 5000, "discount": 0, "total": 175000,
     "payment_method": "qris", "notes": null,
+    "tracking_number": "JX1234567890",
     "customer": {"name": "…", "phone": "…", "email": "…", "address": "…", "city": "…", "postal_code": "…"},
     "items": [{"id": 9, "product_id": 3, "product_name": "…", "variant_label": "L / Hitam",
                "qty": 2, "unit_price": 85000, "line_total": 170000}],
@@ -1300,6 +1474,7 @@ Query: `q` (kode/nama/telepon/email), `status` ∈ `semua`(bawaan)|`pending`|`di
 `payment` = `null` bila belum ada baris pembayaran. `status_berikut` = status yang boleh
 dipilih dari status sekarang (rantai `pending`→`dibayar`→`diproses`→`dikirim`→`selesai`, plus
 `batal` selama belum final; `selesai` dan `batal` tidak punya lanjutan).
+`tracking_number` = nomor resi kurir yang diisi manual admin (PRD A15); `null` bila belum diisi.
 
 ### 12.18 PATCH `/admin/pesanan/{order}/status` — `admin.orders.status`
 
@@ -1309,6 +1484,51 @@ Galat: `errors.status` (`Status pesanan wajib dipilih.`,
 menjadi `batal` stok semua item dikembalikan lewat `stock_movements` tipe `in` (satu per varian);
 bila menjadi `dibayar` dan `paid_at` masih kosong, `paid_at` diisi sekarang. Sukses: kembali ke
 halaman asal + `flash.success` = `Status pesanan diperbarui.`
+
+### 12.18a PATCH `/admin/pesanan/{order}/resi` — `admin.orders.resi`
+
+Field: `tracking_number` (opsional, teks, maks 60; kosong/`null` = menghapus nomor resi).
+Galat: `errors.tracking_number` (`Nomor resi maksimal 60 karakter.` /
+`Nomor resi harus berupa teks.`). Efek: hanya `orders.tracking_number` yang berubah — status
+pesanan, stok, dan pembayaran tidak tersentuh; tanpa email/notifikasi.
+Sukses: kembali ke halaman asal + `flash.success` = `Nomor resi pesanan diperbarui.`
+
+Dasar: PRD A15 (nomor resi diisi manual di detail pesanan). Rute ini bukan fitur baru,
+melainkan cara teknis memenuhi A15; PRD §5.2/§6 belum memuatnya — amendemen diusulkan ke
+pemilik di `docs/pertanyaan-pemilik.md` §3 Q8 (tidak memblokir). Keputusan: `docs/keputusan-a15-resi.md`.
+
+### 12.24 PATCH `/admin/pesanan/{order}/sinkron-pembayaran` — `admin.orders.sinkron-pembayaran`
+
+Field: tidak ada (tanpa body). Mengakses: admin dengan middleware sama seperti §12.18a
+(`admin` + `throttle:admin-write`); tamu/pembeli diarahkan ke `/admin/login`.
+
+Perilaku: admin menarik status transaksi terakhir langsung dari Midtrans untuk pesanan ini
+(webhook tidak bisa masuk ke localhost), lalu menerapkannya lewat `MidtransService` yang sama
+dengan webhook — tidak ada penulisan langsung ke `payments`/`orders`/stok dari controller.
+Status pesanan dan stok ikut berubah mengikuti status transaksi (`applyStatus()` yang sudah ada,
+PRD §7.2 butir 7): `settlement` → `payment_status` = `settlement` + order `pending` menjadi
+`dibayar` + `paid_at` diisi; `expire`/`deny`/`cancel` → order `pending` menjadi `batal` dan stok
+item dikembalikan lewat `stock_movements` tipe `in`; status final bersifat final (tidak pernah
+mundur, idempoten).
+
+Tanpa panggilan API (petunjuk untuk admin, bukan kegagalan server):
+
+- pesanan belum punya baris `payments` → `flash.error` = `Pesanan ini belum punya tagihan
+  pembayaran, jadi status tidak bisa disinkronkan.`
+- tagihan mode uji (`isFake()` aktif atau `isFakeCharge()`) → `flash.error` = `Mode uji Midtrans:
+  status tidak bisa disinkronkan.`
+- `payment_status` sudah `settlement` → `flash.success` = `Pembayaran sudah lunas, sinkronisasi
+  tidak perlu dijalankan.`
+
+Sukses (panggilan API berhasil): kembali ke halaman asal. `flash.success` =
+`Status pembayaran diperbarui dari <label lama> ke <label baru>.` bila berubah, atau
+`Status pembayaran tidak berubah: <label sekarang>.` bila tidak berubah (pembungkus flash tetap
+key `success` — tidak ada key flash baru; frontend §F8 menampilkan `flash.success`/`flash.error`).
+
+Galat: gagal menghubungi Midtrans → `flash.error` = `Gagal memeriksa status pembayaran. Coba
+lagi.` (bukan 500), status tersimpan tidak berubah. Setiap panggilan sukses menulis satu baris
+`Log::info` berisi kode pesanan + status pembayaran/status pesanan lama→baru; tanpa kredensial,
+token, atau isi payload Midtrans.
 
 ### 12.19 GET `/admin/akun` — `admin.accounts.index` — `Admin/Accounts/Index`
 
@@ -1351,5 +1571,84 @@ Penolakan: `errors.akun` = `Tidak bisa menghapus akun sendiri.` /
 | 12.1–12.7 Produk | DRAFT |
 | 12.8–12.11 Kategori | DRAFT |
 | 12.12–12.15 Stok | DRAFT |
-| 12.16–12.18 Pesanan | DRAFT |
+| 12.16–12.18a Pesanan | DRAFT |
 | 12.19–12.22 Akun | DRAFT |
+
+---
+
+## 13. Riwayat pesanan pembeli `GET /history` — name `history.index` (Perbaikan 5)
+
+Sumber kewajiban: `docs/rencana-perbaikan-5.md` baris 1 (laporan pemilik 5). Rute ini tambahan
+di luar tabel rute PRD §5.1 — tidak ada rute PRD lain yang berubah. Ditulis kartu `t_5b803c80`
+(backend); dikonsumsi kartu `t_326f766b` (frontend, komponen `Public/History`) dan QA
+`t_9376b7dd`.
+
+Akses: **wajib login guard `web`**. Tamu → redirect `/login` (middleware `auth:web` menyimpan
+intended URL). Props hanya berisi pesanan milik user login (`orders.user_id` = user); pesanan
+pembeli lain tidak pernah ikut, dan tidak ada parameter `user_id` dari klien.
+
+Urutan: `created_at` terbaru dulu, `id` terbaru sebagai pemecah seri. **Semua status**
+(`pending`, `dibayar`, `diproses`, `dikirim`, `selesai`, `batal`) ikut tampil — tidak ada filter
+status. Pagination 10 pesanan per halaman; `page` di luar rentang diabaikan paginator Laravel
+(kembali ke halaman yang sah).
+
+```json
+{
+  "orders": {
+    "data": [
+      {
+        "id": 42,
+        "code": "TK-20261023-0001",
+        "status": "batal",
+        "status_label": "Batal",
+        "payment_status": "expire",
+        "payment_label": "Kedaluwarsa",
+        "total": 360000,
+        "items_count": 1,
+        "total_qty": 4,
+        "created_at": "2026-10-23T09:00:00+07:00",
+        "paid_at": null,
+        "detail_url": null,
+        "items": [
+          {
+            "id": 91,
+            "product_id": 3,
+            "variant_id": 7,
+            "name": "Daster Batik Pekalongan",
+            "variant_label": "Ukuran L / Merah",
+            "qty": 4,
+            "unit_price": 85000,
+            "line_total": 340000,
+            "image": "/images/seed/produk/daster-batik-pekalongan-1.png"
+          }
+        ]
+      }
+    ],
+    "links": [ { "url": null, "label": "…", "active": false } ],
+    "meta": { "current_page": 1, "last_page": 1, "per_page": 10, "total": 1 }
+  },
+  "ringkasan": {
+    "total": 1, "pending": 0, "dibayar": 0, "diproses": 0, "dikirim": 0, "selesai": 0, "batal": 1
+  }
+}
+```
+
+| Key | Aturan |
+|---|---|
+| `orders` | paginator baku (`data`, `links`, `meta`) seperti §12.0; halaman kosong → `data: []`, `total: 0` |
+| `orders.data[].status_label` | `Order::statusLabel()` — `Pending`, `Dibayar`, `Diproses`, `Dikirim`, `Selesai`, `Batal` |
+| `orders.data[].payment_label` | `Order::paymentLabel()` — label `payment_status`, mis. `Kedaluwarsa` |
+| `items_count` | jumlah **baris** item pesanan (bukan jumlah qty) |
+| `total_qty` | jumlah `qty` seluruh baris item |
+| `items[]` | snapshot `order_items` (nama & harga beku). `image` = gambar utama produk saat ini (§3), `null` bila produk/gambar sudah tidak ada; `product_id`/`variant_id` boleh `null` (FK `SET NULL`) |
+| `detail_url` | halaman yang bisa dibuka pembeli, atau `null`: `payment_status = settlement` → `/checkout/{id}/selesai` (`checkout.success`); `status = pending` **dan** `payment_status = pending` → `/checkout/{id}/bayar` (`checkout.pay`); selain itu `null` (termasuk `batal`). Tidak ada rute detail pesanan khusus di PRD, jadi `null` bukan galat |
+| `ringkasan` | dihitung dari **seluruh** pesanan user, bukan hanya halaman ini; `total` = semua status, lalu jumlah per status (status tanpa pesanan tetap `0`) |
+| `created_at`, `paid_at` | ISO 8601 zona proyek, `null` bila kosong |
+
+Galat: tidak ada input tulis; kesalahan validasi tidak ada. Tamu → 302 `/login`.
+
+### 13.1 Status
+
+| Bagian | Status | Dipakai oleh |
+|---|---|---|
+| §13 | **LOCKED** (23 Okt 2026, kartu `t_5b803c80`) | `t_326f766b` (frontend `Public/History`), QA `t_9376b7dd` |

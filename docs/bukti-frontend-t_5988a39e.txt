@@ -1,0 +1,194 @@
+BUKTI FRONTEND — kartu t_5988a39e
+"F3: /admin/produk — daftar (search/filter/pagination/gambar) + Create/Edit/Show"
+Tanggal kerja: 21 Okt 2026 · Profil: frontenddeveloper · Workspace: C:\Users\LENOVO\Downloads\toko-kulot
+
+Ringkas: menemukan penyebab temuan review F-4 untuk modul produk (halaman masih kerangka,
+nama prop lokal `products`/`loading`/`error` tidak ada di server, Create/Edit/Show belum ada),
+lalu membangun ulang 4 halaman + 3 partial terhadap props server nyata
+(`produk{data,links,meta}` + `filter` + `kategori` + `ringkasan` + `ukuran_baku`, kontrak §12.1–§12.7)
+dan menambahkan state loading/empty/error/retry + flash→toast.
+
+==========================================================================
+1. SUMBER KEPUTUSAN (dibaca lebih dulu)
+==========================================================================
+- Kartu: t_5988a39e (kanban_show) — DoD: daftar produk tabel + gambar, search debounce,
+  filter kategori/status, filter stok, urut, pagination, aksi lihat/ubah/hapus + konfirmasi,
+  flash sukses → Toast, tiga state (loading/empty/error + Coba lagi), form Create/Edit
+  (galeri maks 5 + alt, varian ≥1, unggah benar), Show dengan ringkasan + status varian.
+- docs/review.md F-4 (baris 66–78) — bukti awal: `Admin/Products/Index.jsx:6` memakai
+  `{ products = [], loading, error }` vs props server `app/Http/Controllers/Admin/ProductController.php:89-100`;
+  5 halaman berute belum ada berkasnya (Products/Create, Products/Edit, Products/Show, Orders/Show, Stocks/History).
+- docs/kontrak-props.md §12.1–§12.7 (baris 1040–1240) + §12.23 (status bagian Produk: DRAFT).
+- docs/design.md §5.12 (halaman CRUD admin), §4 komponen, §2.1/§11.4 (kontras teks meta).
+- routes/admin.php (prefix admin, grup produk), app/Support/VariantSize.php (ukuran baku),
+  app/Http/Controllers/Admin/ProductController.php (nama prop & validasi server).
+- Catatan rantai kartu: F1 (t_7ebfca05, done) → F3 (kartu ini) → F4 (t_321bf03c) → F5 → F2 → F6,
+  plus QA1 (t_3a240a11) sebagai anak verifikasi.
+
+==========================================================================
+2. BERKAS: DIUBAH / DIBUAT
+==========================================================================
+Diubah:
+- resources/js/Pages/Admin/Products/Index.jsx — 378 sisipan / 18 hapus (git diff --stat).
+  Perubahan kartu ini: props nyata (`produk`, `filter`, `kategori`, `ringkasan`, `flash`),
+  `useEffect` flash→toast, state `galat` + `memuat` lewat `onStart/onFinish/onError`,
+  `DataTable error={galat} onRetry`, handler hapus + Modal konfirmasi, urutan/limit/filter
+  via `router.get('/admin/produk', query, { preserveState: true, preserveScroll: true })`.
+Dibuat:
+- resources/js/Pages/Admin/Products/Create.jsx (22 baris)
+- resources/js/Pages/Admin/Products/Edit.jsx (38 baris)
+- resources/js/Pages/Admin/Products/Show.jsx (260 baris)
+- resources/js/Pages/Admin/Products/partials/ProdukForm.jsx (724 baris)
+- resources/js/Pages/Admin/Products/partials/VarianEditor.jsx (222 baris)
+- resources/js/Pages/Admin/Products/partials/DropzoneGalery.jsx (201 baris)
+Dokumen (hanya berkas kerja agent frontend): docs/catatan-frontend.md, docs/bukti-frontend-t_5988a39e.txt.
+Tidak disentuh: controller/rute/model/migrasi/seeder, .env, tailwind.config.js, package.json,
+dokumen acuan (PRD/design/kontrak), arsip.
+
+==========================================================================
+3. HARNESS SSR — render nyata + assert sumber
+==========================================================================
+Perintah:
+  node_modules/.bin/esbuild tmp/render-produk-v2-t_5988a39e.mjs --bundle --format=esm \
+    --platform=node --jsx=automatic \
+    --alias:@inertiajs/react=./tmp/stitch-inertia-t_5988a39e.mjs \
+    --external:react --external:react-dom --external:react/jsx-runtime --external:react-dom/server \
+    --outfile=tmp/render-produk-v2-t_5988a39e.bundle.mjs
+  node tmp/render-produk-v2-t_5988a39e.bundle.mjs
+Hasil: exit 0 — 80 pemeriksaan OK, 0 GAGAL (log: tmp/harness-t_5988a39e.txt).
+Catatan metode: halaman di-render dengan `react-dom/server` memakai stub `@inertiajs/react`
+(side-effect import di-stub, bukan dihapus), jadi kode asli yang dijalankan adalah berkas repo,
+bukan salinan. Efek samping `useEffect` (flash→toast) tidak berjalan di SSR — bagian itu diuji
+sebagai assert sumber (§3b butir flash), bukan lewat render.
+
+3a. Kasus render (19)
+  OK Index — daftar terisi (22532 karakter)
+  OK Index — kosong tanpa filter (15738)
+  OK Index — filter aktif tanpa hasil (16269)
+  OK Index — props server hilang (15673)
+  OK Index — angka berbentuk string (18532)
+  OK Create (24368) · Create — kategori kosong (24303)
+  OK Edit (30876) · Edit — tanpa gambar/varian (20307) · Edit — props server hilang (0)
+  OK Show (16127) · Show — ringkasan null (16125) · Show — banyak kolom null (13739)
+  OK Toast sukses (648) · Toast galat (698)
+  OK DataTable — memuat (1413) · kosong (555) · galat (793)
+  OK Modal konfirmasi hapus (1028)
+  Pemeriksaan per kasus: tidak ada `NaN`, `undefined`, `[Grafik Placeholder]`, `lorem ipsum`,
+  `FIXME`, `TODO:`; setiap <img> punya `alt`; dan tidak ada teks informatif yang memakai
+  `text-slate-400` (kontras 2,56:1) — teks meta memakai `text-slate-500`/`text-slate-600`
+  sesuai §2.1 v2.2.
+  Kasus "props server hilang" penting: `Edit` tanpa props merender 0 karakter (null yang aman,
+  bukan galat/NaN) — halaman tidak meledak saat server tidak mengirim produk.
+
+3b. Assert sumber (kode repo, bukan salinan) — 22 pemeriksaan
+  - Literal rute & query: `router.get('/admin/produk', …)`, `preserveState: true`, `preserveScroll: true`,
+    `onError`, `router.delete(`, URL hapus `/admin/produk/${id}`.
+  - flash→toast: `/flash\?\.success/` dipetakan ke `setToast` (pesan server ditampilkan apa adanya).
+  - Nilai enum §12.1: `aktif`, `nonaktif`, `semua`, `habis`, `kritis`, `terbaru`, `nama`, `harga`, `stok`.
+  - §12.3/§12.6 form: `_method`, literal `/admin/produk`, `errors.` (galat per kolom),
+    `images_alt`, `hapus_images`, `primary_image_id`, `variants`, batas galeri `MAKS`, `price_delta`.
+3c. Larangan stack (7 berkas × 4) — semuanya OK
+  Tidak ada `dangerouslySetInnerHTML`, `localStorage`/`sessionStorage`, `fetch(`/`axios`,
+  `route(`/Ziggy di Index, Create, Edit, Show, ProdukForm, VarianEditor, DropzoneGalery.
+3d. Tautan literal (8)
+  /admin/produk/tambah, /admin/produk/3, /admin/produk/3/ubah, /admin/produk/4/ubah,
+  /admin/produk?stok=kritis (KPI), /admin/produk, /produk/daster-batik-pekalongan.
+
+==========================================================================
+4. BUILD PRODUKSI
+==========================================================================
+`npm run build` (Vite 6.4.4) → exit 0; log penuh: tmp/build-t_5988a39e.txt
+  ✓ 721 modules transformed.
+  public/build/assets/DropzoneGalery-B4SySNiU.js    (…)     public/build/assets/ProdukForm-CGHtUyTE.js  14.63 kB
+  public/build/assets/Index-DV6rjUFT.js            49.80 kB gzip 11.80 kB
+  public/build/assets/app-tXPN6b33.js             362.98 kB gzip 113.78 kB
+  ✓ built in 13.26s
+Manifest memetakan keempat halaman (satu komponen per berkas, impor named/default benar):
+  Pages/Admin/Products/Index.jsx  -> assets/Index-DB7lFkda.js   (menarik _DataTable, _EmptyState,
+      _ErrorState, _Pagination, _KpiCard, _Toast, _Badge, _StatusBadge, _Modal, _PageHeader, _Breadcrumb)
+  Pages/Admin/Products/Create.jsx -> assets/Create-CqX7PCg4.js  (menarik ProdukForm, DropzoneGalery, VarianEditor)
+  Pages/Admin/Products/Edit.jsx   -> assets/Edit-Bm4ReOdN.js    (menarik ProdukForm, DropzoneGalery, VarianEditor)
+  Pages/Admin/Products/Show.jsx   -> assets/Show-BSMN9nTS.js    (menarik _DataTable, _Badge, _KpiCard, _Modal)
+Bukti kode baru masuk bundel rilis (bukan hanya di sumber):
+  grep "Gagal memuat daftar produk" public/build/assets/Index-DB7lFkda.js
+    -> "Gagal memuat daftar produk. Periksa koneksi lalu coba lagi."
+  Label aksi retry berasal dari `_ErrorState` (`retryLabel = 'Coba lagi'`, resources/js/Components/ErrorState.jsx:15)
+  yang di-render `_DataTable` saat `error` terisi (resources/js/Components/DataTable.jsx:42-46),
+  jadi tombol "Coba lagi" aktif pada state galat tanpa markup baru.
+
+==========================================================================
+5. GATE & SAPU REGRESI REPO
+==========================================================================
+Gate `docs/qa/*.py` (semua exit 0; log: tmp/gate-t_5988a39e.txt):
+  audit-penanda-meta.py   exit 0 — laporan penanda kontainer (info, bukan kegagalan)
+  kontras-badge.py        exit 0 — SEMUA angka §4.21 cocok WCAG 2.1 (7 tone + 7 tone solid)
+  kontras-meta.py         exit 0 — slate-500 putih 4,76 / surface 4,40 | slate-600 putih 7,58 / surface 7,00
+  sweep-meta-surface.py   exit 0 — status LOLOS; 60 ditinjau; 86 sisa `text-slate-500` (di luar 29 titik keputusan)
+  terapkan-meta-v22.py    exit 0 — idempoten: 0 titik siap diubah (perubahan kartu ini tidak menyentuh 29 titik itu)
+Sapu regresi:
+  python tmp/cek-komponen-tanpa-import.py .   -> 87 berkas; hanya `resources\js\app.jsx: App`
+      (false positive dikenal: parameter `setup({el, App, props})`)
+  python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build -> 59 chunk;
+      satu temuan `DropzoneGalery-B4SySNiU.js -> FREE: P`, diperiksa konteksnya dengan
+      tmp/konteks-P-dropzone-t_5988a39e.py: `P=({size:t=24,className:n=""})=>a.jsxs("svg",…)`
+      = komponen ikon `UnggahIcon` yang dideklarasikan lokal di
+      resources/js/Pages/Admin/Products/partials/DropzoneGalery.jsx:23 → false positive,
+      bukan identifier bebas (tidak ada ReferenceError di runtime).
+  grep "import.meta.glob" resources/js/app.jsx -> resolver tetap tanpa eager, tidak diubah.
+
+==========================================================================
+6. VALIDASI TIGA ARAH (ringkas; versi lengkap di docs/catatan-frontend.md)
+==========================================================================
+1) PRD + brief vs desain: DoD kartu punya dasar visual di design §5.12 (pola baku
+   PageHeader → toolbar → Table → Pagination; form produk = halaman terpisah, bukan Modal;
+   hapus → dialog konfirmasi dengan nama entitas; state loading/empty/error/deleting/success→toast)
+   dan §4 (komponen). Tidak ada fitur yang ditunda PRD ikut dibangun.
+2) Desain vs kontrak: seluruh key yang dipakai ada di §12.1–§12.7 — `produk{data,links,meta}`,
+   `filter{q,kategori,status,stok,urut}`, `kategori[]`, `ringkasan{total,aktif,nonaktif,stok_kritis}`,
+   `ukuran_baku[]`, detail §12.4 (`images[]`, `variants[]`, `ringkasan` halaman), §12.6 (`_method`,
+   `hapus_images[]`, `primary_image_id`). Tidak ada key karangan. Format uang via `rupiah()`,
+   angka dari server dikonversi lewat helper aman (Number(x ?? 0)), nilai kosong → "-".
+3) Kelayakan teknis: resolver `import.meta.glob` (tanpa eager), `AdminLayout`, dan 12 komponen
+   bersama (PageHeader, DataTable, Pagination, SearchInput, Select, Field, Badge, StatusBadge,
+   KpiCard, Modal, Toast, ErrorState) sudah ada dan dipakai ulang; tidak ada paket baru;
+   Tailwind memakai token repo (bukan warna heksa baru).
+
+==========================================================================
+7. DEVIASI / KONFLIK DOKUMEN (perlu keputusan Tech Lead)
+==========================================================================
+a) Batas galeri: design §5.12 "Dropzone galeri (maks 6, urut bisa digeser)" vs kontrak §12.3
+   "`images[]` opsional, maks 5, jpg/jpeg/png/webp maks 2 MB per berkas". UI mengikuti kontrak
+   (maks 5) karena server memvalidasi 5 — membangun 6 akan menghasilkan 422 pada berkas keenam.
+   Sudah dicatat sebagai komentar kartu ini untuk Tech Lead.
+b) "Urut bisa digeser": tidak ada key urutan di §12.3/§12.6 (`images[]` hanya baru + `hapus_images[]`
+   + `primary_image_id`), jadi galeri tidak mengirim ulang urutan; yang tersedia adalah memilih
+   gambar utama (sesuai kontrak). Reorder butuh field kontrak baru — dilaporkan, tidak dikarang.
+c) Rujukan seksi di kartu ("design.md §5.5-5.7") menunjuk halaman publik (login/register, keranjang,
+   checkout), bukan admin produk; sumber desain yang benar-benar berlaku adalah §5.12 (+§5.10 shell,
+   §4 komponen), sehingga saya berpegang pada §5.12 dan tidak mengubah dokumen acuan.
+
+==========================================================================
+8. BELUM DIUJI (jujur) + LANGKAH AMAN UNTUK PEMILIK
+==========================================================================
+Belum diuji, butuh browser (agent tidak menyalakan dev server, PRD aturan kerja agent):
+- Tampilan nyata 360/768/1024/1280 px, keyboard/tab order, zoom 200%, dan kontras terukur di layar —
+  bukti di atas bersifat markup/harness dan nilai token repo, bukan tangkapan layar.
+- Perilaku runtime Inertia: debounce search, navigasi filter tanpa reload penuh, toast flash
+  setelah redirect, unggah berkas multipart nyata (POST + `_method=put`), dan penghapusan produk.
+- Perilaku server yang tidak bisa diuji di frontend: validasi 422 per kolom, unik SKU, dan
+  `hapus_images[]`/`primary_image_id` (implementasi backend, kartu lain).
+Bukti tak langsung: `curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/admin/produk`
+-> 302 (redirect ke login admin; server pemilik hidup, halaman admin memang butuh sesi).
+Langkah aman pemilik: masuk sebagai admin → /admin/produk: coba search, filter kategori/status/stok,
+urut, pagination, lalu Create/Edit/Show; matikan jaringan sesaat untuk melihat state galat + "Coba lagi";
+unggah 6 gambar untuk memastikan berkas keenam ditolak klien (maks 5).
+
+==========================================================================
+9. LARANGAN YANG DIPATUHI
+==========================================================================
+- Tidak ada `.env`/`.env.*` dibaca, ditulis, atau diduplikasi; tidak ada rahasia di kode/dokumen/log.
+- Tidak ada migrasi/seeder/perintah database; dev server tidak dinyalakan agent.
+- Tidak ada perubahan controller/rute/model/logika backend; tidak ada rute atau field baru.
+- Tidak ada foto/aset internet; gambar galeri berasal dari berkas pemilik saat diunggah melalui UI.
+- Tidak ada commit (R8 di PRD/aturan kerja agent), tidak ada `git push`/penulisan riwayat.
+- Berkas harness hanya di tmp/ (bukan bagian bundel rilis).

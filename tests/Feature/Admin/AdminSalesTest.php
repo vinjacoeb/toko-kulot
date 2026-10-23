@@ -9,8 +9,11 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\StockMovement;
+use App\Models\User;
+use Illuminate\Database\Migrations\Migration;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 /**
@@ -222,5 +225,143 @@ class AdminSalesTest extends TestCase
                 'role' => 'staff',
             ])
             ->assertSessionHasErrors('email');
+    }
+
+    public function test_detail_pesanan_memuat_props_nomor_resi(): void
+    {
+        $admin = Admin::factory()->create();
+        [$product, $variant] = $this->produk();
+        $order = $this->pesanan($product, $variant);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/pesanan/'.$order->id)
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Admin/Orders/Show', false)
+                ->where('pesanan.tracking_number', null));
+
+        $order->forceFill(['tracking_number' => 'JX1234567890'])->save();
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/pesanan/'.$order->id)
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('pesanan.tracking_number', 'JX1234567890'));
+    }
+
+    public function test_simpan_nomor_resi_hanya_mengubah_kolom_resi(): void
+    {
+        $admin = Admin::factory()->create();
+        [$product, $variant] = $this->produk(5);
+        $order = $this->pesanan($product, $variant);
+
+        $this->actingAs($admin, 'admin')
+            ->from('/admin/pesanan/'.$order->id)
+            ->patch('/admin/pesanan/'.$order->id.'/resi', ['tracking_number' => '  JX1234567890  '])
+            ->assertRedirect('/admin/pesanan/'.$order->id)
+            ->assertSessionHas('success', 'Nomor resi pesanan diperbarui.');
+
+        $segar = $order->fresh();
+
+        // Teks di-trim; kolom lain tidak ikut berubah.
+        $this->assertSame('JX1234567890', $segar->tracking_number);
+        $this->assertSame(Order::STATUS_PENDING, $segar->status);
+        $this->assertSame(Order::PAYMENT_PENDING, $segar->payment_status);
+        $this->assertSame(5, (int) $variant->fresh()->stock);
+        $this->assertSame(0, StockMovement::query()->count());
+    }
+
+    public function test_nomor_resi_kosong_menghapus_nomor_resi(): void
+    {
+        $admin = Admin::factory()->create();
+        [$product, $variant] = $this->produk();
+        $order = $this->pesanan($product, $variant);
+
+        $order->forceFill(['tracking_number' => 'JX1234567890'])->save();
+
+        $this->actingAs($admin, 'admin')
+            ->patch('/admin/pesanan/'.$order->id.'/resi', ['tracking_number' => ''])
+            ->assertSessionHas('success', 'Nomor resi pesanan diperbarui.');
+
+        $this->assertNull($order->fresh()->tracking_number);
+
+        $order->forceFill(['tracking_number' => 'JX1234567890'])->save();
+
+        $this->actingAs($admin, 'admin')
+            ->patch('/admin/pesanan/'.$order->id.'/resi', ['tracking_number' => null])
+            ->assertSessionHas('success', 'Nomor resi pesanan diperbarui.');
+
+        $this->assertNull($order->fresh()->tracking_number);
+    }
+
+    public function test_nomor_resi_lebih_dari_60_karakter_ditolak(): void
+    {
+        $admin = Admin::factory()->create();
+        [$product, $variant] = $this->produk();
+        $order = $this->pesanan($product, $variant);
+        $batas = str_repeat('A', 60);
+
+        $this->actingAs($admin, 'admin')
+            ->patch('/admin/pesanan/'.$order->id.'/resi', ['tracking_number' => $batas])
+            ->assertSessionHas('success', 'Nomor resi pesanan diperbarui.');
+
+        $this->assertSame($batas, $order->fresh()->tracking_number);
+
+        $this->actingAs($admin, 'admin')
+            ->patch('/admin/pesanan/'.$order->id.'/resi', ['tracking_number' => str_repeat('A', 61)])
+            ->assertSessionHasErrors(['tracking_number' => 'Nomor resi maksimal 60 karakter.']);
+
+        $this->assertSame($batas, $order->fresh()->tracking_number);
+
+        $this->actingAs($admin, 'admin')
+            ->patch('/admin/pesanan/'.$order->id.'/resi', ['tracking_number' => ['JX1']])
+            ->assertSessionHasErrors(['tracking_number' => 'Nomor resi harus berupa teks.']);
+
+        $this->assertSame($batas, $order->fresh()->tracking_number);
+    }
+
+    public function test_bukan_admin_tidak_bisa_menyimpan_nomor_resi(): void
+    {
+        [$product, $variant] = $this->produk();
+        $order = $this->pesanan($product, $variant);
+        $pembeli = User::factory()->create();
+
+        // Tamu.
+        $this->patch('/admin/pesanan/'.$order->id.'/resi', ['tracking_number' => 'JX1234567890'])
+            ->assertRedirect('/admin/login');
+
+        // Pembeli yang sudah masuk (guard `web` tidak berlaku untuk panel admin).
+        $this->actingAs($pembeli, 'web')
+            ->patch('/admin/pesanan/'.$order->id.'/resi', ['tracking_number' => 'JX1234567890'])
+            ->assertRedirect('/admin/login');
+
+        $this->assertNull($order->fresh()->tracking_number);
+    }
+
+    public function test_migrasi_nomor_resi_punya_up_dan_down(): void
+    {
+        $migrasi = require database_path('migrations/2026_10_21_000019_add_tracking_number_to_orders_table.php');
+
+        $this->assertInstanceOf(Migration::class, $migrasi);
+        $this->assertTrue(Schema::hasColumn('orders', 'tracking_number'));
+
+        $migrasi->down();
+        $this->assertFalse(Schema::hasColumn('orders', 'tracking_number'));
+
+        $migrasi->up();
+        $this->assertTrue(Schema::hasColumn('orders', 'tracking_number'));
+    }
+
+    public function test_nomor_resi_terlalu_panjang_membalas_422_untuk_klien_json(): void
+    {
+        $admin = Admin::factory()->create();
+        [$product, $variant] = $this->produk();
+        $order = $this->pesanan($product, $variant);
+
+        $this->actingAs($admin, 'admin')
+            ->patchJson('/admin/pesanan/'.$order->id.'/resi', ['tracking_number' => str_repeat('A', 61)])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.tracking_number.0', 'Nomor resi maksimal 60 karakter.');
+
+        $this->assertNull($order->fresh()->tracking_number);
     }
 }

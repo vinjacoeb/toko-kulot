@@ -1,0 +1,63 @@
+t_ecd07ae5 | techlead           | done      | Pelajari PRD + design, tulis ringkasan tim dan brief per peran
+t_4f753735 | devops             | done      | Fondasi proyek: Laravel 11 + Inertia + React + MySQL + .env.example
+t_be9df826 | uiux               | done      | docs/design.md hasil REA erigostore + design token + inventaris komponen
+t_a785093e | backenddeveloper   | done      | Migrasi dan model seluruh domain
+t_ec877062 | backenddeveloper   | done      | Seeder lengkap semua domain
+t_f0708cd1 | backenddeveloper   | done      | Autentikasi dua tier: guard web + guard admin
+t_12a19591 | backenddeveloper   | done      | Katalog publik: controller filter, sort, pagination, detail produk, kontak
+t_e3752060 | backenddeveloper   | done      | Keranjang, checkout, Midtrans QRIS, webhook, halaman status bayar
+t_a7f18638 | backenddeveloper   | done      | Ulasan bintang 1-5, pesan masuk + balasan, CRUD pengaturan/carousel/FAQ
+t_3ce04d50 | frontenddeveloper  | done      | Layout publik dan landing page
+t_6f70cbe7 | frontenddeveloper  | done      | Halaman /produk, /produk/{slug}, /kontak-kami
+t_f4e537df | frontenddeveloper  | done      | Halaman auth, keranjang, checkout QRIS, sukses + form rating
+t_bae93e32 | frontenddeveloper  | done      | Layout admin dan dashboard monitoring penjualan
+t_3eef7749 | frontenddeveloper  | done      | Halaman admin: produk, kategori, stok, pesanan, pesan, penilaian, pengaturan, ak
+t_a3c308d2 | qatesting          | done      | Unit + feature test, QA iterasi bug
+t_56a2d29c | devops             | done      | Build produksi, verifikasi E2E, dokumentasi deploy, checklist rilis
+t_7c685183 | techlead           | done      | Gerbang pemilik 1: persetujuan hasil K1 sebelum K2/K3
+t_e16ab638 | techlead           | done      | Gerbang pemilik 2: persetujuan design.md (K3) sebelum slicing frontend
+t_e0ab9215 | devops             | done      | Kebersihan repo: hapus folder agent/skill dari git dan commit
+t_4888a920 | backenddeveloper   | archived  | Kontrak props halaman beranda (/) belum ada di docs/kontrak-props.md
+t_a696f5c6 | backenddeveloper   | done      | Kontrak props halaman beranda (/) belum ada di docs/kontrak-props.md
+t_9efe040c | backenddeveloper   | archived  | Backend: rute GET /produk, /produk/{slug}, /kontak-kami + props detail produk
+t_5b128681 | backenddeveloper   | done      | Backend: rute GET /produk, /produk/{slug}, /kontak-kami + props detail produk
+t_6b722a49 | frontenddeveloper  | done      | Frontend: render harga coret + badge potongan (compare_price) di kartu & detail 
+t_70c96acd | backenddeveloper   | archived  | Backend: rute + controller admin produk, kategori, stok, pesanan, akun (PRD §5.2
+t_d98cf23d | techlead           | archived  | Keputusan dokumen: PRD §5.2 (PATCH) vs kontrak-props §10.2 (POST) untuk admin.me
+t_7cbe34dc | frontenddeveloper  | done      | Frontend: ProductCard memakai <PriceBlock> tanpa import — /, /produk, /produk/{s
+t_4dd28407 | frontenddeveloper  | done      | Frontend: 5 halaman Inertia yang dirender controller belum ada — /keranjang, /ch
+t_ed8bd8e4 | backenddeveloper   | done      | Backend: rute + controller admin produk, kategori, stok, pesanan, akun (PRD §5.2
+t_54bfee4e | techlead           | done      | Keputusan dokumen: PRD §5.2 (PATCH) vs kontrak-props §10.2 (POST) untuk admin.me
+t_768819a7 | backenddeveloper   | done      | Backend: metode admin.messages.read POST jadi PATCH (selaras PRD §5.2)
+t_fc49ee38 | frontenddeveloper  | done      | Frontend: halaman Admin/Reviews + Admin/Settings pakai props kontrak §10 (placeh
+t_fc2c5b98 | frontenddeveloper  | done      | Frontend: halaman Admin/Messages pakai kontrak §10.1-10.3 + aksi PATCH admin.mes
+t_d21ef249 | qatesting          | done      | QA: tutup konflik metode admin.messages.read di test + re-run suite (QA-005)
+t_acd5fc8e | frontenddeveloper  | done      | Frontend: /login blank — `route is not defined` (helper Ziggy tanpa Ziggy) di 4 
+t_5a330224 | devops             | done      | DevOps: build penutup + smoke 3 viewport + suite, lalu perbarui checklist rilis 
+t_73fa894a | frontenddeveloper  | archived  | QA-007: aktifkan tautan sidebar admin untuk modul yang rutenya sudah terdaftar (
+t_6ee422f2 | frontenddeveloper  | done      | QA-007: aktifkan tautan sidebar admin untuk modul yang rutenya sudah terdaftar (
+t_8cd61512 | uiux               | done      | Kontras badge StatusBadge di bawah AA (temuan t_fc2c5b98)
+t_e5149746 | frontenddeveloper  | done      | Frontend: halaman Admin/Kategori + Admin/Akun masih placeholder — tautan /admin/
+t_099c813c | frontenddeveloper  | done      | Frontend: Dashboard admin — empty state grafik penjualan belum punya CTA "Tambah
+t_b5de72e3 | techlead           | done      | Keputusan: pencarian global topbar admin (design §5.10) belum bisa dibangun — ti
+t_944aea1e | frontenddeveloper  | done      | Frontend: catat keputusan kolom cari topbar admin (opsi c) — perbarui known issu
+t_5fcdbae3 | uiux               | done      | UIUX: catat deviasi D8 di design.md — kolom cari topbar admin tidak dibangun (ke
+t_67576fb2 | frontenddeveloper  | done      | Frontend: terapkan aturan tone badge §4.21 v2.1 (`-strong`) + badge diskon solid
+t_90759be9 | frontenddeveloper  | done      | Frontend: perbaiki kontras teks non-badge (slate-400 → slate-500, teks state → `
+t_8bca0661 | frontenddeveloper  | done      | Frontend: ChartCard dashboard tidak menerima prop error — blok grafik tampil seb
+t_950a38ca | frontenddeveloper  | done      | Frontend: Dashboard admin — blok stok kritis/pesanan/ulasan tetap tampil empty s
+t_5f75f779 | devops             | done      | DevOps: bekukan build rilis (build + 3 penyapu + smoke 9 rute x 3 viewport + sui
+t_14cad9e2 | uiux               | done      | UIUX: keputusan token teks meta di atas bg-surface (slate-500 = 4,40:1, gagal AA
+t_954abfe8 | frontenddeveloper  | done      | Frontend: terapkan 29 titik teks meta → `text-slate-600` (design §2.1 v2.2 / §11
+t_15531332 | techlead           | done      | laporan dari pemilik untuk dikerjakan
+t_9f4b6aee | backenddeveloper   | done      | B1: Mode uji Midtrans terlihat + tagihan fake lama dibuat ulang
+t_7ebfca05 | frontenddeveloper  | done      | F1: Badge keranjang menampilkan jumlah item (semua halaman publik)
+t_99424f19 | uiux               | done      | U1: Catat deviasi design.md (mode uji, masa berlaku 5 menit, kolom pembayaran)
+t_e35050e8 | backenddeveloper   | done      | B2: Masa berlaku QRIS 5 menit (MIDTRANS_EXPIRY_MINUTES) + dokumen
+t_5988a39e | frontenddeveloper  | done      | F3: /admin/produk - daftar (search/filter/pagination/gambar) + Create/Edit/Show
+t_321bf03c | frontenddeveloper  | running   | F4: /admin/stok - daftar stok + riwayat pergerakan
+t_018b2723 | frontenddeveloper  | todo      | F5: /admin/pesanan - daftar pesanan + detail pesanan
+t_2de36f29 | frontenddeveloper  | todo      | F6: Halaman selesai checkout menghormati `ulasan.boleh`
+t_e60e7733 | frontenddeveloper  | todo      | F2: Penanda mode uji Midtrans di halaman bayar + status mode di tab Pembayaran a
+t_3a240a11 | qatesting          | todo      | QA1: Verifikasi perbaikan laporan pemilik 21 Okt 2026
+t_e83922f2 | devops             | todo      | D1: Bekukan build rilis + checklist Midtrans nyata

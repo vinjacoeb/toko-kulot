@@ -50,6 +50,7 @@ class CheckoutRequest extends FormRequest
             'customer_address.max' => 'Alamat maksimal 500 karakter.',
             'customer_city.required' => 'Kota/kecamatan wajib diisi.',
             'customer_city.min' => 'Nama kota/kecamatan terlalu singkat.',
+            'customer_city.max' => 'Kota/kecamatan maksimal 100 karakter.',
             'customer_postal_code.required' => 'Kode pos wajib diisi.',
             'customer_postal_code.digits' => 'Kode pos harus 5 angka.',
             'note.max' => 'Catatan maksimal 500 karakter.',

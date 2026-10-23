@@ -5,9 +5,17 @@ import ErrorState from './ErrorState';
 import Skeleton from './Skeleton';
 
 /**
- * Tabel data admin — docs/design.md §4.28, docs/komponen.md §4.
+ * Tabel data admin — docs/design.md §4.7, docs/komponen.md §4.
  * Header sticky `h-tableHead bg-surface`, baris `h-tableRow`, teks `text-meta`.
  * Memuat: 8 baris skeleton. Kosong dan galat adalah dua keadaan berbeda.
+ *
+ * Header sticky (docs/design.md:335) bekerja terhadap wadah gulir terdekat. Wrapper
+ * `overflow-x-auto` saja sudah menjadi scrollport (overflow-y ikut `auto`) tetapi
+ * tingginya mengikuti isi, jadi `sticky top-0` tidak pernah aktif saat halaman
+ * digulir. Karena itu wrapper diberi `max-h-[70vh]`: daftar panjang (15 baris =
+ * 884px) bergulir di dalam kartu dan header tetap terlihat; daftar pendek tidak
+ * berubah karena tingginya di bawah batas. `<th>` wajib punya latar sendiri
+ * (`bg-surface`) — latar di `<tr>` tidak ikut menempel dan baris akan tembus.
  */
 export default function DataTable({
     columns = [],
@@ -31,6 +39,21 @@ export default function DataTable({
 
     const cellAlign = (column) =>
         column.align === 'right' ? 'text-right' : column.align === 'center' ? 'text-center' : 'text-left';
+
+    // docs/komponen.md §4: kolom boleh punya `width`. Bila ada, tabel memakai layout
+    // fixed supaya lebar kolom tidak melebar mengikuti teks terpanjang (penyebab tabel
+    // menembus kartu dan kolom terpotong). `minWidth` menjaga kolom tetap terbaca dan
+    // membiarkan wrapper `overflow-auto` menggeser tabel di layar sempit.
+    const punyaLebar = columns.some(
+        (column) => column.width !== null && column.width !== undefined && column.width !== ''
+    );
+    const lebarMinimal = punyaLebar
+        ? columns.reduce((total, column) => total + (typeof column.width === 'number' ? column.width : 0), 0)
+        : 0;
+    const lebarKolom = (column) => {
+        if (column.width === null || column.width === undefined || column.width === '') return undefined;
+        return typeof column.width === 'number' ? `${column.width}px` : column.width;
+    };
 
     const sortState = (column) => {
         if (!sort || sort.key !== column.key) return 'none';
@@ -63,8 +86,11 @@ export default function DataTable({
                     actionHref={emptyActionHref}
                 />
             ) : (
-                <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-meta">
+                <div className="max-h-[70vh] overflow-auto">
+                    <table
+                        className={cn('w-full border-collapse text-meta', punyaLebar && 'table-fixed')}
+                        style={lebarMinimal > 0 ? { minWidth: `${lebarMinimal}px` } : undefined}
+                    >
                         {caption && <caption className="sr-only">{caption}</caption>}
                         <thead>
                             <tr className="bg-surface">
@@ -77,8 +103,9 @@ export default function DataTable({
                                             key={column.key}
                                             scope="col"
                                             aria-sort={isSorted ? sortState(column) : undefined}
+                                            style={{ width: lebarKolom(column) }}
                                             className={cn(
-                                                'h-tableHead whitespace-nowrap border-b border-line px-4 text-label uppercase text-slate-600',
+                                                'sticky top-0 z-10 h-tableHead whitespace-nowrap border-b border-line bg-surface px-4 text-label uppercase text-slate-600',
                                                 cellAlign(column)
                                             )}
                                         >

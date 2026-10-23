@@ -1,0 +1,17 @@
+== kartu yang cocok dengan /boleh|ulasan|review|penilaian|CheckoutSuccess/ ==
+t_2de36f29  [running/frontenddeveloper]  F6: Halaman selesai checkout menghormati `ulasan.boleh`
+t_950a38ca  [done/frontenddeveloper]  Frontend: Dashboard admin — blok stok kritis/pesanan/ulasan tetap tampil empty state saat prop error halaman terisi (design §5.11 "error per blok")
+t_fc49ee38  [done/frontenddeveloper]  Frontend: halaman Admin/Reviews + Admin/Settings pakai props kontrak §10 (placeholder saat ini)
+t_3eef7749  [done/frontenddeveloper]  Halaman admin: produk, kategori, stok, pesanan, pesan, penilaian, pengaturan, akun
+t_a7f18638  [done/backenddeveloper]  Ulasan bintang 1-5, pesan masuk + balasan, CRUD pengaturan/carousel/FAQ
+
+== semua kartu belum selesai (todo/ready/running/review/blocked) ==
+t_2c9f8b01  [todo/qatesting]  QA2: verifikasi nomor resi pesanan (kontrak §12.17/§12.18a)
+t_d1028202  [todo/frontenddeveloper]  F5b: isian nomor resi aktif di /admin/pesanan/{order}
+t_b078318d  [running/backenddeveloper]  B1b: kolom + rute nomor resi pesanan (kontrak §12.18a)
+t_0729c67f  [running/uiux]  UIUX1b: catat deviasi D12 isian nomor resi
+t_92fcaafd  [blocked/techlead]  Kontrak + backend: nomor resi manual pesanan (PRD A15) — kolom, field §12.17, rute simpan
+t_e83922f2  [todo/devops]  D1: Bekukan build rilis + checklist Midtrans nyata
+t_3a240a11  [todo/qatesting]  QA1: Verifikasi perbaikan laporan pemilik 21 Okt 2026
+t_e60e7733  [todo/frontenddeveloper]  F2: Penanda mode uji Midtrans di halaman bayar + status mode di tab Pembayaran admin
+t_2de36f29  [running/frontenddeveloper]  F6: Halaman selesai checkout menghormati `ulasan.boleh`

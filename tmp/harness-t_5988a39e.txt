@@ -1,0 +1,82 @@
+OK     Index — daftar terisi (22532 karakter)
+OK     Index — kosong tanpa filter (15738 karakter)
+OK     Index — filter aktif tanpa hasil (16269 karakter)
+OK     Index — props server hilang (15673 karakter)
+OK     Index — angka berbentuk string (18532 karakter)
+OK     Create (24368 karakter)
+OK     Create — kategori kosong (24303 karakter)
+OK     Edit (30876 karakter)
+OK     Edit — tanpa gambar/varian (20307 karakter)
+OK     Edit — props server hilang (0 karakter)
+OK     Show (16127 karakter)
+OK     Show — ringkasan null (16125 karakter)
+OK     Show — banyak kolom null (13739 karakter)
+OK     Toast sukses (648 karakter)
+OK     Toast galat (698 karakter)
+OK     DataTable — memuat (1413 karakter)
+OK     DataTable — kosong (555 karakter)
+OK     DataTable — galat (793 karakter)
+OK     Modal konfirmasi hapus (1028 karakter)
+OK     tautan Index → /admin/produk/tambah
+OK     tautan Index → /admin/produk/3
+OK     tautan Index → /admin/produk/3/ubah
+OK     tautan Index → /admin/produk/4/ubah
+OK     tautan Index → /admin/produk?stok=kritis
+OK     tautan Show → /admin/produk
+OK     tautan Show → /admin/produk/3/ubah
+OK     tautan Show → /produk/daster-batik-pekalongan
+OK     sumber Index: memakai literal rute index + query
+OK     sumber Index: menjaga state filter (Inertia)
+OK     sumber Index: menjaga posisi scroll
+OK     sumber Index: menangani galat navigasi
+OK     sumber Index: menampilkan flash.success server sebagai toast
+OK     sumber Index: aksi hapus memakai DELETE
+OK     sumber Index: URL hapus literal per produk
+OK     sumber Index: nilai enum §12.1 "aktif"
+OK     sumber Index: nilai enum §12.1 "nonaktif"
+OK     sumber Index: nilai enum §12.1 "semua"
+OK     sumber Index: nilai enum §12.1 "habis"
+OK     sumber Index: nilai enum §12.1 "kritis"
+OK     sumber Index: nilai enum §12.1 "terbaru"
+OK     sumber Index: nilai enum §12.1 "nama"
+OK     sumber Index: nilai enum §12.1 "harga"
+OK     sumber Index: nilai enum §12.1 "stok"
+OK     sumber ProdukForm: mekanisme POST + _method=PUT (§12.3/§12.6)
+OK     sumber ProdukForm: literal rute simpan/ubah
+OK     sumber ProdukForm: menampilkan galat validasi server per kolom
+OK     sumber ProdukForm: mengirim images_alt[] (§12.3)
+OK     sumber ProdukForm: mengirim hapus_images[] (§12.6)
+OK     sumber ProdukForm: mengirim primary_image_id (§12.6)
+OK     sumber ProdukForm: mengirim variants[] (§12.3)
+OK     sumber DropzoneGalery: batas maksimum gambar (maks 5, §12.3)
+OK     sumber VarianEditor: kolom price_delta varian (§12.3)
+OK     sumber Index: tidak memakai dangerouslySetInnerHTML
+OK     sumber Index: tidak menyimpan apa pun di storage browser
+OK     sumber Index: tidak memanggil API langsung (props Inertia)
+OK     sumber Index: tidak memakai helper route()/Ziggy
+OK     sumber Create: tidak memakai dangerouslySetInnerHTML
+OK     sumber Create: tidak menyimpan apa pun di storage browser
+OK     sumber Create: tidak memanggil API langsung (props Inertia)
+OK     sumber Create: tidak memakai helper route()/Ziggy
+OK     sumber Edit: tidak memakai dangerouslySetInnerHTML
+OK     sumber Edit: tidak menyimpan apa pun di storage browser
+OK     sumber Edit: tidak memanggil API langsung (props Inertia)
+OK     sumber Edit: tidak memakai helper route()/Ziggy
+OK     sumber Show: tidak memakai dangerouslySetInnerHTML
+OK     sumber Show: tidak menyimpan apa pun di storage browser
+OK     sumber Show: tidak memanggil API langsung (props Inertia)
+OK     sumber Show: tidak memakai helper route()/Ziggy
+OK     sumber ProdukForm: tidak memakai dangerouslySetInnerHTML
+OK     sumber ProdukForm: tidak menyimpan apa pun di storage browser
+OK     sumber ProdukForm: tidak memanggil API langsung (props Inertia)
+OK     sumber ProdukForm: tidak memakai helper route()/Ziggy
+OK     sumber VarianEditor: tidak memakai dangerouslySetInnerHTML
+OK     sumber VarianEditor: tidak menyimpan apa pun di storage browser
+OK     sumber VarianEditor: tidak memanggil API langsung (props Inertia)
+OK     sumber VarianEditor: tidak memakai helper route()/Ziggy
+OK     sumber DropzoneGalery: tidak memakai dangerouslySetInnerHTML
+OK     sumber DropzoneGalery: tidak menyimpan apa pun di storage browser
+OK     sumber DropzoneGalery: tidak memanggil API langsung (props Inertia)
+OK     sumber DropzoneGalery: tidak memakai helper route()/Ziggy
+
+HASIL: semua pemeriksaan lulus

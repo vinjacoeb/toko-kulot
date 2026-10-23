@@ -1,0 +1,26 @@
+=== UJI SSR + STATIK kartu t_321bf03c ===
+[OK] S1 tidak ada fetch/axios/SPA client
+[OK] S2 tidak ada route()/Ziggy dan tidak ada akses storage
+[OK] S3 semua impor relatif ada di disk
+[OK] S4 props halaman ⊆ props yang dikirim StockController (kontrak §12.12/§12.15)
+[OK] S5 URL literal halaman sama dengan rute admin.php
+[OK] S6 tidak ada teks placeholder tersisa
+[OK] I1 daftar terisi: nama, label, SKU, stok, status, ringkasan, hitung
+[OK] I2 status kolom rendah-stok mengikuti aturan kontrak (0 habis / 1-4 kritis / >=5 aman)
+[OK] I3 kosong tanpa filter: ajakan menambah produk, bukan pesan galat
+[OK] I4 kosong karena filter: pesan "tidak cocok" + reset filter
+[OK] I5 props hilang/null: halaman tetap render aman
+[OK] I6 angka dari server sebagai string & nilai null tetap tampil benar
+[OK] I7 filter terpilih mengikuti props (status/urut/kategori/q)
+[OK] I8 modal setel tertutup secara bawaan + tautan riwayat tersedia
+[OK] H1 riwayat terisi: angka bertanda, tipe, petugas kosong -> "-"
+[OK] H2 angka kartu ringkasan = jumlah baris per tipe (bukan unit stok)
+[OK] H3 kosong tanpa filter vs kosong karena filter
+[OK] H4 props hilang/null: halaman tetap render aman
+[OK] H5 signed_qty null & angka string tidak menghasilkan NaN
+[OK] M1 modal mode masuk: judul, field, tombol sesuai desain
+[OK] M2 galat server per kolom terhubung aria-describedby
+[OK] M3 galat non-kolom tampil sebagai notice, mode keluar beda tombol
+[OK] D1 DataTable: loading, error + Coba lagi, kosong adalah tiga hal berbeda
+
+TOTAL: 23 uji, 0 gagal

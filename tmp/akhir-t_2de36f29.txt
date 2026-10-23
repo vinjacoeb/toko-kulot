@@ -1,0 +1,143 @@
+== berkas keluaran ==
+-rw-r--r-- 1 LENOVO 197121 8012 18:51 docs/bukti-frontend-t_2de36f29.txt
+597 docs/catatan-frontend.md
+
+== git status --short ==
+ M .env.example
+ M README.md
+ M app/Http/Controllers/Admin/OrderController.php
+ M app/Http/Controllers/Admin/SettingController.php
+ M app/Http/Controllers/CheckoutController.php
+ M app/Models/Order.php
+ M app/Providers/AppServiceProvider.php
+ M app/Services/MidtransService.php
+ M config/midtrans.php
+ M database/seeders/FaqSeeder.php
+ M docs/asumsi.md
+ M docs/catatan-backend.md
+ M docs/catatan-frontend.md
+ M docs/catatan-techlead.md
+ M docs/db.md
+ M docs/design.md
+ M docs/kontrak-props.md
+ M docs/langkah-pemilik.md
+ M docs/pertanyaan-pemilik.md
+ M docs/traceability.md
+ M resources/js/Layouts/PublicLayout.jsx
+ M resources/js/Pages/Admin/Orders/Index.jsx
+ M resources/js/Pages/Admin/Products/Index.jsx
+ M resources/js/Pages/Admin/Stocks/Index.jsx
+ M resources/js/Pages/Public/CheckoutSuccess.jsx
+ M routes/admin.php
+ M tests/Feature/Admin/AdminSalesTest.php
+ M tests/Feature/Checkout/CheckoutTest.php
+ M tests/Unit/Services/MidtransServiceTest.php
+?? app/Http/Requests/Admin/UpdateOrderTrackingRequest.php
+?? app/Services/Midtrans/
+?? database/migrations/2026_10_21_000019_add_tracking_number_to_orders_table.php
+?? docs/bukti-backend-t_b078318d.txt
+?? docs/bukti-baseline-t_9f4b6aee.txt
+?? docs/bukti-frontend-t_018b2723.txt
+?? docs/bukti-frontend-t_2de36f29.txt
+?? docs/bukti-frontend-t_321bf03c.txt
+?? docs/bukti-frontend-t_5988a39e.txt
+?? docs/bukti-frontend-t_7ebfca05.txt
+?? docs/bukti-suite-t_9f4b6aee.txt
+?? docs/bukti-suite-t_e35050e8.txt
+?? docs/bukti-t_9f4b6aee.txt
+?? docs/bukti-t_e35050e8-test.txt
+?? docs/bukti-uiux-t_0729c67f.txt
+?? docs/bukti-uiux-t_99424f19.txt
+?? docs/keputusan-a15-resi.md
+?? docs/keputusan-f4-stok.md
+?? docs/review.md
+?? docs/usulan.md
+?? resources/js/Pages/Admin/Orders/Show.jsx
+?? resources/js/Pages/Admin/Orders/partials/
+?? resources/js/Pages/Admin/Products/Create.jsx
+?? resources/js/Pages/Admin/Products/Edit.jsx
+?? resources/js/Pages/Admin/Products/Show.jsx
+?? resources/js/Pages/Admin/Products/partials/
+?? resources/js/Pages/Admin/Stocks/History.jsx
+?? resources/js/Pages/Admin/Stocks/partials/
+?? tests/Feature/Checkout/PaymentModeTest.php
+?? tests/Feature/Checkout/QrisExpiryTest.php
+?? tests/Support/
+?? tests/Unit/Services/MidtransExpiryTest.php
+?? tmp/akhir-t_2de36f29.txt
+?? tmp/anak-t_321bf03c.py
+?? tmp/b-baru-t_321bf03c.txt
+?? tmp/baca-kartu-t_2de36f29.py
+?? tmp/build-final-t_7ebfca05.txt
+?? tmp/build-t_2de36f29.txt
+?? tmp/build-t_321bf03c.txt
+?? tmp/build-t_5988a39e.txt
+?? tmp/build-t_7ebfca05.txt
+?? tmp/cek-badge-keranjang-t_7ebfca05.mjs
+?? tmp/cek-jam-t_2de36f29.py
+?? tmp/daftar-kartu-t_2de36f29.out.txt
+?? tmp/daftar-kartu-t_2de36f29.py
+?? tmp/dump-kartu-baca-t_321bf03c.py
+?? tmp/dump-kartu-t_321bf03c.py
+?? tmp/esbuild-aksi-t_321bf03c.txt
+?? tmp/esbuild-ssr-t_321bf03c.txt
+?? tmp/gate-t_321bf03c.txt
+?? tmp/gate-t_5988a39e.txt
+?? tmp/harness-t_5988a39e.txt
+?? tmp/hasil-aksi-t_321bf03c.txt
+?? tmp/hasil-ssr-t_321bf03c.txt
+?? tmp/jam-kartu-t_2de36f29.out.txt
+?? tmp/kartu-t_321bf03c.txt
+?? tmp/kartu-t_5988a39e.py
+?? tmp/komentar-t_321bf03c.py
+?? tmp/konteks-P-dropzone-t_5988a39e.py
+?? tmp/kontrak-stok-12.txt
+?? tmp/konversi-jam-t_2de36f29.out.txt
+?? tmp/konversi-jam-t_2de36f29.py
+?? tmp/manifest-produk-t_5988a39e.py
+?? tmp/papan-321bf03c.txt
+?? tmp/papan-jalan-t_321bf03c.py
+?? tmp/papan-lengkap-t_2de36f29.out.txt
+?? tmp/papan-lengkap-t_2de36f29.py
+?? tmp/papan-stok-t_321bf03c.py
+?? tmp/papan-t_2de36f29.txt
+?? tmp/papan-t_5988a39e.py
+?? tmp/papan-techlead-t_2de36f29.out.txt
+?? tmp/papan2-t_5988a39e.py
+?? tmp/perbaiki-harness-t_321bf03c.py
+?? tmp/perbaiki-harness2-t_321bf03c.py
+?? tmp/perbaiki-harness3-t_321bf03c.py
+?? tmp/perbaiki-harness4-t_321bf03c.py
+?? tmp/rantai-t_5988a39e.py
+?? tmp/render-produk-t_5988a39e.bundle.mjs
+?? tmp/render-produk-t_5988a39e.mjs
+?? tmp/render-produk-v2-t_5988a39e.bundle.mjs
+?? tmp/render-produk-v2-t_5988a39e.mjs
+?? tmp/sabotase-ssr-t_2de36f29.txt
+?? tmp/sapu-t_2de36f29.txt
+?? tmp/shim-jsx-runtime-t_321bf03c.mjs
+?? tmp/shim-react-t_321bf03c.mjs
+?? tmp/splice-b-t_321bf03c.py
+?? tmp/stitch-inertia-t_5988a39e.mjs
+?? tmp/stub-inertia-t_321bf03c.mjs
+?? tmp/tail-ctf-t_2de36f29.txt
+?? tmp/tulis-bukti-t_321bf03c.py
+?? tmp/uji-aksi-stok-t_321bf03c.bundle.mjs
+?? tmp/uji-aksi-stok-t_321bf03c.mjs
+?? tmp/uji-aksi-ulasan-t_2de36f29.bundle.mjs
+?? tmp/uji-aksi-ulasan-t_2de36f29.mjs
+?? tmp/uji-aksi-ulasan-t_2de36f29.out.txt
+?? tmp/uji-ssr-pesanan-t_018b2723.bundle.mjs
+?? tmp/uji-ssr-pesanan-t_018b2723.mjs
+?? tmp/uji-ssr-stok-t_321bf03c.bundle.mjs
+?? tmp/uji-ssr-stok-t_321bf03c.mjs
+?? tmp/uji-ssr-ulasan-t_2de36f29.bundle.mjs
+?? tmp/uji-ssr-ulasan-t_2de36f29.mjs
+?? tmp/uji-ssr-ulasan-t_2de36f29.out.txt
+?? tmp/ws-t_321bf03c.py
+
+== berkas yang saya ubah ==
+ M docs/catatan-frontend.md
+ M resources/js/Pages/Public/CheckoutSuccess.jsx
+
+== SABOTASE tersisa? ==

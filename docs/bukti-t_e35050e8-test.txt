@@ -1,0 +1,50 @@
+
+   PASS  Tests\Unit\Services\MidtransExpiryTest
+  ✓ bawaan berkas config lima menit                                                                              0.43s  
+  ✓ override env dipakai berkas config                                                                           0.04s  
+  ✓ nilai env tidak sah jatuh ke bawaan lima menit                                                               0.06s  
+  ✓ expiry minutes mengikuti config dan menolak nilai tidak sah                                                  0.09s  
+
+   PASS  Tests\Feature\Checkout\CartTest
+  ✓ tamu bisa menambah produk ke keranjang                                                                       0.45s  
+  ✓ harga grosir dipakai saat qty mencapai minimum                                                               0.04s  
+  ✓ qty melebihi stok ditolak dengan pesan                                                                       0.05s  
+  ✓ produk tanpa varian dipilih ditolak                                                                          0.04s  
+  ✓ item keranjang milik sesi lain tidak bisa diubah                                                             0.07s  
+  ✓ qty disesuaikan bila stok menipis                                                                            0.04s  
+  ✓ item dihapus dari keranjang                                                                                  0.07s  
+
+   PASS  Tests\Feature\Checkout\CheckoutTest
+  ✓ checkout membuat pesanan memotong stok dan tagihan qris                                                      0.16s  
+  ✓ checkout dengan keranjang kosong kembali ke keranjang                                                        0.08s  
+  ✓ checkout menolak stok yang sudah habis                                                                       0.11s  
+  ✓ validasi formulir checkout mengembalikan galat                                                               0.08s  
+  ✓ notifikasi settlement menandai pesanan dibayar                                                               0.05s  
+  ✓ notifikasi settlement idempoten                                                                              0.08s  
+  ✓ notifikasi expire mengembalikan stok dan membatalkan pesanan                                                 0.10s  
+  ✓ notifikasi dengan signature salah ditolak                                                                    0.18s  
+  ✓ notifikasi dengan nominal tidak cocok ditolak                                                                0.18s  
+  ✓ pesanan orang lain tidak bisa dibuka                                                                         0.23s  
+  ✓ tamu diarahkan ke login sebelum checkout                                                                     0.16s  
+  ✓ halaman bayar menampilkan qr string dan batas waktu                                                          0.23s  
+  ✓ halaman selesai menolak pesanan yang belum dibayar                                                           0.18s  
+  ✓ halaman selesai tampil setelah dibayar                                                                       0.22s  
+
+   PASS  Tests\Feature\Checkout\PaymentModeTest
+  ✓ halaman checkout menampilkan mode uji                                                                        0.20s  
+  ✓ mode uji terlihat pada props halaman bayar                                                                   0.17s  
+  ✓ tagihan mode uji dibuat ulang ke baris yang sama                                                             0.21s  
+  ✓ pembuatan ulang gagal menampilkan galat dan tidak mengubah tagihan                                           0.19s  
+  ✓ status membuat ulang tagihan lalu menanyakan midtrans                                                        0.21s  
+  ✓ status mode uji tidak menghubungi midtrans                                                                   0.17s  
+  ✓ tab pembayaran admin menjelaskan mode uji                                                                    0.15s  
+
+   PASS  Tests\Feature\Checkout\QrisExpiryTest
+  ✓ lima menit dipakai di props checkout custom expiry dan expires at                                            0.25s  
+  ✓ override config dipakai semua tempat                                                                         0.21s  
+  ✓ nilai config tidak sah jatuh ke bawaan lima menit                                                            0.16s  
+  ✓ tagihan dibuat ulang memakai masa berlaku terbaru                                                            0.20s  
+
+  Tests:    36 passed (347 assertions)
+  Duration: 6.18s
+

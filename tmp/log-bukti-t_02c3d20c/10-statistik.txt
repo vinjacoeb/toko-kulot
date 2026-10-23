@@ -1,0 +1,22 @@
+### I. Gerbang di kode (statis) & kontrak/desain rujukan
+$ grep -n 'kontradiksiBoleh' -r resources/js/ || true
+(tidak ada)
+$ sed -n '44,60p' resources/js/Pages/Public/CheckoutSuccess.jsx
+
+    /**
+     * Gerbang penilaian memakai `boleh` dari server — kontrak §7.9, dibekukan 21 Okt 2026: `boleh`
+     * bernilai `true` hanya bila server akan menerima minimal satu kiriman ulasan sekarang (syarat
+     * §9.1 lewat `ReviewService::isEligible` dan masih ada produk yang belum diulas). Klien tidak
+     * mengulang syarat itu sebagai gerbang dan tidak menambal props yang berbeda; cabang
+     * "kontradiksi" lama dihapus bersama deviasi servernya (`docs/keputusan-f6-ulasan-boleh.md` §3).
+     */
+    const tampilkanForm = boleh && pending.length > 0;
+
+    /**
+     * Masih ada produk yang belum dinilai tetapi syarat §9.1 belum terpenuhi (belum `settlement`
+     * atau statusnya belum boleh dinilai) — notice alasan, bukan gerbang. Saling eksklusif dengan
+     * form supaya alasan tidak pernah muncul di atas form yang sedang tampil.
+     */
+    const alasanBelumBoleh = !tampilkanForm && !syaratDinilai && pending.length > 0;
+
+$ grep -n 'ulasan.boleh = ' -A 6 docs/kontrak-props.md | head -12

@@ -31,6 +31,7 @@ class SettingService
         'store_tagline' => ['group' => 'umum', 'type' => 'text'],
         'header_nav' => ['group' => 'header', 'type' => 'json'],
         'footer_about' => ['group' => 'footer', 'type' => 'textarea'],
+        'footer_copyright' => ['group' => 'footer', 'type' => 'text'],
         'footer_links' => ['group' => 'footer', 'type' => 'json'],
         'footer_social' => ['group' => 'footer', 'type' => 'json'],
         'contact_email' => ['group' => 'kontak', 'type' => 'text'],

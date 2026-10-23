@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * Pesanan — PRD §6 tabel `orders`.
  * Status order: pending → dibayar → diproses → dikirim → selesai | batal (PRD §7).
  * Status pembayaran: pending | settlement | expire | deny | cancel (PRD §6, §8).
+ * Nomor resi (`tracking_number`) diisi manual admin — PRD A15, kontrak props §12.18a.
  */
 class Order extends Model
 {
@@ -42,6 +43,17 @@ class Order extends Model
     /** Rantai status pesanan (PRD §7): pending → dibayar → diproses → dikirim → selesai. */
     public const STATUS_FLOW = [
         self::STATUS_PENDING,
+        self::STATUS_PAID,
+        self::STATUS_PROCESSING,
+        self::STATUS_SHIPPED,
+        self::STATUS_COMPLETED,
+    ];
+
+    /**
+     * Status order yang dihitung sebagai omzet (PRD §9 dashboard, kontrak props §6.13).
+     * `pending` dan `batal` tidak pernah masuk omzet.
+     */
+    public const REVENUE_STATUSES = [
         self::STATUS_PAID,
         self::STATUS_PROCESSING,
         self::STATUS_SHIPPED,
@@ -131,6 +143,7 @@ class Order extends Model
         'postal_code',
         'notes',
         'paid_at',
+        'tracking_number',
     ];
 
     protected function casts(): array

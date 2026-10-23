@@ -1,0 +1,86 @@
+BUKTI VERIFIKASI — kartu t_ed78d5c6 (lazy scroll katalog /produk)
+Tanggal: 23 Okt 2026. Workspace: C:\Users\LENOVO\Downloads\toko-kulot
+
+BATASAN BUKTI
+- Semua uji UI dijalankan di harness statis tmp/uji-lazy-katalog/ (file://) yang membundel
+  resources/js/Pages/Public/Products/Index.jsx ASLI dengan stub @inertiajs/react, 30 produk
+  contoh [CONTOH] (12 per halaman, latensi 120 ms, halaman 2 sengaja memuat 1 produk duplikat).
+  Ini BUKAN integrasi server Laravel; server dev tidak dinyalakan.
+- Browser headless pada sesi ini tidak menjalankan scroll sungguhan (window.scrollTo,
+  Input.synthesizeScrollGesture) dan IntersectionObserver asli tidak memanggil callback, jadi
+  auto-load dipicu lewat FakeIntersectionObserver yang memanggil callback komponen dengan
+  entries isIntersecting=true. "Scroll nyata" belum diuji.
+
+PERINTAH
+1) npm run build   (exit 0)
+   tail tmp/build-lazy.log:
+     public/build/assets/Index-CYKnmNDf.js               50.76 kB │ gzip:  12.15 kB
+     public/build/assets/app-9yik0YEe.js                364.73 kB │ gzip: 114.37 kB
+     ✓ built in 2.90s
+
+2) git diff --numstat -- resources/js/Pages/Public/Products/Index.jsx
+   231	51	resources/js/Pages/Public/Products/Index.jsx   (445 baris)
+
+3) Harness: node_modules/.bin/esbuild tmp/uji-lazy-katalog/entry.jsx --bundle
+   --alias:@inertiajs/react=./tmp/uji-lazy-katalog/inertia-stub.jsx --loader:.jsx=jsx
+   --define:process.env.NODE_ENV='"development"' --format=iife --outfile=tmp/uji-lazy-katalog/bundle.js
+   → BUNDLE_OK
+
+HASIL UI (JSON mentah, urutan uji)
+
+A. Kondisi awal (12 kartu pertama, sebelum batch berikutnya)
+{"A_awal": {"cards": 12, "unik": 12, "counter": "12/30", "muat": true, "end": false,
+ "target": "h-px w-full", "rootMargin": "240px 0px", "live": 1, "eager": 4, "lazy": 20,
+ "req": 0, "errors": []}}
+
+B. Batch 2 otomatis (halaman 2 memuat 1 duplikat id halaman 1)
+{"B_batch2": {"cards": 24, "unik": 24, "counter": "24/30", "muat": true, "end": false,
+ "target": "h-px w-full", "rootMargin": "240px 0px", "live": 1, "eager": 4, "lazy": 44,
+ "req": 1, "errors": []}}
+
+C. Batch 3 / akhir daftar
+{"C_batch3": {"cards": 30, "unik": 30, "counter": "30/30", "muat": false, "end": true,
+ "target": "h-px w-full", "rootMargin": "240px 0px", "live": 0, "eager": 4, "lazy": 56,
+ "req": 2, "errors": []}}
+(catatan: live=0 → observer di-disconnect setelah halaman terakhir)
+
+D. Ganti urutan ke harga-asc
+{"D_sort": {"cards": 12, "unik": 12, "counter": "12/30", "muat": true, "end": false,
+ "target": "h-px w-full", "rootMargin": "240px 0px", "live": 1, "eager": 4, "lazy": 20,
+ "req": 3, "errors": []}}
+D_req: [{"url":"/produk","data":{"urut":"harga-asc"}}]
+
+E. Batch berikutnya gagal (stub menolak 1 permintaan)
+{"E_galat": {"cards": 12, "pesan": true, "cobaLagi": true, "errors": []}}
+(pesan = "Gagal memuat produk berikutnya. Periksa koneksi Anda lalu coba lagi.";
+ daftar 12 kartu tidak dikosongkan)
+
+F. Klik "Coba lagi"
+{"F_retry": {"cards": 24, "unik": 24, "counter": "24/30", "muat": true, "end": false,
+ "target": "h-px w-full", "rootMargin": "240px 0px", "live": 1, "eager": 4, "lazy": 44,
+ "req": 5, "errors": []}}
+
+G. Tiga klik "Muat lebih banyak" beruntun
+{"KLIK3": {"reqSebelum": 5, "reqSesudah": 6, "cards": 30, "unik": 30, "counter": "30/30",
+ "muat": false, "end": true, "errors": []}}
+(3 klik → 1 permintaan: pencegahan kirim ganda)
+
+H. Pencarian tanpa hasil "zzz"
+{"CARI_ZZZ": {"cards": 0, "judul": true, "deskripsi": true, "chip": true,
+ "resetFilter": true, "NaN": false,
+ "req": [{"url":"/produk","data":{"q":"zzz","urut":"terbaru"}}], "errors": []}}
+(judul "Produk tidak ditemukan", deskripsi "Coba ubah kata kunci atau hapus filter yang aktif.",
+ chip "Cari: zzz", tombol "Reset filter")
+
+I. Klik "Reset filter"
+{"SETELAH_RESET": {"cards": 12, "counter": "12/30", "searchVal": "",
+ "req": [{"url":"/produk","data":{"urut":"terbaru"}}], "errors": []}}
+
+J. Galat saat navigasi filter (setSort dengan permintaan ditolak)
+{"GALAT_NAV": {"pesan": true, "cards": 12, "errors": []}}
+(pesan "Filter gagal diterapkan. Periksa koneksi Anda lalu coba lagi."; daftar lama tetap tampil)
+
+BELUM DIUJI
+- Scroll nyata memicu batch berikutnya (lihat BATASAN BUKTI) — butuh browser pemilik.
+- Integrasi Laravel nyata: partial reload only:['products'] + preserveUrl pada GET /produk.
+- Responsif 360/768/1024/1280, keyboard/Tab, zoom 200%, back/forward, pembaca layar.

@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\UpdateLandingRequest;
 use App\Http\Requests\Admin\UpdateSettingRequest;
 use App\Models\Carousel;
 use App\Models\Faq;
+use App\Services\MidtransService;
 use App\Services\SettingService;
 use App\Support\MediaStorage;
 use Illuminate\Http\RedirectResponse;
@@ -33,14 +34,19 @@ class SettingController extends Controller
     /** Key unggahan gambar pada tab umum. */
     private const IMAGE_KEYS = ['store_logo', 'store_favicon'];
 
-    public function __construct(private readonly SettingService $settings)
-    {
+    public function __construct(
+        private readonly SettingService $settings,
+        private readonly MidtransService $midtrans,
+    ) {
     }
 
     public function index(): Response
     {
         return Inertia::render('Admin/Settings/Index', [
             'pengaturan' => $this->settings->grouped(),
+            // Membuat tab Pembayaran bisa menjelaskan kenapa QRIS tidak bisa
+            // ditransfer dan apa yang pemilik harus ubah (kontrak §10.7).
+            'midtrans' => $this->midtrans->modeInfo(),
             'carousels' => Carousel::query()
                 ->orderBy('sort_order')
                 ->orderBy('id')

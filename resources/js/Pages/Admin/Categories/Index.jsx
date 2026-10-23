@@ -405,11 +405,15 @@ export default function CategoriesIndex({ kategori = null, filter = null, ringka
     return (
         <AdminLayout title="Kategori">
             <div className="flex flex-col gap-6">
-                <PageHeader title="Kategori" breadcrumb={BREADCRUMB}>
-                    <Button variant="primary" onClick={bukaTambah}>
-                        Tambah kategori
-                    </Button>
-                </PageHeader>
+                <PageHeader
+                    title="Kategori"
+                    breadcrumb={BREADCRUMB}
+                    actions={
+                        <Button variant="primary" onClick={bukaTambah}>
+                            Tambah kategori
+                        </Button>
+                    }
+                />
 
                 <p className="text-meta text-slate-600">
                     Total {formatNumber(total)} kategori · {formatNumber(totalAktif)} aktif ·{' '}

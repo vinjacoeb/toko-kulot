@@ -1,0 +1,9 @@
+== sapu komponen tanpa import ==
+file diperiksa: 94
+resources\js\app.jsx: App
+exit=0
+
+== sapu identifier bebas bundel ==
+chunk .js diperiksa: 69
+DropzoneGalery-C7tJa3Ar.js -> FREE: P  (import: B, D, a, p, w)
+exit=0

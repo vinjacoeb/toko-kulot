@@ -1,0 +1,269 @@
+PROBE QA E2E — Kartu t_43d8bcd7 (di luar repo; bukan bagian test suite proyek)
+Dijalankan via: php vendor/phpunit/phpunit/phpunit --testdox (salinan .php di scratch)
+Hasil: 5 passed (46 assertions), exit 0. Lihat docs/bukti-qa-t_43d8bcd7.txt SECTION 3.
+Catatan: server_key di bawah adalah nilai dummy untuk mode fake, bukan kredensial.
+
+<?php
+
+namespace Tests\Feature\Qa2Probe;
+
+use App\Models\Admin;
+use App\Models\Category;
+use App\Models\Order;
+use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Models\Setting;
+use App\Models\StockMovement;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
+use Tests\TestCase;
+
+/**
+ * PROBE QA (di luar repo, dijalankan lewat PHPUnit) — bukan bagian test suite proyek.
+ *
+ * Tujuan: membuktikan alur end-to-end yang belum punya test di repo:
+ * admin membuat produk + harga coret lewat HTTP, katalog publik membacanya,
+ * harga coret divalidasi, ubah produk menyesuaikan stok, dan alur
+ * checkout → stok berkurang → pembatalan admin → stok kembali.
+ */
+class ProdukStokE2ETest extends TestCase
+{
+    use RefreshDatabase;
+
+    private Category $kategori;
+
+    private Admin $admin;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config([
+            'midtrans.fake' => true,
+            'midtrans.server_key' => 'test-server-key',
+            'midtrans.expiry_minutes' => 5,
+        ]);
+
+        Setting::create([
+            'key' => 'shipping_cost_default',
+            'value' => '20000',
+            'group' => 'pengiriman',
+            'type' => 'number',
+        ]);
+
+        $this->kategori = Category::create([
+            'name' => '[CONTOH] Daster',
+            'slug' => 'contoh-daster',
+            'is_active' => true,
+        ]);
+
+        $this->admin = Admin::factory()->create();
+    }
+
+    /**
+     * @param  array<string, mixed>  $override
+     * @return array{0: Product, 1: ProductVariant}
+     */
+    private function buatProdukLewatAdmin(array $override = []): array
+    {
+        $payload = array_merge([
+            'name' => '[CONTOH] Daster Kulot QA E2E',
+            'sku' => 'QA-E2E-01',
+            'category_id' => $this->kategori->id,
+            'short_description' => '[CONTOH] Bahan rayon adem.',
+            'base_price' => 89000,
+            'compare_price' => 129000,
+            'weight_gram' => 300,
+            'is_active' => true,
+            'variants' => [
+                ['size' => 'M', 'color' => 'Hitam', 'sku' => 'QA-E2E-01-M', 'stock' => 4, 'is_active' => true],
+            ],
+        ], $override);
+
+        $this->actingAs($this->admin, 'admin')
+            ->post('/admin/produk', $payload)
+            ->assertRedirect('/admin/produk')
+            ->assertSessionHas('success');
+
+        $produk = Product::query()->where('sku', $payload['sku'])->firstOrFail();
+        $varian = $produk->variants()->firstOrFail();
+
+        return [$produk, $varian];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function props(TestResponse $response): array
+    {
+        return $response->viewData('page')['props'];
+    }
+
+    public function test_produk_baru_dari_admin_tampil_di_katalog_dengan_harga_coret(): void
+    {
+        [$produk, $varian] = $this->buatProdukLewatAdmin();
+
+        $this->assertSame(129000, (int) $produk->compare_price);
+        $this->assertSame(4, (int) $varian->stock);
+        $this->assertDatabaseHas('stock_movements', [
+            'product_variant_id' => $varian->id,
+            'type' => StockMovement::TYPE_IN,
+            'qty' => 4,
+            'admin_id' => $this->admin->id,
+        ]);
+
+        $this->app['auth']->forgetGuards();
+
+        $detail = $this->props($this->get('/produk/'.$produk->slug))['product'];
+
+        $this->assertSame($produk->slug, $detail['slug']);
+        $this->assertSame(89000, $detail['base_price']);
+        $this->assertSame(129000, $detail['compare_price']);
+        $this->assertSame(['M'], array_column($detail['variants'], 'size'));
+        $this->assertSame(4, $detail['variants'][0]['stock']);
+
+        $kartu = $this->props($this->get('/produk'))['products']['data'][0];
+        $this->assertSame(129000, $kartu['compare_price']);
+    }
+
+    public function test_harga_coret_harus_lebih_besar_dari_harga_jual(): void
+    {
+        foreach ([89000, 80000] as $nilai) {
+            $this->actingAs($this->admin, 'admin')
+                ->post('/admin/produk', [
+                    'name' => '[CONTOH] Daster Coret Salah',
+                    'sku' => 'QA-CORET-'.$nilai,
+                    'category_id' => $this->kategori->id,
+                    'base_price' => 89000,
+                    'compare_price' => $nilai,
+                    'variants' => [
+                        ['size' => 'M', 'sku' => 'QA-CORET-'.$nilai.'-M', 'stock' => 1],
+                    ],
+                ])
+                ->assertSessionHasErrors([
+                    'compare_price' => 'Harga coret harus lebih besar dari harga jual.',
+                ]);
+        }
+
+        $this->assertDatabaseCount('products', 0);
+    }
+
+    public function test_ubah_produk_menyimpan_harga_coret_dan_menyesuaikan_stok(): void
+    {
+        [$produk, $varian] = $this->buatProdukLewatAdmin();
+
+        $this->actingAs($this->admin, 'admin')
+            ->put('/admin/produk/'.$produk->id, [
+                'name' => '[CONTOH] Daster Kulot QA E2E (diubah)',
+                'slug' => $produk->slug,
+                'sku' => $produk->sku,
+                'category_id' => $this->kategori->id,
+                'base_price' => 89000,
+                'compare_price' => 99000,
+                'is_active' => true,
+                'variants' => [
+                    ['id' => $varian->id, 'size' => 'M', 'color' => 'Hitam', 'sku' => $varian->sku, 'stock' => 7, 'is_active' => true],
+                ],
+            ])
+            ->assertRedirect('/admin/produk')
+            ->assertSessionHas('success');
+
+        $produk->refresh();
+        $varian->refresh();
+
+        $this->assertSame(99000, (int) $produk->compare_price);
+        $this->assertSame(7, (int) $varian->stock);
+        $this->assertDatabaseHas('stock_movements', [
+            'product_variant_id' => $varian->id,
+            'type' => StockMovement::TYPE_ADJUST,
+            'qty' => 3,
+            'admin_id' => $this->admin->id,
+        ]);
+
+        $this->app['auth']->forgetGuards();
+        $detail = $this->props($this->get('/produk/'.$produk->slug))['product'];
+        $this->assertSame(99000, $detail['compare_price']);
+        $this->assertSame(7, $detail['variants'][0]['stock']);
+    }
+
+    public function test_produk_dinonaktifkan_admin_hilang_dari_katalog_publik(): void
+    {
+        [$produk, $varian] = $this->buatProdukLewatAdmin();
+
+        $this->actingAs($this->admin, 'admin')
+            ->put('/admin/produk/'.$produk->id, [
+                'name' => $produk->name,
+                'slug' => $produk->slug,
+                'sku' => $produk->sku,
+                'category_id' => $this->kategori->id,
+                'base_price' => 89000,
+                'compare_price' => 129000,
+                'is_active' => false,
+                'variants' => [
+                    ['id' => $varian->id, 'size' => 'M', 'color' => 'Hitam', 'sku' => $varian->sku, 'stock' => 4, 'is_active' => true],
+                ],
+            ])
+            ->assertRedirect('/admin/produk');
+
+        $this->app['auth']->forgetGuards();
+
+        $this->get('/produk/'.$produk->slug)->assertNotFound();
+
+        $daftar = $this->props($this->get('/produk'))['products']['data'];
+        $this->assertSame([], array_filter(
+            $daftar,
+            fn (array $item) => $item['slug'] === $produk->slug,
+        ));
+    }
+
+    public function test_e2e_checkout_memotong_stok_dan_pembatalan_mengembalikannya(): void
+    {
+        [$produk, $varian] = $this->buatProdukLewatAdmin();
+
+        $pembeli = User::factory()->create();
+        $this->actingAs($pembeli, 'web');
+
+        $this->post('/keranjang', [
+            'product_id' => $produk->id,
+            'variant_id' => $varian->id,
+            'qty' => 2,
+        ])->assertSessionHas('success');
+
+        $checkout = $this->post('/checkout', [
+            'customer_name' => 'Siti Aminah',
+            'customer_phone' => '081234567890',
+            'customer_email' => 'siti@example.test',
+            'customer_address' => 'Jl. Melati No. 12, RT 02 RW 03',
+            'customer_city' => 'Pekalongan',
+            'customer_postal_code' => '51111',
+        ]);
+
+        $checkout->assertSessionHas('success');
+
+        $order = Order::query()->firstOrFail();
+
+        $this->assertSame(2, (int) $varian->fresh()->stock);
+        $this->assertDatabaseHas('stock_movements', [
+            'product_variant_id' => $varian->id,
+            'type' => StockMovement::TYPE_SALE,
+            'qty' => 2,
+        ]);
+
+        $this->actingAs($this->admin, 'admin')
+            ->patch('/admin/pesanan/'.$order->id.'/status', [
+                'status' => Order::STATUS_CANCELLED,
+                'note' => '[CONTOH] Batal oleh QA',
+            ])
+            ->assertSessionHas('success');
+
+        $this->assertSame(Order::STATUS_CANCELLED, $order->fresh()->status);
+        $this->assertSame(4, (int) $varian->fresh()->stock);
+        $this->assertDatabaseHas('stock_movements', [
+            'product_variant_id' => $varian->id,
+            'type' => StockMovement::TYPE_IN,
+            'qty' => 2,
+            'admin_id' => $this->admin->id,
+        ]);
+    }
+}

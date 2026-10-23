@@ -1,0 +1,15 @@
+### A. Harness SSR gate §7.9 (kartu B2): tmp/uji-ssr-gate-boleh-t_02c3d20c.mjs
+$ md5sum resources/js/Pages/Public/CheckoutSuccess.jsx  (sebelum)
+2e4df85a082cae829efecc0580ce373a
+OK    | 1. boleh=false, masih ada sisa produk -> TANPA form, tanpa notice alasan (DoD-1)                     | 
+OK    | 2. boleh=true, masih ada sisa produk -> form tampil (DoD-2)                                          | 
+OK    | 3. semua produk sudah diulas (boleh=false) -> tanpa form + terima kasih (DoD-3)                      | 
+OK    | 4. boleh=false + sisa produk, syarat §9.1 belum terpenuhi -> notice alasan tampil                    | 
+OK    | 5. boleh=false + sisa produk, status batal -> tanpa form + notice alasan                             | 
+OK    | 6. props `boleh=true` dipercaya apa adanya (keputusan §3: klien tidak menggandakan §9.1)             | 
+OK    | 7. gate statis: `boleh && pending.length > 0`, cabang kontradiksi hilang, alasan pakai syaratDinilai | 
+OK    | 8. props `ulasan` tidak dikirim -> gerbang tertutup, halaman utuh                                    | 
+OK    | 9. sapu kotor (NaN/undefined/placeholder) di semua state di atas                                     | 
+
+RINGKASAN: 9/9 uji lulus
+$ echo $?  ->  0

@@ -1,0 +1,72 @@
+BUKTI VERIFIKASI — kartu t_c374a29b
+Aksi admin "Sinkronkan status pembayaran" (kontrak props §12.24)
+21 Oktober 2026, C:/Users/LENOVO/Downloads/toko-kulot
+
+Lingkungan
+  Driver sqlite di php.ini pemilik masih dikomentari, jadi test dijalankan dengan
+  PHP_INI_SCAN_DIR=<scratch>/php-ini-kulot (isi: extension=pdo_sqlite, extension=sqlite3).
+  php.ini dan .env pemilik TIDAK disentuh. Database test = SQLite :memory: dari phpunit.xml,
+  jadi DB pengembangan/pemilik tidak tersentuh.
+
+1) php -l (4 berkas yang disentuh + 1 berkas test baru)
+  $ php -l app/Services/MidtransService.php
+  No syntax errors detected in app/Services/MidtransService.php
+  $ php -l app/Http/Controllers/Admin/OrderController.php
+  No syntax errors detected in app/Http/Controllers/Admin/OrderController.php
+  $ php -l routes/admin.php
+  No syntax errors detected in routes/admin.php
+  $ php -l tests/Feature/Admin/AdminSyncPaymentTest.php
+  No syntax errors detected in tests/Feature/Admin/AdminSyncPaymentTest.php
+
+2) $ php artisan test tests/Feature/Admin/AdminSyncPaymentTest.php
+  PASS  Tests\Feature\Admin\AdminSyncPaymentTest
+  ✓ status pembayaran sinkron mengubah pesanan pending menjadi dibayar   1.52s
+  ✓ status sama memberi pesan tidak berubah                              0.03s
+  ✓ status tak dikenal tidak mengubah apa pun                            0.04s
+  ✓ tagihan kedaluwarsa membatalkan pesanan dan mengembalikan stok       0.04s
+  ✓ status final tidak pernah mundur                                     0.03s
+  ✓ pesanan tanpa tagihan tidak memanggil midtrans                       0.02s
+  ✓ mode uji tidak bisa disinkronkan                                     0.02s
+  ✓ tagihan lama mode uji tidak bisa disinkronkan                        0.02s
+  ✓ pembayaran sudah lunas tidak memanggil midtrans                      0.02s
+  ✓ kegagalan midtrans memberi flash error bukan 500                     0.36s
+  ✓ log sinkronisasi tidak memuat rahasia                                0.19s
+  ✓ bukan admin tidak bisa menyinkronkan                                 0.03s
+
+  Tests:    12 passed (55 assertions)
+  Duration: 2.62s
+
+2b) $ php artisan test tests/Feature/Contract/RouteContractTest.php tests/Feature/Admin/AdminSyncPaymentTest.php
+  Tests:    17 passed (60 assertions)
+  Duration: 1.89s
+  (dua nama rute pesanan `admin.orders.resi` + `admin.orders.sinkron-pembayaran` ditambahkan
+   ke daftar rute PRD §5.2 di RouteContractTest supaya rute baru ikut terjaga kontraknya)
+
+3) $ php artisan test (suite penuh, regresi — dijalankan lagi setelah perubahan RouteContractTest)
+  Tests:    237 passed (1791 assertions)
+  Duration: 28.30s
+  (sebelum kartu ini suite 225 test; +12 test kartu ini. Tidak ada test yang gagal.)
+
+4) $ php artisan route:list --path=admin/pesanan -v
+  GET|HEAD   admin/pesanan                             admin.orders.index
+  GET|HEAD   admin/pesanan/{order}                     admin.orders.show
+  PATCH      admin/pesanan/{order}/resi                admin.orders.resi
+  PATCH      admin/pesanan/{order}/sinkron-pembayaran  admin.orders.sinkron-pembayaran
+             middleware: web, admin, throttle:admin-write
+  PATCH      admin/pesanan/{order}/status              admin.orders.status
+
+Kontrol negatif (dibuktikan, bukan diklaim)
+  - Pesanan tanpa tagihan, mode uji global, dan tagihan lama mode uji: `$api->statusCount`
+    tetap 0 → cek awal benar-benar mencegah panggilan jaringan.
+  - Kegagalan Midtrans (`Mockery` melempar CheckoutException dari `status()`): respons
+    redirect + `flash.error`, status `payments`/`orders` tidak berubah, `paid_at` tetap null.
+  - Status final (`expire` → minta `settlement`): tetap `expire`/`batal`, tidak ada
+    `stock_movements` baru (idempoten, tidak mundur).
+  - Log: `Log::spy` memastikan `info()` dipanggil sekali dengan konteks {order, payment,
+    order_status} dan isi log tidak memuat server key maupun transaction_id.
+
+Yang belum diperiksa
+  - Klik tombol di browser pada server pengembangan (lingkup pemilik + kartu frontend);
+    backend sudah membuktikan rute, flash, dan efek datanya lewat test.
+  - Migrasi/seeder/`db:seed`/`migrate:fresh` dan perintah apa pun terhadap DB pengembangan:
+    tidak dijalankan (aturan kartu, dan memang tidak ada skema baru).

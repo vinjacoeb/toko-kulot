@@ -1,0 +1,256 @@
+### python docs/qa/audit-penanda-meta.py
+kemunculan di baris komentar (bukan teks dirender) : 1
+    komentar resources/js/Components/KpiCard.jsx:9
+kemunculan dengan penanda putih/kartu terdekat : 40
+    putih resources/js/Components/ChartCard.jsx:126 (bg-white @7)
+    putih resources/js/Components/ChartCard.jsx:254 (bg-white @6)
+    putih resources/js/Components/NavDrawer.jsx:51 (bg-white @4)
+    putih resources/js/Components/OrderSummary.jsx:71 (card @41)
+    putih resources/js/Components/QrisPanel.jsx:121 (card @9)
+    putih resources/js/Components/QrisPanel.jsx:143 (bg-white @15)
+    putih resources/js/Components/QrisPanel.jsx:150 (card @38)
+    putih resources/js/Components/QrisPanel.jsx:151 (card @39)
+    putih resources/js/Components/ReviewForm.jsx:148 (card @66)
+    putih resources/js/Layouts/AdminLayout.jsx:210 (bg-white @5)
+    putih resources/js/Pages/Admin/Dashboard.jsx:204 (bg-white @25)
+    putih resources/js/Pages/Admin/Dashboard.jsx:271 (bg-white @14)
+    putih resources/js/Pages/Admin/Login.jsx:116 (bg-white @68)
+    putih resources/js/Pages/Admin/Products/Index.jsx:323 (bg-white @67)
+    putih resources/js/Pages/Admin/Products/partials/DropzoneGalery.jsx:138 (bg-white @1)
+    putih resources/js/Pages/Admin/Products/partials/DropzoneGalery.jsx:144 (bg-white @7)
+    putih resources/js/Pages/Admin/Products/partials/ProdukForm.jsx:101 (bg-white @7)
+    putih resources/js/Pages/Admin/Products/partials/ProdukForm.jsx:118 (bg-white @24)
+    putih resources/js/Pages/Admin/Products/partials/ProdukForm.jsx:531 (bg-white @3)
+    putih resources/js/Pages/Admin/Products/partials/ProdukForm.jsx:595 (bg-white @40)
+    putih resources/js/Pages/Admin/Products/partials/ProdukForm.jsx:626 (bg-white @71)
+    putih resources/js/Pages/Admin/Products/partials/ProdukForm.jsx:648 (bg-white @3)
+    putih resources/js/Pages/Admin/Products/partials/ProdukForm.jsx:671 (bg-white @26)
+    putih resources/js/Pages/Admin/Products/Show.jsx:132 (bg-white @4)
+    putih resources/js/Pages/Admin/Products/Show.jsx:138 (bg-white @10)
+    putih resources/js/Pages/Admin/Products/Show.jsx:149 (bg-white @21)
+    putih resources/js/Pages/Admin/Products/Show.jsx:165 (bg-white @6)
+    putih resources/js/Pages/Admin/Reviews/Index.jsx:319 (card @3)
+    putih resources/js/Pages/Admin/Settings/Index.jsx:181 (card @4)
+    putih resources/js/Pages/Admin/Settings/Index.jsx:193 (bg-white @2)
+    putih resources/js/Pages/Admin/Stocks/History.jsx:291 (bg-white @45)
+    putih resources/js/Pages/Admin/Stocks/Index.jsx:410 (bg-white @58)
+    putih resources/js/Pages/Public/Checkout.jsx:275 (card @20)
+    putih resources/js/Pages/Public/Checkout.jsx:281 (card @26)
+    putih resources/js/Pages/Public/CheckoutPay.jsx:165 (card @10)
+    putih resources/js/Pages/Public/CheckoutPay.jsx:201 (card @5)
+    putih resources/js/Pages/Public/CheckoutPay.jsx:208 (card @12)
+    putih resources/js/Pages/Public/CheckoutSuccess.jsx:118 (card @10)
+    putih resources/js/Pages/Public/CheckoutSuccess.jsx:147 (card @39)
+    putih resources/js/Pages/Public/CheckoutSuccess.jsx:149 (card @41)
+kemunculan tanpa penanda apa pun <= 80 baris  : 40
+    tanpa-penanda resources/js/Components/ChartCard.jsx:260
+    tanpa-penanda resources/js/Components/ChartCard.jsx:267
+    tanpa-penanda resources/js/Components/FaqAccordion.jsx:48
+    tanpa-penanda resources/js/Components/Field.jsx:34
+    tanpa-penanda resources/js/Components/FilterPanel.jsx:17
+    tanpa-penanda resources/js/Components/FilterPanel.jsx:58
+    tanpa-penanda resources/js/Components/FilterPanel.jsx:91
+    tanpa-penanda resources/js/Components/Input.jsx:5
+    tanpa-penanda resources/js/Components/KpiCard.jsx:32
+    tanpa-penanda resources/js/Components/KpiCard.jsx:67
+    tanpa-penanda resources/js/Components/PriceBlock.jsx:22
+    tanpa-penanda resources/js/Components/RatingSummary.jsx:37
+    tanpa-penanda resources/js/Components/RatingSummary.jsx:47
+    tanpa-penanda resources/js/Components/ReviewCard.jsx:45
+    tanpa-penanda resources/js/Components/SearchInput.jsx:44
+    tanpa-penanda resources/js/Components/Textarea.jsx:5
+    tanpa-penanda resources/js/Pages/Admin/Accounts/Index.jsx:372
+    tanpa-penanda resources/js/Pages/Admin/Accounts/Index.jsx:425
+    tanpa-penanda resources/js/Pages/Admin/Accounts/Index.jsx:654
+    tanpa-penanda resources/js/Pages/Admin/Categories/Index.jsx:107
+    tanpa-penanda resources/js/Pages/Admin/Categories/Index.jsx:348
+    tanpa-penanda resources/js/Pages/Admin/Categories/Index.jsx:626
+    tanpa-penanda resources/js/Pages/Admin/Messages/Index.jsx:265
+    tanpa-penanda resources/js/Pages/Admin/Messages/Index.jsx:286
+    tanpa-penanda resources/js/Pages/Admin/Products/Index.jsx:130
+    tanpa-penanda resources/js/Pages/Admin/Products/Index.jsx:143
+    tanpa-penanda resources/js/Pages/Admin/Products/Index.jsx:167
+    tanpa-penanda resources/js/Pages/Admin/Products/partials/DropzoneGalery.jsx:184
+    tanpa-penanda resources/js/Pages/Admin/Products/partials/VarianEditor.jsx:215
+    tanpa-penanda resources/js/Pages/Admin/Products/Show.jsx:41
+    tanpa-penanda resources/js/Pages/Admin/Settings/Index.jsx:1626
+    tanpa-penanda resources/js/Pages/Admin/Stocks/History.jsx:152
+    tanpa-penanda resources/js/Pages/Admin/Stocks/Index.jsx:199
+    tanpa-penanda resources/js/Pages/Admin/Stocks/Index.jsx:217
+    tanpa-penanda resources/js/Pages/Public/Cart.jsx:112
+    tanpa-penanda resources/js/Pages/Public/CheckoutSuccess.jsx:92
+    tanpa-penanda resources/js/Pages/Public/Products/Index.jsx:245
+    tanpa-penanda resources/js/Pages/Public/Products/Show.jsx:234
+    tanpa-penanda resources/js/Pages/Public/Products/Show.jsx:242
+    tanpa-penanda resources/js/Pages/Public/Products/Show.jsx:380
+
+KANDIDAT TEMUAN (penanda non-putih terdekat)  : 10
+  resources/js/Components/CartLine.jsx:76 | bg-surface @26 baris (DAUN) | {variantLabel && <p className="mt-1 text-meta text-slate-500">{variantLabel}</p>
+  resources/js/Components/CartLine.jsx:78 | bg-surface @28 baris (DAUN) | <p className="mt-2 text-meta text-slate-500">
+  resources/js/Components/CartLine.jsx:79 | bg-surface @29 baris (DAUN) | {unitPrice ?? '-'} <span className="text-slate-500">/ pcs</span>
+  resources/js/Components/CartLine.jsx:114 | bg-surface @64 baris (DAUN) | <p className="text-meta text-slate-500 lg:hidden">Subtotal</p>
+  resources/js/Components/CartLine.jsx:117 | bg-surface @67 baris (DAUN) | <span className="mt-1 flex items-center gap-2 text-meta text-slate-500 lg:justif
+  resources/js/Components/ProductCard.jsx:93 | bg-surface @45 baris (kontainer) | <p className="text-badge uppercase text-slate-500">{product.category.name}</p>
+  resources/js/Components/ProductCard.jsx:112 | bg-surface @64 baris (kontainer) | <span className="text-meta text-slate-500">{`(${formatNumber(ratingCount)})`}</s
+  resources/js/Components/QrisPanel.jsx:92 | bg-surface @4 baris (kontainer) | <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full
+  resources/js/Components/RatingSummary.jsx:54 | bg-surface @6 baris (DAUN) | <span className="w-9 shrink-0 text-right text-meta text-slate-500">{bar.percent}
+  resources/js/Pages/Admin/Settings/Index.jsx:293 | bg-surface @4 baris (DAUN) | <p className="text-meta text-slate-500">
+exit=0
+### python docs/qa/kontras-badge.py
+== Tabel tone badge §4.21 ==
+  brand    bg-brand/10 text-brand                 dokumen 9,35:1 | hitung 9,35:1 (brand-100) OK
+  warning  bg-warning/10 text-warning-strong      dokumen 5,34:1 | hitung 5,34:1 (brand-100) OK
+  success  bg-success/10 text-success-strong      dokumen 5,33:1 | hitung 5,33:1 (brand-100) OK
+  danger   bg-danger/10 text-danger-strong        dokumen 5,95:1 | hitung 5,95:1 (brand-100) OK
+  neutral  bg-slate-200/60 text-slate-600         dokumen 6,17:1 | hitung 6,17:1 (brand-100) OK
+  accent   bg-accent-500 text-ink                 dokumen 10,11:1 | hitung 10,11:1 (putih) OK
+  sale     bg-sale-500 text-white                 dokumen 4,65:1 | hitung 4,65:1 (putih) OK
+
+== Tabel tone solid §4.21 ==
+  brand-700    putih 13,54:1 OK  | ink 1,38:1 OK OK
+  accent       putih 1,85:1 OK  | ink 10,11:1 OK OK
+  accent-600   putih 2,38:1 OK  | ink 7,89:1 OK OK
+  sale-500     putih 4,65:1 OK  | ink 4,03:1 OK OK
+  success      putih 3,30:1 OK  | ink 5,68:1 OK OK
+  warning      putih 3,19:1 OK  | ink 5,88:1 OK OK
+  danger       putih 4,83:1 OK  | ink 3,88:1 OK OK
+
+== Token -strong ==
+  success-strong   #166534 OK
+  warning-strong   #92400E OK
+  danger-strong    #991B1B OK
+
+== HASIL ==
+  SEMUA angka tabel §4.21 cocok dengan hitungan WCAG 2.1 (toleransi 0,006) — 7 tone + 7 tone solid.
+exit=0
+### python docs/qa/kontras-meta.py
+chip slate-200/60 @surface = #EAEEF2
+chip slate-200/60 @putih   = #EEF1F6
+
+kelas                       putih               surface             brand-100  slate-200/60@surface    slate-200/60@putih             slate-200
+slate-400              2.56:1 X              2.37:1 X              2.12:1 X              2.20:1 X              2.26:1 X              2.08:1 X  
+slate-500              4.76:1 OK             4.40:1 X              3.93:1 X              4.08:1 X              4.20:1 X              3.86:1 X  
+slate-600              7.58:1 OK             7.00:1 OK             6.26:1 OK             6.50:1 OK             6.69:1 OK             6.15:1 OK 
+slate-700             10.35:1 OK             9.57:1 OK             8.55:1 OK             8.88:1 OK             9.15:1 OK             8.40:1 OK 
+
+Ambang: teks normal (<24px / <18.66px bold) = 4,5:1 ; elemen non-teks/ikon = 3:1
+
+Ringkas kandidat keputusan t_14cad9e2:
+  slate-500: putih 4.76 | surface 4.40 | brand-100 3.93 | chip@surface 4.08
+  slate-600: putih 7.58 | surface 7.00 | brand-100 6.26 | chip@surface 6.50
+exit=0
+### python docs/qa/sweep-meta-surface.py
+gate kontras meta §2.1 v2.2 — akar: C:\Users\LENOVO\Downloads\toko-kulot
+=== A. DAFTAR_KEPUTUSAN (29 titik v2.2 -> text-slate-600) ===
+  selesai  : 29
+  belum    : 0
+=== B. Penyapu latar non-putih ===
+  kandidat : 0
+  aman     : 18 (penanda terdekat = putih/kartu)
+  TINJAU   : resources/js/Components/CartLine.jsx:76 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/CartLine.jsx:78 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/CartLine.jsx:79 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/CartLine.jsx:114 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/CartLine.jsx:117 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/ChartCard.jsx:267 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/FaqAccordion.jsx:48 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/Field.jsx:34 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/FilterPanel.jsx:17 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/FilterPanel.jsx:58 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/FilterPanel.jsx:91 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/KpiCard.jsx:32 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/KpiCard.jsx:67 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/OrderSummary.jsx:71 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/PriceBlock.jsx:22 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/ProductCard.jsx:93 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/ProductCard.jsx:112 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/QrisPanel.jsx:143 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/QrisPanel.jsx:150 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/QrisPanel.jsx:151 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/RatingSummary.jsx:37 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/RatingSummary.jsx:47 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/RatingSummary.jsx:54 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/ReviewCard.jsx:45 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Components/ReviewForm.jsx:148 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Layouts/AdminLayout.jsx:210 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Accounts/Index.jsx:372 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Accounts/Index.jsx:425 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Accounts/Index.jsx:654 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Categories/Index.jsx:348 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Categories/Index.jsx:626 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Dashboard.jsx:204 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Dashboard.jsx:271 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Login.jsx:116 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Messages/Index.jsx:265 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Messages/Index.jsx:286 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Products/Index.jsx:130 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Products/Index.jsx:143 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Products/Index.jsx:167 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Products/Index.jsx:323 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Products/partials/DropzoneGalery.jsx:184 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Products/partials/ProdukForm.jsx:118 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Products/partials/ProdukForm.jsx:595 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Products/partials/ProdukForm.jsx:626 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Products/partials/ProdukForm.jsx:671 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Products/partials/VarianEditor.jsx:215 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Products/Show.jsx:41 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Products/Show.jsx:149 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Settings/Index.jsx:293 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Settings/Index.jsx:1626 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Stocks/History.jsx:152 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Stocks/History.jsx:291 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Stocks/Index.jsx:199 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Stocks/Index.jsx:217 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Admin/Stocks/Index.jsx:410 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Public/Cart.jsx:112 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Public/Checkout.jsx:275 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Public/Checkout.jsx:281 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Public/CheckoutSuccess.jsx:92 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Public/CheckoutSuccess.jsx:147 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Public/CheckoutSuccess.jsx:149 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Public/Products/Index.jsx:245 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Public/Products/Show.jsx:234 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Public/Products/Show.jsx:242 (tidak ada penanda kontainer <= 12 baris di atas)
+  TINJAU   : resources/js/Pages/Public/Products/Show.jsx:380 (tidak ada penanda kontainer <= 12 baris di atas)
+  ditinjau : 65
+=== C. Sisa text-slate-500 (tidak menggagalkan) ===
+  total kemunculan text-slate-500 di resources/js: 91
+=== HASIL ===
+status: LOLOS (keluar 0)
+exit=0
+### python tmp/cek-komponen-tanpa-import.py .
+file diperiksa: 89
+resources\js\app.jsx: App
+exit=0
+### python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build
+chunk .js diperiksa: 61
+DropzoneGalery-DbK3OEU7.js -> FREE: P  (import: B, D, a, p, w)
+exit=0
+### python tmp/cek-tautan-admin-vs-rute.py
+url '/admin...' diperiksa: 89 | rute admin terdaftar: 41
+
+url dinamis (${...}) dan rute yang cocok:
+  - resources/js/Pages/Admin/Accounts/Index.jsx:294 [PUT via form.put] /admin/akun/${editRow.id} -> PUT /admin/akun/{admin}
+  - resources/js/Pages/Admin/Accounts/Index.jsx:342 [DELETE via router.delete] /admin/akun/${hapus.id} -> DELETE /admin/akun/{admin}
+  - resources/js/Pages/Admin/Categories/Index.jsx:283 [? via tidak dikenal] /admin/kategori/${editRow.id} -> PUT /admin/kategori/{category}, DELETE /admin/kategori/{category}
+  - resources/js/Pages/Admin/Categories/Index.jsx:318 [DELETE via router.delete] /admin/kategori/${hapus.id} -> DELETE /admin/kategori/{category}
+  - resources/js/Pages/Admin/Messages/Index.jsx:227 [PATCH via router.patch] /admin/pesan-masuk/${row.id}/baca -> PATCH /admin/pesan-masuk/{message}/baca
+  - resources/js/Pages/Admin/Messages/Index.jsx:250 [POST via form.post] /admin/pesan-masuk/${target.id}/balas -> POST /admin/pesan-masuk/{message}/balas
+  - resources/js/Pages/Admin/Products/Index.jsx:196 [? via tidak dikenal] /admin/produk/${baris?.id} -> PUT /admin/produk/{product}, DELETE /admin/produk/{product}, GET /admin/produk/{product}
+  - resources/js/Pages/Admin/Products/Index.jsx:199 [? via tidak dikenal] /admin/produk/${baris?.id}/ubah -> PUT /admin/produk/{product}, DELETE /admin/produk/{product}, GET /admin/produk/{product}
+  - resources/js/Pages/Admin/Products/Index.jsx:213 [DELETE via router.delete] /admin/produk/${hapus.id} -> DELETE /admin/produk/{product}
+  - resources/js/Pages/Admin/Products/partials/ProdukForm.jsx:303 [? via tidak dikenal] /admin/produk/${produk.id} -> PUT /admin/produk/{product}, DELETE /admin/produk/{product}, GET /admin/produk/{product}
+  - resources/js/Pages/Admin/Products/Show.jsx:91 [DELETE via router.delete] /admin/produk/${produk.id} -> DELETE /admin/produk/{product}
+  - resources/js/Pages/Admin/Products/Show.jsx:109 [? via tidak dikenal] /admin/produk/${produk.id}/ubah -> GET /admin/produk/{product}/ubah
+  - resources/js/Pages/Admin/Reviews/Index.jsx:192 [POST via form.post] /admin/penilaian/${target.id}/balas -> POST /admin/penilaian/{review}/balas
+  - resources/js/Pages/Admin/Reviews/Index.jsx:206 [PATCH via router.patch] /admin/penilaian/${row.id}/tampil -> PATCH /admin/penilaian/{review}/tampil
+  - resources/js/Pages/Admin/Stocks/Index.jsx:476 [? via tidak dikenal] /admin/produk/${setel.product.id}/ubah -> GET /admin/produk/{product}/ubah
+  - resources/js/Pages/Admin/Stocks/partials/StokAksiModal.jsx:58 [? via tidak dikenal] /admin/stok/${idVarian}/keluar -> POST /admin/stok/{variant}/keluar
+  - resources/js/Pages/Admin/Stocks/partials/StokAksiModal.jsx:58 [? via tidak dikenal] /admin/stok/${idVarian}/masuk -> POST /admin/stok/{variant}/masuk
+
+konteks tidak dikenal (info, tidak dinilai):
+
+url tanpa rute pada metode yang benar:
+  (tidak ada)
+LULUS: semua url admin cocok dengan rute terdaftar pada metode yang benar.
+exit=0

@@ -446,11 +446,15 @@ export default function AccountsIndex({ akun = null, filter = null, ringkasan = 
     return (
         <AdminLayout title="Akun Admin">
             <div className="flex flex-col gap-6">
-                <PageHeader title="Akun Admin" breadcrumb={BREADCRUMB}>
-                    <Button variant="primary" onClick={bukaTambah}>
-                        Tambah admin
-                    </Button>
-                </PageHeader>
+                <PageHeader
+                    title="Akun Admin"
+                    breadcrumb={BREADCRUMB}
+                    actions={
+                        <Button variant="primary" onClick={bukaTambah}>
+                            Tambah admin
+                        </Button>
+                    }
+                />
 
                 <p className="text-meta text-slate-600">
                     Total {formatNumber(total)} akun · {formatNumber(totalOwner)} owner ·{' '}

@@ -104,6 +104,45 @@ class AdminSettingTest extends TestCase
         $this->assertNull($this->settings()->get('store_logo'));
     }
 
+    public function test_footer_copyright_dan_favicon_tersimpan(): void
+    {
+        $this->from(route('admin.settings.index'))
+            ->put(route('admin.settings.update'), [
+                'footer_copyright' => '© 2026 Daster Kulot Asli',
+                'store_favicon' => UploadedFile::fake()->image('favicon.png', 64, 64),
+            ])
+            ->assertRedirect(route('admin.settings.index'))
+            ->assertSessionHas('success');
+
+        $this->assertSame('© 2026 Daster Kulot Asli', $this->settings()->get('footer_copyright'));
+
+        $favicon = (string) $this->settings()->get('store_favicon');
+        $this->assertStringStartsWith('/storage/settings/', $favicon);
+        Storage::disk('public')->assertExists(str_replace('/storage/', '', $favicon));
+    }
+
+    public function test_footer_copyright_lebih_200_karakter_ditolak(): void
+    {
+        $this->from(route('admin.settings.index'))
+            ->put(route('admin.settings.update'), [
+                'footer_copyright' => str_repeat('a', 201),
+            ])
+            ->assertSessionHasErrors('footer_copyright');
+
+        $this->assertNull($this->settings()->get('footer_copyright'));
+    }
+
+    public function test_unggahan_favicon_bukan_gambar_ditolak(): void
+    {
+        $this->from(route('admin.settings.index'))
+            ->put(route('admin.settings.update'), [
+                'store_favicon' => UploadedFile::fake()->create('favicon.svg', 10, 'image/svg+xml'),
+            ])
+            ->assertSessionHasErrors('store_favicon');
+
+        $this->assertNull($this->settings()->get('store_favicon'));
+    }
+
     public function test_simpan_konten_landing(): void
     {
         $this->from(route('admin.settings.index'))

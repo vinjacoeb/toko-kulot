@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import PublicLayout from '../../Layouts/PublicLayout';
+import HeroSection from '../../Components/HeroSection';
 import HeroCarousel from '../../Components/HeroCarousel';
 import TrustStrip from '../../Components/TrustStrip';
 import CategoryCard from '../../Components/CategoryCard';
@@ -12,8 +13,10 @@ import { TRUST_ICONS, ChevronRightIcon, ImageOffIcon } from '../../Components/ic
 import { toList } from '../../lib/format';
 
 /**
- * Landing publik — docs/design.md §3.3 (urutan baku seksi 1–9).
- * Konten seksi 2–9 dari `settings.landing_sections` + `carousels` + `faqs`.
+ * Landing publik — docs/design.md §3.3 (urutan baku seksi 1–9) dengan hero
+ * utama `settings.landing_hero` di atas carousel (docs/rencana-perbaikan-5.md
+ * butir 3). Konten seksi berikutnya dari `settings.landing_sections` +
+ * `carousels` + `faqs`.
  * Uang = integer rupiah dari server; format hanya di klien (PRD A13).
  */
 /**
@@ -24,9 +27,36 @@ import { toList } from '../../lib/format';
 const hrefOf = (item) => item?.url ?? item?.href ?? null;
 const imageOf = (item) => item?.image ?? item?.image_url ?? item?.path ?? null;
 
-/** `landing_hero` adalah objek tunggal; `carousels` adalah daftar. Keduanya jadi slide. */
-function toSlides(carousels, hero) {
-    const fromCarousels = toList(carousels)
+/** Teks tampil: string kosong/spasi = tidak ada (jangan render elemen kosong). */
+const textOf = (value) => (typeof value === 'string' && value.trim() !== '' ? value.trim() : null);
+
+/**
+ * `landing_hero` adalah objek tunggal (kontrak §2). Kunci kosong → `null`
+ * sehingga HeroSection tidak dirender sama sekali.
+ */
+function toHero(hero) {
+    const single = Array.isArray(hero) ? hero[0] : hero;
+
+    if (!single || typeof single !== 'object' || single.is_active === false) return null;
+
+    const title = textOf(single.title);
+    const image = imageOf(single);
+
+    if (!title && !image) return null;
+
+    return {
+        title,
+        subtitle: textOf(single.subtitle),
+        image,
+        ctaLabel: textOf(single.cta_label ?? single.ctaLabel),
+        ctaHref: textOf(single.cta_url ?? hrefOf(single)),
+        imageAlt: textOf(single.alt ?? single.image_alt) ?? '',
+    };
+}
+
+/** `carousels` adalah daftar slide; slide tanpa gambar atau nonaktif dilewati. */
+function toSlides(carousels) {
+    return toList(carousels)
         .filter((slide) => slide && slide.is_active !== false && imageOf(slide))
         .map((slide) => ({
             id: slide.id ?? slide.title ?? imageOf(slide),
@@ -34,27 +64,10 @@ function toSlides(carousels, hero) {
             alt: slide.alt ?? slide.title ?? '',
             title: slide.title ?? null,
             subtitle: slide.subtitle ?? null,
-            ctaLabel: slide.cta_label ?? slide.ctaLabel ?? null,
-            ctaHref: slide.cta_url ?? hrefOf(slide),
+            // Kontrak `carousels` memakai `link`/`button_text`; alias lama tetap dibaca.
+            ctaLabel: slide.cta_label ?? slide.button_text ?? slide.ctaLabel ?? null,
+            ctaHref: slide.cta_url ?? slide.link ?? hrefOf(slide),
         }));
-
-    if (fromCarousels.length > 0) return fromCarousels;
-
-    const single = Array.isArray(hero) ? hero[0] : hero;
-    if (!single || typeof single !== 'object' || single.is_active === false) return [];
-    if (!imageOf(single)) return [];
-
-    return [
-        {
-            id: single.id ?? 'hero',
-            image: imageOf(single),
-            alt: single.alt ?? single.title ?? '',
-            title: single.title ?? null,
-            subtitle: single.subtitle ?? null,
-            ctaLabel: single.cta_label ?? single.ctaLabel ?? null,
-            ctaHref: single.cta_url ?? hrefOf(single),
-        },
-    ];
 }
 
 export default function Home({
@@ -76,7 +89,8 @@ export default function Home({
     // Gambar promo dari CMS bisa 404: jatuh ke placeholder lokal, bukan gambar rusak.
     const [promoBroken, setPromoBroken] = useState(false);
 
-    const heroSlides = toSlides(carousels, settings?.landing_hero);
+    const heroSlides = toSlides(carousels);
+    const landingHero = toHero(settings?.landing_hero);
 
     const trustSection = sections?.trust_strip ?? sections?.trust ?? null;
     const trustItems = toList(trustSection)
@@ -134,19 +148,24 @@ export default function Home({
         <PublicLayout settings={settings} cartCount={cartCount} user={user}>
             <Head title={settings?.seo_default_title ?? 'Beranda'} />
 
-            {/* 2. Hero carousel */}
-            <HeroCarousel
-                slides={heroSlides}
-                loading={loading && heroSlides.length === 0}
-                error={error}
-                fallback={{
-                    kicker: tagline,
-                    title: storeName,
-                    subtitle: null,
-                    ctaLabel: 'Lihat Produk',
-                    ctaHref: '/produk',
-                }}
-            />
+            {/* 2. Hero utama dari settings.landing_hero (di atas carousel) */}
+            {landingHero && <HeroSection {...landingHero} />}
+
+            {/* 2b. Carousel sorotan; dilewati bila hero sudah tampil dan tak ada slide */}
+            {(heroSlides.length > 0 || !landingHero) && (
+                <HeroCarousel
+                    slides={heroSlides}
+                    loading={loading && heroSlides.length === 0}
+                    error={error}
+                    fallback={{
+                        kicker: tagline,
+                        title: storeName,
+                        subtitle: null,
+                        ctaLabel: 'Lihat Produk',
+                        ctaHref: '/produk',
+                    }}
+                />
+            )}
 
             {/* 3. Trust strip */}
             {trustItems.length > 0 && (

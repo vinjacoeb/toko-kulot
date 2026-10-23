@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { cn } from '../lib/format';
 import { useScrolled } from '../lib/hooks';
@@ -12,10 +12,24 @@ import {
 
 /**
  * Header sticky — docs/komponen.md §1, docs/design.md §3.1.
- * Struktur: logo kiri → menu → ikon kanan (Cari, Keranjang, Masuk).
+ * Struktur: logo + nama toko kiri → menu → ikon kanan (Cari, Keranjang, Masuk).
+ * Nama toko selalu tampil di samping logo (docs/rencana-perbaikan-5.md baris 15) dan dipotong
+ * dengan `truncate` di mobile agar header tidak melebar; logo dekoratif (`alt=""`).
+ * Tamu >=md: ikon Masuk + tautan teks "Daftar" ke `/register` — deviasi **D14** (design.md §3.1/§11.3,
+ * cabang pembeli login tidak berubah.
  * Scroll > 8px menambah `backdrop-blur-sm` + `border-b`.
  * Mobile: hamburger kiri, logo tengah, keranjang kanan.
+ *
+ * Menu profil (docs/rencana-perbaikan-5.md baris 22, kartu t_326f766b): ikon profil tetap;
+ * hover/focus membuka panel berisi nama, "Riwayat pesanan" (/history), dan "Keluar".
+ * Panel turun di bawah ikon (`top-full` + padding jembatan hover) sehingga tidak menutupi ikon.
+ * Escape menutup dan mengembalikan fokus ke ikon; Tab berpindah ke tautan menu; blur di luar
+ * panel menutup menu. Tamu tetap diarahkan ke `/login` lewat ikon yang sama.
  */
+
+const itemMenu =
+    'flex min-h-touch w-full items-center gap-2 rounded-md px-3 text-left text-meta transition-colors duration-hover hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2';
+
 export default function Header({
     nav = [],
     cartCount = 0,
@@ -30,11 +44,55 @@ export default function Header({
     const scrolled = useScrolled(8);
     const count = Number(cartCount) || 0;
 
-    const wordmark = logoUrl ? (
-        <img src={logoUrl} alt={storeName} className="h-8 w-auto" loading="eager" />
-    ) : (
-        <span className="font-display text-h2 uppercase tracking-[0.02em] text-brand">{storeName}</span>
-    );
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [loggingOut, setLoggingOut] = useState(false);
+    const [logoFailed, setLogoFailed] = useState(false);
+    const menuButtonRef = useRef(null);
+    const skipFocusOpen = useRef(false);
+
+    const displayName = user?.name ?? user?.email ?? 'Akun';
+    const displayEmail = user?.name && user?.email ? user.email : null;
+
+    const tutupMenu = () => setMenuOpen(false);
+
+    const tutupDanFokus = () => {
+        setMenuOpen(false);
+        skipFocusOpen.current = true;
+        menuButtonRef.current?.focus();
+        skipFocusOpen.current = false;
+    };
+
+    const onMenuKeyDown = (event) => {
+        if (event.key !== 'Escape' || !menuOpen) return;
+
+        event.stopPropagation();
+        tutupDanFokus();
+    };
+
+    /* Escape menutup juga saat panel terbuka karena hover (fokus masih di luar). */
+    useEffect(() => {
+        if (!menuOpen) return undefined;
+
+        const onEscape = (event) => {
+            if (event.key === 'Escape') tutupDanFokus();
+        };
+
+        document.addEventListener('keydown', onEscape);
+
+        return () => document.removeEventListener('keydown', onEscape);
+    }, [menuOpen]);
+
+    const keluar = () => {
+        if (loggingOut) return;
+
+        setLoggingOut(true);
+        router.post('/logout', {}, {
+            onFinish: () => {
+                setLoggingOut(false);
+                setMenuOpen(false);
+            },
+        });
+    };
 
     return (
         <header
@@ -50,8 +108,26 @@ export default function Header({
                     </IconButton>
                 </div>
 
-                <Link href="/" className="flex items-center md:mr-6" aria-label={`${storeName} — beranda`}>
-                    {wordmark}
+                {/* Identitas toko: logo + nama di sampingnya (keluhan pemilik #6, docs/rencana-perbaikan-5.md).
+                    Nama dipotong di mobile agar header tidak melebar; teks penuh ada di `title`. */}
+                <Link
+                    href="/"
+                    title={storeName}
+                    aria-label={`${storeName} — beranda`}
+                    className="flex min-w-0 items-center gap-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 md:mr-6"
+                >
+                    {logoUrl && !logoFailed && (
+                        <img
+                            src={logoUrl}
+                            alt=""
+                            className="h-8 w-auto shrink-0"
+                            loading="eager"
+                            onError={() => setLogoFailed(true)}
+                        />
+                    )}
+                    <span className="max-w-[42vw] truncate font-display text-h2 uppercase tracking-[0.02em] text-brand md:max-w-[24rem]">
+                        {storeName}
+                    </span>
                 </Link>
 
                 <nav className="hidden flex-1 items-center gap-1 md:flex" aria-label="Navigasi utama">
@@ -85,27 +161,85 @@ export default function Header({
                     </IconButton>
 
                     {user ? (
-                        <div className="hidden items-center gap-2 md:flex">
-                            <span className="max-w-[120px] truncate text-meta text-ink">
-                                {user.name ?? user.email ?? 'Akun'}
-                            </span>
+                        <div
+                            className="relative hidden md:block"
+                            onMouseEnter={() => setMenuOpen(true)}
+                            onMouseLeave={() => setMenuOpen(false)}
+                            onBlur={(event) => {
+                                if (!event.currentTarget.contains(event.relatedTarget)) setMenuOpen(false);
+                            }}
+                            onKeyDown={onMenuKeyDown}
+                        >
                             <button
                                 type="button"
-                                onClick={() => router.post('/logout')}
-                                className="text-meta text-brand underline underline-offset-4"
+                                ref={menuButtonRef}
+                                aria-haspopup="true"
+                                aria-expanded={menuOpen}
+                                aria-controls="menu-profil"
+                                aria-label={`Menu akun ${displayName}`}
+                                title="Menu akun"
+                                onClick={() => setMenuOpen(true)}
+                                onFocus={(event) => {
+                                    /* Klik mouse juga memicu focus; biarkan klik yang membuka agar
+                                       tidak langsung tertutup oleh toggle. Keyboard (Tab) tetap membuka. */
+                                    if (!skipFocusOpen.current && event.target.matches(':focus-visible')) {
+                                        setMenuOpen(true);
+                                    }
+                                }}
+                                className="inline-flex h-touch w-touch items-center justify-center rounded-md text-brand transition-colors duration-hover hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
                             >
-                                Keluar
+                                <UserIcon size={20} />
                             </button>
+
+                            {menuOpen && (
+                                <div className="absolute right-0 top-full pt-2">
+                                    <div
+                                        id="menu-profil"
+                                        className="w-60 rounded-xl border border-line bg-white p-2 shadow-raised"
+                                    >
+                                        <div className="border-b border-line px-3 pb-3 pt-2">
+                                            <p className="truncate text-label font-semibold text-ink">{displayName}</p>
+                                            {displayEmail && (
+                                                <p className="mt-0.5 truncate text-meta text-slate-500">{displayEmail}</p>
+                                            )}
+                                        </div>
+
+                                        <Link href="/history" onClick={tutupMenu} className={cn(itemMenu, 'mt-2 text-ink')}>
+                                            Riwayat pesanan
+                                        </Link>
+
+                                        <button
+                                            type="button"
+                                            onClick={keluar}
+                                            disabled={loggingOut}
+                                            aria-busy={loggingOut || undefined}
+                                            className={cn(itemMenu, 'text-brand disabled:cursor-not-allowed disabled:opacity-45')}
+                                        >
+                                            {loggingOut ? 'Memproses…' : 'Keluar'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     ) : (
-                        <Link
-                            href={loginHref}
-                            aria-label="Masuk"
-                            title="Masuk"
-                            className="hidden h-touch w-touch items-center justify-center rounded-md text-brand transition-colors duration-hover hover:bg-surface md:inline-flex"
-                        >
-                            <UserIcon size={20} />
-                        </Link>
+                        <>
+                            <Link
+                                href={loginHref}
+                                aria-label="Masuk"
+                                title="Masuk"
+                                className="hidden h-touch w-touch items-center justify-center rounded-md text-brand transition-colors duration-hover hover:bg-surface md:inline-flex"
+                            >
+                                <UserIcon size={20} />
+                            </Link>
+
+                            {/* Pintu Daftar untuk tamu >= md — deviasi D14 (design.md §3.1/§11.3, kartu UIUX t_46901364; kartu t_e3f68f7f). */}
+                            <Link
+                                href="/register"
+                                className="hidden text-meta text-brand underline underline-offset-4 md:inline-flex"
+                            >
+                                Daftar
+                            </Link>
+                        </>
                     )}
                 </div>
             </div>

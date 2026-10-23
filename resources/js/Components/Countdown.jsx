@@ -11,8 +11,10 @@ function remainingMs(expiresAt) {
 }
 
 /**
- * Hitung mundur masa bayar — docs/design.md §4.21, §5.8.
+ * Hitung mundur masa bayar — docs/design.md §4.21, §5.8, §4.4.
  * `expires_at` null / tidak valid = tanpa batas waktu (tanpa hitungan).
+ * Warna: normal `text-ink-soft`; < 3 menit `text-danger` + `animate-pulse`;
+ * berhenti di 00:00 lalu memicu `onExpire` (state `expired` §4.4).
  */
 export default function Countdown({ expiresAt = null, onExpire = null, className = '', label = 'Sisa waktu' }) {
     const [ms, setMs] = useState(() => remainingMs(expiresAt));
@@ -43,16 +45,25 @@ export default function Countdown({ expiresAt = null, onExpire = null, className
     if (ms === null) return null;
 
     const expired = ms <= 0;
+    const soon = !expired && ms <= 3 * 60 * 1000;
     const totalSeconds = Math.floor(ms / 1000);
     const text = `${pad(Math.floor(totalSeconds / 60))}:${pad(totalSeconds % 60)}`;
 
     return (
         <span
-            className={cn('inline-flex items-center gap-1.5 text-meta font-mono', expired ? 'text-danger-strong' : 'text-ink', className)}
+            className={cn(
+                'inline-flex items-center gap-1.5 text-meta font-mono',
+                expired
+                    ? 'text-danger-strong'
+                    : soon
+                      ? 'text-danger animate-pulse motion-reduce:animate-none'
+                      : 'text-ink-soft',
+                className
+            )}
             role="timer"
             aria-live="off"
         >
-            <span className="sr-only">{expired ? 'Waktu pembayaran habis' : label}</span>
+            <span className="sr-only">{expired ? 'Waktu pembayaran habis' : `${label} ${text}`}</span>
             <span aria-hidden="true">{expired ? 'Kedaluwarsa' : text}</span>
         </span>
     );

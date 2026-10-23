@@ -1,0 +1,695 @@
+=====================================================================
+BUKTI QA — Nomor resi pesanan (PRD A15; kontrak §12.17 / §12.18a)
+Kartu     : t_2c9f8b01 (QA2) — profil qatesting
+Tanggal   : 21 Okt 2026, sekitar 19:20 WIB (UTC+7)
+Workspace : C:\Users\LENOVO\Downloads\toko-kulot
+Laporan   : docs/laporan-qa.md §13 "Verifikasi nomor resi"
+Kebijakan : QA hanya menulis di docs/; tidak mengubah kode; tidak menyalakan
+            server; tanpa kredensial/cookie/secret; setiap butir berbukti
+            path:baris. Server pemilik kebetulan sudah hidup di
+            http://127.0.0.1:8000 dan hanya dipakai untuk pemeriksaan tamu
+            read-only.
+=====================================================================
+
+0. CAKUPAN DAN REVISI YANG DIVERIFIKASI
+
+Kode   : routes/admin.php
+         app/Http/Requests/Admin/UpdateOrderTrackingRequest.php
+         app/Http/Controllers/Admin/OrderController.php
+         app/Models/Order.php
+         database/migrations/2026_10_21_000019_add_tracking_number_to_orders_table.php
+         app/Providers/AppServiceProvider.php (limiter admin-write)
+         resources/js/Pages/Admin/Orders/Show.jsx
+         resources/js/Pages/Admin/Orders/partials/InfoResi.jsx
+         resources/js/Pages/Admin/Orders/Index.jsx (regresi daftar)
+         resources/js/Components/{Input,Field,Button}.jsx
+Acuan  : docs/PRD.md (A15 = baris 375; §5.2 = baris 153-155)
+         docs/design.md (baris 869, kartu D12)
+         docs/kontrak-props.md (§12.16 :1344; §12.17 :1364;
+                                 §12.18 :1391; §12.18a :1400-1406)
+         tests/Feature/Admin/AdminSalesTest.php
+Rilis  : public/build/manifest.json + public/build/assets/InfoResi-DZ0JiCIB.js
+         (bundel dibuat ulang beberapa kali oleh kartu lain selama QA berjalan;
+          hash yang teramati dicatat di "Catatan revisi" di bawah)
+
+MD5 (diukur 21 Okt 2026 19:20-19:25 WIB):
+  676e9b9d91d95dc4422c3322cae1c0be  docs/PRD.md
+  d96093a267ff173535e0794de44e43f4  docs/design.md
+  47416f4d71e5a73788de3ae8e440f5d5  docs/kontrak-props.md
+  90eaefa12e871fc1ee81074fff64eb8b  routes/admin.php
+  3c98f433fae95aca6094c5ab84300a60  tests/Feature/Admin/AdminSalesTest.php
+  dc0f58044b10e1074e1ef7d50721e42c  database/migrations/2026_10_21_000019_*.php
+  7c943f2456e5d584fee4877f75e63270  app/Http/Controllers/Admin/OrderController.php
+  69d0018691877cf4c241c038b0a05e15  app/Http/Requests/Admin/UpdateOrderTrackingRequest.php
+  dcfae11f73088626739e02d66119bbbf  app/Models/Order.php
+  ed47c0144feafeddc614401594cec8c5  resources/js/Components/Button.jsx
+  fe5ad888c3091869a7a8339b38703361  resources/js/Pages/Admin/Orders/partials/InfoResi.jsx
+  6322301665baaa69b00bde75069e5ba8  resources/js/Pages/Admin/Orders/Show.jsx
+  7bfdc03cf27b6d5e78c17855f670b615  public/build/assets/InfoResi-DZ0JiCIB.js
+  b84e52b757ad219349b84dedbe605b6e  public/build/manifest.json
+
+Catatan revisi: md5 sumber `InfoResi.jsx` dan `Show.jsx` TIDAK berubah selama
+sesi QA ini (fe5ad888..., 63223016...). Yang berubah hanya bundel rilis karena
+build ulang oleh kartu lain; hash yang teramati:
+  - InfoResi-CFiT0v1S.js (19:10)   -> diverifikasi lebih awal pada sesi ini
+  - InfoResi-BnmVP6Cv.js (19:14:59)
+  - InfoResi-DZ0JiCIB.js (19:22:50) -> dipakai sebagai bukti akhir (E7b)
+Ketiganya memuat string form resi; sumber lebih tua daripada bundel sehingga
+bundel tidak kedaluwarsa terhadap berkas yang diverifikasi. QA tidak melakukan
+build sendiri. Implikasi rilis: build akhir harus dilakukan di gerbang rilis
+(kartu devops), bukan di tengah QA.
+
+PERINTAH YANG DIJALANKAN (ringkas, bukti mentah di E1-E9):
+  E1  php artisan route:list --path=admin/pesanan
+  E2  php artisan test --filter=AdminSalesTest
+  E3  php vendor/phpunit/phpunit/phpunit --colors=never   (suite penuh/regresi)
+  E4  curl tamu (read-only) ke http://127.0.0.1:8000
+  E5  sed/grep baris kode, request, controller, model, migrasi
+  E6  grep design D12 + kontrak §12.17/§12.18a
+  E7  pemeriksaan bundel rilis + manifest
+  E8  pemeriksaan statis observasi O-1 (Validator::validated())
+  E9  catatan harness & batas
+
+-------------------------------------------------------------
+1. STATUS PER BUTIR KONTRAK §12.18a (DoD kartu t_2c9f8b01)
+-------------------------------------------------------------
+
+1. Rute `PATCH /admin/pesanan/{order}/resi` nama `admin.orders.resi` di dalam
+   grup middleware `admin` (+ `throttle:admin-write`)
+   Status : LULUS
+   Bukti  : routes/admin.php:41 (grup `admin`), :139-141 (registrasi rute),
+            :140 (`->middleware('throttle:admin-write')`);
+            app/Providers/AppServiceProvider.php:83-84 (RateLimiter admin-write);
+            route:list (E1) menampilkan 4 rute admin/pesanan termasuk `resi`.
+            Runtime: uji otorisasi AdminSalesTest.php:322 dan pemeriksaan tamu
+            E4 (GET /admin/pesanan/1 -> 302).
+
+2. Field `tracking_number` opsional, teks, maks 60; kolom
+   `string('tracking_number', 60)->nullable()`
+   Status : LULUS
+   Bukti  : UpdateOrderTrackingRequest.php:26 (`['nullable','string','max:60']`);
+            migrasi :15-16.
+
+3. Kosong/`null` berarti menghapus nomor resi
+   Status : LULUS
+   Bukti  : UpdateOrderTrackingRequest.php:41-48 (trim; `''` -> `null`);
+            OrderController.php:144; uji AdminSalesTest.php:273
+            (`test_nomor_resi_kosong_menghapus_nomor_resi`) lulus di E2.
+
+4. Galat `errors.tracking_number` memakai teks beku kontrak
+   ("Nomor resi maksimal 60 karakter." / "Nomor resi harus berupa teks.")
+   Status : LULUS
+   Bukti  : UpdateOrderTrackingRequest.php:36-37; docs/kontrak-props.md:1403-1404;
+            uji batas AdminSalesTest.php:296 (60 karakter diterima + tersimpan,
+            61 karakter ditolak) dan :354 (balasan 422 untuk klien JSON) lulus;
+            tampilan galat InfoResi.jsx:28,66,75 melalui Field.jsx (role=alert)
+            dan Input.jsx (aria-invalid/aria-describedby).
+
+5. Efek hanya kolom `orders.tracking_number`; status pesanan, stok, pembayaran,
+   dan riwayat stok tidak tersentuh; tanpa notifikasi/email
+   Status : LULUS
+   Bukti  : OrderController.php:139 (docblock), :142-146 (hanya `update` +
+            `back()` + flash); uji AdminSalesTest.php:251
+            (`test_simpan_nomor_resi_hanya_mengubah_kolom_resi`) lulus di E2.
+
+6. Sukses: kembali ke halaman asal + `flash.success` = "Nomor resi pesanan
+   diperbarui."
+   Status : LULUS (kontrak) / BELUM DIUJI (tampilan toast nyata di browser)
+   Bukti  : OrderController.php:146; docs/kontrak-props.md:1406;
+            Show.jsx:58-63,233-238 (toast) + :185 (pemasangan InfoResi).
+
+7. Props §12.17 `pesanan.tracking_number` = string|null
+   Status : LULUS
+   Bukti  : OrderController.php:175 (`detail()`), :192
+            (`'tracking_number' => $order->tracking_number`);
+            docs/kontrak-props.md:1364,1373,1389; app/Models/Order.php:135
+            (fillable); uji AdminSalesTest.php:230 lulus di E2.
+
+8. Tampilan kartu D12 (judul, label, hint, baris status, tombol `loading`,
+   tanpa InlineNotice)
+   Status : LULUS (kode + bundel) / BELUM DIUJI (visual, butuh browser)
+   Bukti  : design.md:869 (D12); InfoResi.jsx:63 (label), :65 (hint),
+            :81 (baris status kosong/tersimpan), :85-86 (Button variant primary
+            + teks "Simpan resi"); Button.jsx:48-51 (`loading` -> spinner +
+            "Memproses…"), :80-81 (`disabled={disabled || loading}`,
+            `aria-busy`); tidak ada `InlineNotice` di InfoResi.jsx (grep = 0);
+            bundel rilis memuat "Simpan resi", "Belum ada nomor resi",
+            "Tersimpan: ", dan `/admin/pesanan/${id}/resi` (E7).
+
+-------------------------------------------------------------
+2. REGRESI YANG DIMINTA KARTU
+-------------------------------------------------------------
+
+a. Halaman daftar pesanan (`/admin/pesanan`) tidak terpengaruh:
+   - Kontrak daftar §12.16 tidak memuat `tracking_number`; grep `tracking|resi`
+     pada resources/js/Pages/Admin/Orders/Index.jsx = 0 kecocokan.
+   - Uji daftar & detail AdminSalesTest.php:87 lulus (E2).
+b. Jalur ubah status tetap benar:
+   - AdminSalesTest.php:112 (menolak transisi tidak sah), :125 (pembatalan
+     mengembalikan stok + mencatat riwayat), :157 (pesanan final terkunci)
+     lulus (E2).
+c. Suite penuh sebagai regresi lebar:
+   - E3: OK (218 tests, 1492 assertions), exit 0, tanpa kegagalan.
+
+-------------------------------------------------------------
+3. OBSERVASI (bukan defect) — O-1, prioritas P3, non-blocking
+-------------------------------------------------------------
+
+O-1: Permintaan `PATCH .../resi` yang TIDAK mengirim key `tracking_number`
+     ikut menghapus nomor resi, karena OrderController.php:144 memakai
+     `$request->validated('tracking_number')` yang bernilai `null` bila key
+     tidak ada (Validator::validated() hanya memuat key yang hadir di data —
+     E8), dan kontrak §12.18a:1402 tidak membedakan "field tidak dikirim" dari
+     "field kosong".
+     Dampak praktis: kecil — rute ini hanya dipakai form InfoResi
+     (InfoResi.jsx:49-52) yang selalu mengirim field, sehingga tidak ada
+     pemanggil lain di aplikasi.
+     Usulan (pemilik keputusan: Tech Lead, menyentuh kontrak bukan kode QA):
+     bedakan dengan `$request->has('tracking_number')`, atau nyatakan eksplisit
+     di §12.18a bahwa key yang absen = hapus. QA tidak membuat kartu karena ini
+     keputusan kontrak, bukan cacat implementasi.
+
+Catatan dokumen (semua non-blocking, sudah diketahui sebelumnya):
+  - Kartu QA2 menyebut `docs/brief-qatesting.md`; file itu tidak ada. Brief QA
+    yang aktual adalah `docs/brief-qa.md`. Rujukan usang sudah dicatat pemilik
+    dokumen (lihat catatan techlead pada kartu t_0729c67f).
+  - Rujukan `docs/PRD.md:391` di docs/keputusan-a15-resi.md:29,
+    docs/asumsi.md:320, docs/usulan.md:49 sudah usang; A15 hari ini di
+    docs/PRD.md:375. Sudah tercatat di docs/bukti-uiux-t_0729c67f.txt:81 ->
+    QA tidak menduplikasi kartu, cukup usulan perbaikan 1 baris ke pemilik
+    dokumen.
+  - PRD §5.2 (docs/PRD.md:153-155) belum memuat rute resi; amendemen sudah
+    diusulkan sebagai Q8 (docs/pertanyaan-pemilik.md:49) dan kontrak §12.18a
+    sudah memuatnya. Status: menunggu keputusan pemilik, bukan defect.
+
+-------------------------------------------------------------
+4. BELUM DIUJI (batas cakupan, jujur)
+-------------------------------------------------------------
+
+B1. Semua pemeriksaan visual/interaksi browser: tata letak kartu D12 pada
+    viewport 360-1280px, urutan fokus keyboard, kontras terukur, dan toast
+    nyata di layar -> BELUM DIUJI, butuh browser. (Tidak ada browser otomasi
+    yang dipakai pada kartu ini.)
+B2. `PATCH` nyata dari UI ke database: migrasi `2026_10_21_000019` masih
+    berstatus Pending pada DB pemilik (docs/langkah-pemilik.md:237-248) -> kolom
+    `tracking_number` belum ada, sehingga jalur tulis nyata belum dapat diuji.
+    QA tidak menjalankan migrasi (aturan kartu & pemilik environment).
+B3. `PATCH` terautentikasi lewat HTTP dengan CSRF/sesi admin: BELUM DIUJI (QA
+    tidak memakai kredensial). Pemeriksaan tamu: GET /admin/pesanan/1 -> 302
+    (E4) membuktikan middleware `admin` menjaga rute; PATCH tamu tanpa CSRF ->
+    419 karena CSRF dievaluasi sebelum otorisasi — perilaku normal, bukan
+    defect.
+B4. Target performa/LCP/Lighthouse, aksesibilitas terukur, dan uji beban: di
+    luar cakupan kartu ini.
+
+-------------------------------------------------------------
+5. KESIMPULAN QA UNTUK KARTU INI
+-------------------------------------------------------------
+
+- Tidak ada defect baru pada fitur nomor resi (A15). Semua butir §12.18a yang
+  dapat diverifikasi tanpa browser LULUS dengan bukti path:baris dan/atau uji
+  otomatis yang benar-benar dijalankan.
+- Suite uji terbaru: 218 uji lulus, 0 gagal (1492 assertions), exit 0.
+- Tidak ada kartu perbaikan yang dibuat (tidak ada temuan kode).
+- Sisa risiko: pemeriksaan visual browser (B1) dan jalur tulis nyata ke DB
+  setelah migrasi dijalankan pemilik (B2).
+
+Segmen bukti mentah E1-E9 menyusul di bawah.
+=====================================================================
+
+=====================================================================
+E1 — RUTE NYATA (Keluaran mentah)
+  perintah: php artisan route:list --path=admin/pesanan (21 Okt 19:13 WIB)
+---------------------------------------------------------------------
+
+  GET|HEAD    admin/pesanan ......................................... admin.orders.index › Admin\OrderController@index
+  GET|HEAD    admin/pesanan/{order} ................................... admin.orders.show › Admin\OrderController@show
+  PATCH       admin/pesanan/{order}/resi .............................. admin.orders.resi › Admin\OrderController@resi
+  PATCH       admin/pesanan/{order}/status ........................ admin.orders.status › Admin\OrderController@status
+
+                                                                                                    Showing [4] routes
+
+
+  grep -n '### 12.16' docs/kontrak-props.md
+1344:### 12.16 GET `/admin/pesanan` — `admin.orders.index` — `Admin/Orders/Index`
+
+=====================================================================
+E2 — UJI TERFOKUS AdminSalesTest (Keluaran mentah)
+  perintah: php artisan test --filter=AdminSalesTest
+---------------------------------------------------------------------
+
+   PASS  Tests\Feature\Admin\AdminSalesTest
+  ✓ daftar dan detail pesanan menampilkan langkah status berikut                                                 2.89s  
+  ✓ ubah status menolak transisi tidak sah                                                                       0.20s  
+  ✓ pembatalan mengembalikan stok dan mencatat riwayat                                                           0.16s  
+  ✓ pesanan final tidak bisa diubah lagi                                                                         0.12s  
+  ✓ daftar akun menandai akun sendiri                                                                            0.12s  
+  ✓ akun tidak bisa menonaktifkan diri sendiri                                                                   0.15s  
+  ✓ tambah akun admin dan tolak email ganda                                                                      0.14s  
+  ✓ detail pesanan memuat props nomor resi                                                                       0.15s  
+  ✓ simpan nomor resi hanya mengubah kolom resi                                                                  0.13s  
+  ✓ nomor resi kosong menghapus nomor resi                                                                       0.12s  
+  ✓ nomor resi lebih dari 60 karakter ditolak                                                                    0.15s  
+  ✓ bukan admin tidak bisa menyimpan nomor resi                                                                  0.11s  
+  ✓ migrasi nomor resi punya up dan down                                                                         0.10s  
+  ✓ nomor resi terlalu panjang membalas 422 untuk klien json                                                     0.13s  
+
+  Tests:    14 passed (113 assertions)
+  Duration: 5.86s
+
+
+  daftar uji (grep -n 'public function test_')
+87:    public function test_daftar_dan_detail_pesanan_menampilkan_langkah_status_berikut(): void
+112:    public function test_ubah_status_menolak_transisi_tidak_sah(): void
+125:    public function test_pembatalan_mengembalikan_stok_dan_mencatat_riwayat(): void
+157:    public function test_pesanan_final_tidak_bisa_diubah_lagi(): void
+172:    public function test_daftar_akun_menandai_akun_sendiri(): void
+185:    public function test_akun_tidak_bisa_menonaktifkan_diri_sendiri(): void
+201:    public function test_tambah_akun_admin_dan_tolak_email_ganda(): void
+230:    public function test_detail_pesanan_memuat_props_nomor_resi(): void
+251:    public function test_simpan_nomor_resi_hanya_mengubah_kolom_resi(): void
+273:    public function test_nomor_resi_kosong_menghapus_nomor_resi(): void
+296:    public function test_nomor_resi_lebih_dari_60_karakter_ditolak(): void
+322:    public function test_bukan_admin_tidak_bisa_menyimpan_nomor_resi(): void
+340:    public function test_migrasi_nomor_resi_punya_up_dan_down(): void
+354:    public function test_nomor_resi_terlalu_panjang_membalas_422_untuk_klien_json(): void
+
+=====================================================================
+E3 — SUITE PENUH / REGRESI (Keluaran mentah)
+  perintah: php vendor/phpunit/phpunit/phpunit --colors=never
+  exit code: 0
+---------------------------------------------------------------------
+PHPUnit 11.5.57 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.3.32
+Configuration: C:\Users\LENOVO\Downloads\toko-kulot\phpunit.xml
+
+...............................................................  63 / 218 ( 28%)
+............................................................... 126 / 218 ( 57%)
+............................................................... 189 / 218 ( 86%)
+.............................                                   218 / 218 (100%)
+
+Time: 01:07.801, Memory: 68.00 MB
+
+OK (218 tests, 1492 assertions)
+
+=====================================================================
+E4 — PEMERIKSAAN HTTP TAMU, READ-ONLY (server pemilik sudah hidup)
+  catatan: tanpa kredensial; hanya GET/PATCH tanpa CSRF milik QA sendiri
+---------------------------------------------------------------------
+$ curl -s -o /dev/null -w 'GET / -> %{http_code}' http://127.0.0.1:8000/
+GET / -> 200
+$ curl -s -D - -o /dev/null http://127.0.0.1:8000/admin/pesanan/1
+HTTP/1.1 302 Found
+Location: http://127.0.0.1:8000/admin/login
+$ curl -s -o /dev/null -w '%{http_code}' -X PATCH http://127.0.0.1:8000/admin/pesanan/1/resi
+PATCH /admin/pesanan/1/resi (tamu, tanpa CSRF) -> 419
+$ curl -s -o /dev/null -w '%{http_code}' -X PATCH http://127.0.0.1:8000/admin/pesanan/1/status
+PATCH /admin/pesanan/1/status (tamu, tanpa CSRF) -> 419
+
+  (ulang, tanpa pipe, berkas header penuh)
+$ curl -s -D header -o /dev/null http://127.0.0.1:8000/admin/pesanan/1
+$ grep -i "^HTTP/\|^location" header
+HTTP/1.1 302 Found
+Location: http://127.0.0.1:8000/admin/login
+# header lain yang aman: Content-Type: text/html; charset=utf-8, Vary: X-Inertia
+# (dua baris Set-Cookie sengaja TIDAK dikutip: berisi nilai sesi -> disanitasi)
+
+=====================================================================
+E5 — POTONGAN KODE (sed/grep, verbatim)
+---------------------------------------------------------------------
+$ sed -n '137,142p' routes/admin.php
+        ->name('orders.status');
+    // Nomor resi manual (PRD A15, kontrak props §12.18a).
+    Route::patch('/pesanan/{order}/resi', [OrderController::class, 'resi'])
+        ->middleware('throttle:admin-write')
+        ->name('orders.resi');
+
+
+$ sed -n '38,50p' routes/admin.php   # grup middleware admin + throttle
+});
+
+// Terlindungi: middleware `admin` (guard admin + akun aktif).
+Route::middleware('admin')->group(function () {
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    // Pesan masuk dari formulir kontak (kontrak props §10.1–§10.3).
+    Route::get('/pesan-masuk', [MessageController::class, 'index'])->name('messages.index');
+    Route::patch('/pesan-masuk/{message}/baca', [MessageController::class, 'read'])
+        ->middleware('throttle:admin-write')
+        ->name('messages.read');
+
+$ sed -n '150,172p' app/Http/Controllers/Admin/OrderController.php
+     * @return array<string, mixed>
+     */
+    private function row(Order $order): array
+    {
+        return [
+            'id' => $order->id,
+            'code' => $order->code,
+            'status' => $order->status,
+            'status_label' => Order::statusLabel($order->status),
+            'payment_status' => $order->payment_status,
+            'payment_label' => $this->paymentLabel($order->payment_status),
+            'customer_name' => $order->customer_name,
+            'customer_phone' => $order->customer_phone,
+            'customer_email' => $order->customer_email,
+            'total' => (int) $order->total,
+            'items_count' => (int) ($order->items_count ?? 0),
+            'paid_at' => $order->paid_at?->toIso8601String(),
+            'created_at' => $order->created_at?->toIso8601String(),
+            'url' => '/admin/pesanan/'.$order->id,
+        ];
+    }
+
+    /**
+
+$ sed -n '24,50p' app/Http/Requests/Admin/UpdateOrderTrackingRequest.php
+    {
+        return [
+            'tracking_number' => ['nullable', 'string', 'max:60'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'tracking_number.string' => 'Nomor resi harus berupa teks.',
+            'tracking_number.max' => 'Nomor resi maksimal 60 karakter.',
+        ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $resi = $this->input('tracking_number');
+
+        if (is_string($resi)) {
+            $resi = trim($resi);
+
+            $this->merge(['tracking_number' => $resi === '' ? null : $resi]);
+        }
+    }
+
+$ sed -n '175,195p' app/Http/Controllers/Admin/OrderController.php
+    private function detail(Order $order): array
+    {
+        $payment = $order->payment;
+
+        return [
+            'id' => $order->id,
+            'code' => $order->code,
+            'status' => $order->status,
+            'status_label' => Order::statusLabel($order->status),
+            'payment_status' => $order->payment_status,
+            'payment_label' => $this->paymentLabel($order->payment_status),
+            'subtotal' => (int) $order->subtotal,
+            'shipping_cost' => (int) $order->shipping_cost,
+            'discount' => (int) $order->discount,
+            'total' => (int) $order->total,
+            'payment_method' => $order->payment_method,
+            'notes' => $order->notes,
+            'tracking_number' => $order->tracking_number,
+            'customer' => [
+                'name' => $order->customer_name,
+                'phone' => $order->customer_phone,
+
+$ sed -n '13,25p' database/migrations/2026_10_21_000019_add_tracking_number_to_orders_table.php
+    public function up(): void
+    {
+        Schema::table('orders', function (Blueprint $table) {
+            $table->string('tracking_number', 60)->nullable()->after('paid_at');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('orders', function (Blueprint $table) {
+            $table->dropColumn('tracking_number');
+        });
+    }
+
+$ sed -n '128,137p' app/Models/Order.php
+        'customer_phone',
+        'customer_email',
+        'shipping_address',
+        'city',
+        'postal_code',
+        'notes',
+        'paid_at',
+        'tracking_number',
+    ];
+
+
+=====================================================================
+E6 — ACUAN DESAIN & KONTRAK (verbatim)
+---------------------------------------------------------------------
+$ sed -n '869p' docs/design.md
+| D12 | Kartu **"Pengiriman"** pada halaman detail pesanan `/admin/pesanan/{order}` (§5.12) mendapat **isian nomor resi** (PRD A15) yang belum digambar di spesifikasi desain — elemen baru, bukan penyimpangan dari elemen lama | Keputusan techlead kartu `t_394b40ba` (`docs/keputusan-a15-resi.md` §1): kolom `orders.tracking_number` string(60) dengan `null` = belum diisi, rute `PATCH /admin/pesanan/{order}/resi` (`admin.orders.resi`) + `Admin\OrderController@resi`; kontrak `docs/kontrak-props.md` §12.17 (`pesanan.tracking_number`: string atau `null`) dan §12.18a (validasi `nullable` `string` `max:60`, `''` → `null` = menghapus, galat `errors.tracking_number` = `Nomor resi maksimal 60 karakter.` / `Nomor resi harus berupa teks.`); dasar PRD A15 (`docs/PRD.md:375`: "Tidak ada integrasi kurir; nomor resi diisi manual di detail pesanan"); F5 `t_018b2723` hanya bisa merender notice "Nomor resi belum bisa diisi" (`resources/js/Pages/Admin/Orders/partials/InfoResi.jsx:18-21`), jadi bentuk isian belum punya acuan | **Diterima sebagai deviasi — asal PRD A15; keputusan + teks beku kartu `t_394b40ba`; pengerjaan tampilan kartu `t_d1028202` (F5b).** Alasan: A15 adalah permintaan PRD yang belum punya gambaran tampilan, sedangkan F5b sudah menulis kode; tanpa baris ini frontend menulis isian tanpa acuan. Batas: **tanpa token, warna, atau komponen baru** — hanya komponen yang sudah ada: §4.5 `Field` + `Input` (label `Nomor resi`, bantuan `text-meta text-slate-500` di latar putih kartu, galat server `errors.tracking_number` `text-meta text-danger-strong` di bawah input) dan §4.1 `Button` `primary` (`Simpan resi`; `disabled` + label "Memproses…" selama menyimpan); baris status `text-meta text-slate-500` = `Belum ada nomor resi.` (kosong) / `Tersimpan: <nomor>` (terisi). Teks beku tambahan: bantuan `Isi nomor resi dari ekspedisi setelah paket dikirim. Kosongkan untuk menghapus.`. Sukses mengikuti `flash.success` server (§12.18a `Nomor resi pesanan diperbarui.`) — tanpa toast atau state halaman baru; `InlineNotice` lama di `InfoResi.jsx` **dihapus**. Di luar baris ini (belum digambar, usulan `docs/usulan.md` U5): resi tampil di halaman pembeli, tautan lacak kurir, integrasi ekspedisi, riwayat resi |
+$ sed -n '1364,1374p' docs/kontrak-props.md
+### 12.17 GET `/admin/pesanan/{order}` — `admin.orders.show` — `Admin/Orders/Show`
+
+```json
+{
+  "pesanan": {
+    "id": 5, "code": "TK-20261020-0001", "status": "dibayar", "status_label": "Dibayar",
+    "payment_status": "settlement", "payment_label": "Lunas",
+    "subtotal": 170000, "shipping_cost": 5000, "discount": 0, "total": 175000,
+    "payment_method": "qris", "notes": null,
+    "tracking_number": "JX1234567890",
+    "customer": {"name": "…", "phone": "…", "email": "…", "address": "…", "city": "…", "postal_code": "…"},
+$ sed -n '1387,1390p' docs/kontrak-props.md
+dipilih dari status sekarang (rantai `pending`→`dibayar`→`diproses`→`dikirim`→`selesai`, plus
+`batal` selama belum final; `selesai` dan `batal` tidak punya lanjutan).
+`tracking_number` = nomor resi kurir yang diisi manual admin (PRD A15); `null` bila belum diisi.
+
+$ sed -n '1399,1407p' docs/kontrak-props.md
+
+### 12.18a PATCH `/admin/pesanan/{order}/resi` — `admin.orders.resi`
+
+Field: `tracking_number` (opsional, teks, maks 60; kosong/`null` = menghapus nomor resi).
+Galat: `errors.tracking_number` (`Nomor resi maksimal 60 karakter.` /
+`Nomor resi harus berupa teks.`). Efek: hanya `orders.tracking_number` yang berubah — status
+pesanan, stok, dan pembayaran tidak tersentuh; tanpa email/notifikasi.
+Sukses: kembali ke halaman asal + `flash.success` = `Nomor resi pesanan diperbarui.`
+
+$ sed -n '375p;153,155p' docs/PRD.md
+| GET | `/admin/pesanan` | `admin.orders.index` | Daftar pesanan + filter status |
+| GET | `/admin/pesanan/{order}` | `admin.orders.show` | Detail pesanan, bukti bayar, aksi ubah status |
+| PATCH | `/admin/pesanan/{order}/status` | `admin.orders.status` | Ubah status (pending→dibayar→diproses→dikirim→selesai/batal) |
+| A15 | Kurir & resi | Tidak ada integrasi kurir; nomor resi diisi manual di detail pesanan | Perlu integrasi pengiriman |
+
+=====================================================================
+E7 — BUNDEL RILIS (verbatim)
+---------------------------------------------------------------------
+$ ls -la public/build/assets/ | grep InfoResi
+-rw-r--r-- 1 LENOVO 197121   1383 Oct 21 19:22 InfoResi-DZ0JiCIB.js
+$ stat -c '%y %n' public/build/manifest.json resources/js/Pages/Admin/Orders/partials/InfoResi.jsx
+2026-10-21 19:22:50.256189700 +0700 public/build/manifest.json
+2026-10-21 19:04:56.793350400 +0700 resources/js/Pages/Admin/Orders/partials/InfoResi.jsx
+$ md5sum public/build/assets/InfoResi-BnmVP6Cv.js            # nama bundel 19:14:59
+md5sum: public/build/assets/InfoResi-BnmVP6Cv.js: No such file or directory
+$ grep -c 'Simpan resi' public/build/assets/InfoResi-BnmVP6Cv.js
+grep: public/build/assets/InfoResi-BnmVP6Cv.js: No such file or directory
+# sebab: berkas itu sudah tergantikan oleh build 19:22:50 -> diukur ulang di E7b
+$ sed -n '444,448p;490,494p' public/build/manifest.json
+  "resources/js/Pages/Admin/Orders/Show.jsx": {
+    "file": "assets/Show-Btl0lsoh.js",
+    "name": "Show",
+    "src": "resources/js/Pages/Admin/Orders/Show.jsx",
+    "isDynamicEntry": true,
+  "resources/js/Pages/Admin/Orders/partials/InfoResi.jsx": {
+    "file": "assets/InfoResi-DZ0JiCIB.js",
+    "name": "InfoResi",
+    "src": "resources/js/Pages/Admin/Orders/partials/InfoResi.jsx",
+    "isDynamicEntry": true,
+$ grep -c 'orders/Index' public/build/manifest.json          # pola huruf kecil (salah)
+0
+# catatan: 0 di atas adalah false negative (pola tidak cocok huruf besar);
+# pengukuran yang benar ada di E7b: grep -c 'Orders/Index.jsx' = 3
+$ grep -c 'resi\|tracking' resources/js/Pages/Admin/Orders/Index.jsx
+0
+# benar: halaman daftar pesanan tidak menyentuh resi (lihat juga regresi §2)
+
+=====================================================================
+E7b — VERIFIKASI ULANG BUNDEL SETELAH BUILD ULANG 19:22:50 (verbatim)
+---------------------------------------------------------------------
+$ ls --time-style=+%H:%M:%S -la public/build/assets/ | grep -E "InfoResi|Show-|Button"
+-rw-r--r-- 1 LENOVO 197121   1274 19:22:50 Button-B9zQFD67.js
+-rw-r--r-- 1 LENOVO 197121    648 19:22:50 IconButton-K76vaPjI.js
+-rw-r--r-- 1 LENOVO 197121   1383 19:22:50 InfoResi-DZ0JiCIB.js
+-rw-r--r-- 1 LENOVO 197121   6736 19:22:50 Show-71ynVez3.js
+-rw-r--r-- 1 LENOVO 197121   5918 19:22:50 Show-Btl0lsoh.js
+-rw-r--r-- 1 LENOVO 197121  14040 19:22:50 Show-j5_kyYDd.js
+$ md5sum public/build/assets/InfoResi-DZ0JiCIB.js resources/js/Pages/Admin/Orders/partials/InfoResi.jsx resources/js/Pages/Admin/Orders/Show.jsx
+7bfdc03cf27b6d5e78c17855f670b615 *public/build/assets/InfoResi-DZ0JiCIB.js
+fe5ad888c3091869a7a8339b38703361 *resources/js/Pages/Admin/Orders/partials/InfoResi.jsx
+6322301665baaa69b00bde75069e5ba8 *resources/js/Pages/Admin/Orders/Show.jsx
+$ grep -o "Simpan resi" public/build/assets/InfoResi-DZ0JiCIB.js
+Simpan resi
+$ grep -o "Belum ada nomor resi" public/build/assets/InfoResi-DZ0JiCIB.js
+Belum ada nomor resi
+$ grep -o "Tersimpan: \${[a-z]}" public/build/assets/InfoResi-DZ0JiCIB.js
+Tersimpan: ${e}
+$ grep -o "admin/pesanan/\${[a-z]}/resi" public/build/assets/InfoResi-DZ0JiCIB.js
+admin/pesanan/${s}/resi
+$ grep -o "Memproses…" public/build/assets/Button-*.js
+Memproses…
+$ grep -c 'Orders/Index.jsx' public/build/manifest.json
+3
+$ grep -c 'Orders/Show.jsx' public/build/manifest.json
+3
+$ sed -n '490,494p' public/build/manifest.json
+  "resources/js/Pages/Admin/Orders/partials/InfoResi.jsx": {
+    "file": "assets/InfoResi-DZ0JiCIB.js",
+    "name": "InfoResi",
+    "src": "resources/js/Pages/Admin/Orders/partials/InfoResi.jsx",
+    "isDynamicEntry": true,
+# kesimpulan E7b: bundel rilis 19:22:50 memuat kode resi (label tombol, teks
+# status, URL PATCH) untuk sumber yang md5-nya identik dengan yang direview.
+
+=====================================================================
+E8 — OBSERVASI O-1: FormRequest/Validator::validated() (verbatim, vendor)
+---------------------------------------------------------------------
+$ sed -n '243,247p' vendor/laravel/framework/src/Illuminate/Foundation/Http/FormRequest.php
+public function validated($key = null, $default = null)
+    {
+        return data_get($this->validator->validated(), $key, $default);
+    }
+# -> key yang TIDAK ada di data menghasilkan $default = null, lalu dipakai
+#    OrderController.php:144 sebagai nilai update (menghapus resi).
+$ grep -rn 'function validated' vendor/laravel/framework/src/Illuminate/Foundation/Http/FormRequest.php
+243:    public function validated($key = null, $default = null)
+$ grep -rn 'function validated' vendor/laravel/framework/src/Illuminate/Http/Request.php
+$ sed -n '654,670p' vendor/laravel/framework/src/Illuminate/Validation/Validator.php
+        foreach ($this->getRules() as $key => $rules) {
+            $value = data_get($this->getData(), $key, $missingValue);
+
+            if ($this->excludeUnvalidatedArrayKeys &&
+                (in_array('array', $rules) || in_array('list', $rules)) &&
+                $value !== null &&
+                ! empty(preg_grep('/^'.preg_quote($key, '/').'\.+/', array_keys($this->getRules())))) {
+                continue;
+            }
+
+            if ($value !== $missingValue) {
+                Arr::set($results, $key, $value);
+            }
+        }
+
+        return $this->replacePlaceholders($results);
+    }
+
+=====================================================================
+E9 — CATATAN HARNESS & BATAS (verbatim)
+---------------------------------------------------------------------
+$ cat scratch/phpsqlite/99-sqlite.ini
+extension=pdo_sqlite
+extension=sqlite3
+$ PHP_INI_SCAN_DIR=<scratch>/phpsqlite php -m | grep -i sqlite
+pdo_sqlite
+sqlite3
+$ php -v
+PHP 8.3.32 (cli) (built: Jul  1 2026 09:40:05) (ZTS Visual C++ 2019 x64)
+Copyright (c) The PHP Group
+
+  Catatan: pada sesi ini 'php artisan test' tanpa filter mengembalikan
+  'stdin is not a tty' (exit 1, tanpa output uji); suite dijalankan lewat
+  'php vendor/phpunit/phpunit/phpunit' dengan stdin /dev/null. Ini
+  keterbatasan harness, bukan cacat produk.
+  Ekstensi pdo_sqlite/sqlite3 diaktifkan lewat PHP_INI_SCAN_DIR menunjuk
+  berkas ini QA di scratch; konfigurasi php.ini pemilik tidak diubah.
+
+  Berkas QA yang ditulis untuk kartu ini:
+    docs/bukti-qa-t_2c9f8b01.txt (berkas ini)
+    docs/laporan-qa.md (§13 Verifikasi nomor resi)
+  QA tidak mengubah kode aplikasi, .env, atau dokumen PRD/design/kontrak.
+=====================================================================
+
+=====================================================================
+E10 — VERIFIKASI ULANG OLEH RUN PENYELESAIAN (21 Okt 2026, ~20:10 WIB)
+  Run ini menemukan artefak E1-E9 sudah ditulis oleh percobaan sebelumnya
+  yang berhenti tanpa penutupan papan. Tidak ada klaim yang dipercaya
+  begitu saja: seluruh butir diukur ulang dari workspace, bukan disalin.
+---------------------------------------------------------------------
+
+A. Integritas berkas yang direview (md5 ulang, semuanya IDENTIK
+   dengan blok "MD5" di kepala berkas ini):
+  90eaefa12e871fc1ee81074fff64eb8b  routes/admin.php
+  69d0018691877cf4c241c038b0a05e15  app/Http/Requests/Admin/UpdateOrderTrackingRequest.php
+  7c943f2456e5d584fee4877f75e63270  app/Http/Controllers/Admin/OrderController.php
+  dcfae11f73088626739e02d66119bbbf  app/Models/Order.php
+  dc0f58044b10e1074e1ef7d50721e42c  database/migrations/2026_10_21_000019_*.php
+  fe5ad888c3091869a7a8339b38703361  resources/js/Pages/Admin/Orders/partials/InfoResi.jsx
+  6322301665baaa69b00bde75069e5ba8  resources/js/Pages/Admin/Orders/Show.jsx
+  47416f4d71e5a73788de3ae8e440f5d5  docs/kontrak-props.md
+  676e9b9d91d95dc4422c3322cae1c0be  docs/PRD.md
+  d96093a267ff173535e0794de44e43f4  docs/design.md
+  7bfdc03cf27b6d5e78c17855f670b615  public/build/assets/InfoResi-DZ0JiCIB.js
+  b84e52b757ad219349b84dedbe605b6e  public/build/manifest.json
+  -> sumber tidak berubah sejak bukti diambil; bundel dibangun ulang
+     19:25:42 oleh kartu lain tetapi isinya sama (md5 identik).
+
+B. Titik acuan yang diperiksa ulang (bukan salinan E5/E6):
+  - routes/admin.php:41 `Route::middleware('admin')->group(function () {`
+    (KOREKSI: §13.1 versi pertama menulis :34; baris 34 sebenarnya
+     `Route::get('/login', ...)`. Diperbaiki menjadi :41.)
+  - routes/admin.php:139-141 rute `resi` + :140 `throttle:admin-write`.
+  - bootstrap/app.php:14-18 prefix `admin` + name prefix `admin`.
+  - UpdateOrderTrackingRequest.php:26 rules; :36-37 pesan; :41-49
+    prepareForValidation ('' -> null).
+  - OrderController.php:142-147 `resi()`; :144 update satu kolom;
+    :146 `back()->with('success','Nomor resi pesanan diperbarui.')`;
+    :192 `'tracking_number' => $order->tracking_number` (props §12.17).
+  - Order.php:135 `'tracking_number'` di `$fillable`.
+  - migrasi :16 `string('tracking_number', 60)->nullable()->after('paid_at')`,
+    :23 `dropColumn` di `down()`.
+  - InfoResi.jsx:63 label / :65 hint / :80-82 baris status / :85-86
+    `Button variant="primary"` + "Simpan resi" / :28 galat
+    `errors.tracking_number` / :49-57 `router.patch` + `preserveScroll` +
+    `onStart`/`onFinish` (state loading) — baris terbaca apa adanya.
+  - Show.jsx:185 `<InfoResi pesanan={data} />`.
+  - Resources/Index.jsx: `grep -c 'resi\|tracking'` = 0 (daftar bersih).
+  - docs/kontrak-props.md:1364 §12.17, :1373 `tracking_number`,
+    :1389 penjelasan null, :1400 §12.18a, :1402-1406 teks beku.
+  - docs/PRD.md:375 baris A15; docs/design.md:869 kartu D12.
+  - tests/Feature/Admin/AdminSalesTest.php: nomor baris 14 uji resi/pesanan
+    sama seperti E2 (:230, :251, :273, :296, :322, :340, :354) dan isi
+    assertion-nya diperiksa satu per satu (60 diterima/61 ditolak/array
+    ditolak dengan pesan beku; '' dan null menghapus; hanya
+    tracking_number berubah sementara status, payment_status, stok, dan
+    StockMovement tidak; tamu + pembeli -> /admin/login dengan resi tetap
+    null; `down()`+`up()` migrasi; 422 + `errors.tracking_number.0`).
+
+C. Perintah yang dijalankan ULANG oleh run ini (keluaran mentah, ringkas):
+  $ php artisan route:list --path=admin/pesanan
+    -> 4 rute; `PATCH admin/pesanan/{order}/resi ... admin.orders.resi ›
+       Admin\OrderController@resi` (identik dengan E1)
+  $ php vendor/phpunit/phpunit/phpunit --filter=AdminSalesTest
+    -> OK (14 tests, 113 assertions), Time 00:01.973, exit 0
+  $ php vendor/phpunit/phpunit/phpunit      (suite penuh, regresi lebar)
+    -> OK (218 tests, 1492 assertions), Time 01:03.206, exit 0
+  $ curl tamu (read-only, tanpa kredensial; server pemilik hidup)
+    -> GET / = 200
+    -> GET /admin/pesanan/1 = 302 -> http://127.0.0.1:8000/admin/login
+    -> PATCH /admin/pesanan/1/resi   (tanpa CSRF) = 419
+    -> PATCH /admin/pesanan/1/status (tanpa CSRF) = 419
+  $ grep -o 'admin/pesanan/${s}/resi' public/build/assets/InfoResi-DZ0JiCIB.js
+    -> admin/pesanan/${s}/resi   (bundel memang memuat jalur simpan resi)
+  Harness: ext pdo_sqlite/sqlite3 lewat PHP_INI_SCAN_DIR ke berkas QA di
+  scratch; phpunit.xml memakai DB_CONNECTION=sqlite + DB_DATABASE=:memory:
+  sehingga DB MySQL pemilik tidak disentuh. Tidak ada migrasi, build,
+  server, atau seed yang dijalankan. Tidak ada berkas aplikasi diubah
+  (`git status` hanya menampilkan perubahan milik kartu lain yang sudah
+  ada sebelum run ini).
+
+D. Kesimpulan verifikasi ulang: tidak ada temuan baru; seluruh butir
+   §12.18a pada §13 laporan tetap berstatus sama (Lulus / belum diuji
+   untuk yang butuh browser + sesi admin). Satu koreksi sitasi baris
+   (§13.1 rute) dan satu koreksi kecil ini adalah satu-satunya perubahan
+   yang dibuat run penyelesaian.
+=====================================================================

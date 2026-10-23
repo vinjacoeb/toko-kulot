@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Services\Midtrans\MidtransApi;
+use App\Services\Midtrans\SdkMidtransApi;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -16,7 +18,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Seam jaringan Midtrans (kartu t_9f4b6aee): jalur charge/status memakai
+        // interface ini agar test bisa memakai fake tanpa memanggil Midtrans.
+        $this->app->bind(MidtransApi::class, SdkMidtransApi::class);
     }
 
     /**

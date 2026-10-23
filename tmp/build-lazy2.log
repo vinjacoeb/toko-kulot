@@ -1,0 +1,84 @@
+
+> build
+> vite build
+
+[36mvite v6.4.4 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 730 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mpublic/build/[22m[32mmanifest.json                         [39m[1m[2m 33.29 kB[22m[1m[22m[2m │ gzip:   2.92 kB[22m
+[2mpublic/build/[22m[35massets/app-D9lQjX7G.css               [39m[1m[2m 58.35 kB[22m[1m[22m[2m │ gzip:  10.57 kB[22m
+[2mpublic/build/[22m[36massets/Skeleton-34GP2QZo.js           [39m[1m[2m  0.40 kB[22m[1m[22m[2m │ gzip:   0.30 kB[22m
+[2mpublic/build/[22m[36massets/midtrans-DhMFajGi.js           [39m[1m[2m  0.47 kB[22m[1m[22m[2m │ gzip:   0.29 kB[22m
+[2mpublic/build/[22m[36massets/Badge-DfCY7Ji4.js              [39m[1m[2m  0.52 kB[22m[1m[22m[2m │ gzip:   0.32 kB[22m
+[2mpublic/build/[22m[36massets/Spinner-CdQ4j3Ba.js            [39m[1m[2m  0.55 kB[22m[1m[22m[2m │ gzip:   0.38 kB[22m
+[2mpublic/build/[22m[36massets/Input-BJuNht8k.js              [39m[1m[2m  0.57 kB[22m[1m[22m[2m │ gzip:   0.39 kB[22m
+[2mpublic/build/[22m[36massets/KartuBagian-BMgQgKv4.js        [39m[1m[2m  0.59 kB[22m[1m[22m[2m │ gzip:   0.35 kB[22m
+[2mpublic/build/[22m[36massets/Textarea-DmXbJthc.js           [39m[1m[2m  0.60 kB[22m[1m[22m[2m │ gzip:   0.40 kB[22m
+[2mpublic/build/[22m[36massets/IconButton-FhTqdtNg.js         [39m[1m[2m  0.65 kB[22m[1m[22m[2m │ gzip:   0.41 kB[22m
+[2mpublic/build/[22m[36massets/Field-CghKqoH1.js              [39m[1m[2m  0.66 kB[22m[1m[22m[2m │ gzip:   0.38 kB[22m
+[2mpublic/build/[22m[36massets/EmptyState-BxLNbPi6.js         [39m[1m[2m  0.78 kB[22m[1m[22m[2m │ gzip:   0.43 kB[22m
+[2mpublic/build/[22m[36massets/StatusBadge-CDdxxaN6.js        [39m[1m[2m  0.88 kB[22m[1m[22m[2m │ gzip:   0.49 kB[22m
+[2mpublic/build/[22m[36massets/VariantChip-DCgpxdyg.js        [39m[1m[2m  0.89 kB[22m[1m[22m[2m │ gzip:   0.54 kB[22m
+[2mpublic/build/[22m[36massets/ErrorState-Gwr2hUPq.js         [39m[1m[2m  0.91 kB[22m[1m[22m[2m │ gzip:   0.51 kB[22m
+[2mpublic/build/[22m[36massets/Select-CpgLjWeK.js             [39m[1m[2m  0.95 kB[22m[1m[22m[2m │ gzip:   0.58 kB[22m
+[2mpublic/build/[22m[36massets/Create-CVZ-fZ-H.js             [39m[1m[2m  0.99 kB[22m[1m[22m[2m │ gzip:   0.56 kB[22m
+[2mpublic/build/[22m[36massets/SyncPaymentButton-D0QJZ0vf.js  [39m[1m[2m  1.01 kB[22m[1m[22m[2m │ gzip:   0.62 kB[22m
+[2mpublic/build/[22m[36massets/Breadcrumb-BLzG-hb3.js         [39m[1m[2m  1.05 kB[22m[1m[22m[2m │ gzip:   0.49 kB[22m
+[2mpublic/build/[22m[36massets/format-CZMha6Op.js             [39m[1m[2m  1.06 kB[22m[1m[22m[2m │ gzip:   0.43 kB[22m
+[2mpublic/build/[22m[36massets/Accordion-Dz-abdKl.js          [39m[1m[2m  1.07 kB[22m[1m[22m[2m │ gzip:   0.59 kB[22m
+[2mpublic/build/[22m[36massets/Edit-z8DDi1Ji.js               [39m[1m[2m  1.10 kB[22m[1m[22m[2m │ gzip:   0.64 kB[22m
+[2mpublic/build/[22m[36massets/InlineNotice-J-ChY_Nk.js       [39m[1m[2m  1.18 kB[22m[1m[22m[2m │ gzip:   0.61 kB[22m
+[2mpublic/build/[22m[36massets/Button-a8ek60jh.js             [39m[1m[2m  1.27 kB[22m[1m[22m[2m │ gzip:   0.67 kB[22m
+[2mpublic/build/[22m[36massets/Toast-DhUIvo0V.js              [39m[1m[2m  1.37 kB[22m[1m[22m[2m │ gzip:   0.72 kB[22m
+[2mpublic/build/[22m[36massets/InfoResi-CUI7CYxh.js           [39m[1m[2m  1.38 kB[22m[1m[22m[2m │ gzip:   0.78 kB[22m
+[2mpublic/build/[22m[36massets/SearchInput-BFa_vbXM.js        [39m[1m[2m  1.42 kB[22m[1m[22m[2m │ gzip:   0.75 kB[22m
+[2mpublic/build/[22m[36massets/ForgotPassword-D4rsrgq3.js     [39m[1m[2m  1.45 kB[22m[1m[22m[2m │ gzip:   0.72 kB[22m
+[2mpublic/build/[22m[36massets/OrderSummary-B0R95O9p.js       [39m[1m[2m  1.50 kB[22m[1m[22m[2m │ gzip:   0.64 kB[22m
+[2mpublic/build/[22m[36massets/RatingSummary-CH3SJiTd.js      [39m[1m[2m  1.64 kB[22m[1m[22m[2m │ gzip:   0.76 kB[22m
+[2mpublic/build/[22m[36massets/StarRating-Kl0KaMGv.js         [39m[1m[2m  1.76 kB[22m[1m[22m[2m │ gzip:   0.93 kB[22m
+[2mpublic/build/[22m[36massets/KpiCard-Bm-C-hzg.js            [39m[1m[2m  1.80 kB[22m[1m[22m[2m │ gzip:   0.84 kB[22m
+[2mpublic/build/[22m[36massets/QtyStepper-Ccnp7CLR.js         [39m[1m[2m  1.83 kB[22m[1m[22m[2m │ gzip:   0.83 kB[22m
+[2mpublic/build/[22m[36massets/Modal-B4xcNJxT.js              [39m[1m[2m  1.94 kB[22m[1m[22m[2m │ gzip:   0.97 kB[22m
+[2mpublic/build/[22m[36massets/ResetPassword-CVhY3bIk.js      [39m[1m[2m  2.05 kB[22m[1m[22m[2m │ gzip:   0.85 kB[22m
+[2mpublic/build/[22m[36massets/Pagination-WhbACLL_.js         [39m[1m[2m  2.11 kB[22m[1m[22m[2m │ gzip:   0.99 kB[22m
+[2mpublic/build/[22m[36massets/hooks-C_1_1vd4.js              [39m[1m[2m  2.17 kB[22m[1m[22m[2m │ gzip:   0.81 kB[22m
+[2mpublic/build/[22m[36massets/Login-DcZ_c653.js              [39m[1m[2m  2.22 kB[22m[1m[22m[2m │ gzip:   0.93 kB[22m
+[2mpublic/build/[22m[36massets/BuktiPembayaran-CvFCDvgY.js    [39m[1m[2m  2.39 kB[22m[1m[22m[2m │ gzip:   1.09 kB[22m
+[2mpublic/build/[22m[36massets/AuthLayout-DCt8-P5L.js         [39m[1m[2m  2.40 kB[22m[1m[22m[2m │ gzip:   1.04 kB[22m
+[2mpublic/build/[22m[36massets/Login-CM6K_A-3.js              [39m[1m[2m  2.85 kB[22m[1m[22m[2m │ gzip:   1.21 kB[22m
+[2mpublic/build/[22m[36massets/StokAksiModal-DMIp_F7u.js      [39m[1m[2m  3.00 kB[22m[1m[22m[2m │ gzip:   1.53 kB[22m
+[2mpublic/build/[22m[36massets/DataTable-jCCqaV6a.js          [39m[1m[2m  3.03 kB[22m[1m[22m[2m │ gzip:   1.38 kB[22m
+[2mpublic/build/[22m[36massets/Register-chVlx7EI.js           [39m[1m[2m  3.13 kB[22m[1m[22m[2m │ gzip:   1.16 kB[22m
+[2mpublic/build/[22m[36massets/UbahStatusModal-eMVkg2Gd.js    [39m[1m[2m  3.23 kB[22m[1m[22m[2m │ gzip:   1.46 kB[22m
+[2mpublic/build/[22m[36massets/DropzoneGalery-YlkCoflJ.js     [39m[1m[2m  3.75 kB[22m[1m[22m[2m │ gzip:   1.81 kB[22m
+[2mpublic/build/[22m[36massets/VarianEditor-Cjvz0mty.js       [39m[1m[2m  4.94 kB[22m[1m[22m[2m │ gzip:   1.51 kB[22m
+[2mpublic/build/[22m[36massets/ProductGrid-D6j4JC0f.js        [39m[1m[2m  4.97 kB[22m[1m[22m[2m │ gzip:   2.08 kB[22m
+[2mpublic/build/[22m[36massets/Contact-Bbpf18u6.js            [39m[1m[2m  5.81 kB[22m[1m[22m[2m │ gzip:   2.12 kB[22m
+[2mpublic/build/[22m[36massets/Cart-DoniacuR.js               [39m[1m[2m  6.08 kB[22m[1m[22m[2m │ gzip:   2.41 kB[22m
+[2mpublic/build/[22m[36massets/QrCode-BrKoP9bC.js             [39m[1m[2m  6.17 kB[22m[1m[22m[2m │ gzip:   2.87 kB[22m
+[2mpublic/build/[22m[36massets/PageHeader-BCSG4EHD.js         [39m[1m[2m  6.17 kB[22m[1m[22m[2m │ gzip:   2.12 kB[22m
+[2mpublic/build/[22m[36massets/Show-C6h31Rfa.js               [39m[1m[2m  6.24 kB[22m[1m[22m[2m │ gzip:   2.43 kB[22m
+[2mpublic/build/[22m[36massets/Show-DQqsPdpe.js               [39m[1m[2m  6.74 kB[22m[1m[22m[2m │ gzip:   2.34 kB[22m
+[2mpublic/build/[22m[36massets/History-Bzjo4gE_.js            [39m[1m[2m  7.17 kB[22m[1m[22m[2m │ gzip:   2.76 kB[22m
+[2mpublic/build/[22m[36massets/icons-CCtndtmK.js              [39m[1m[2m  7.23 kB[22m[1m[22m[2m │ gzip:   2.14 kB[22m
+[2mpublic/build/[22m[36massets/Index-esLJfX_A.js              [39m[1m[2m  8.03 kB[22m[1m[22m[2m │ gzip:   2.85 kB[22m
+[2mpublic/build/[22m[36massets/Index-ywCvgqR8.js              [39m[1m[2m  8.39 kB[22m[1m[22m[2m │ gzip:   3.03 kB[22m
+[2mpublic/build/[22m[36massets/CheckoutSuccess-CkPQpXRZ.js    [39m[1m[2m  8.47 kB[22m[1m[22m[2m │ gzip:   2.86 kB[22m
+[2mpublic/build/[22m[36massets/Checkout-BOqIKRh6.js           [39m[1m[2m  9.40 kB[22m[1m[22m[2m │ gzip:   3.28 kB[22m
+[2mpublic/build/[22m[36massets/Index-BGYkJpNS.js              [39m[1m[2m  9.67 kB[22m[1m[22m[2m │ gzip:   3.62 kB[22m
+[2mpublic/build/[22m[36massets/PublicLayout-DASGbf-0.js       [39m[1m[2m  9.78 kB[22m[1m[22m[2m │ gzip:   3.28 kB[22m
+[2mpublic/build/[22m[36massets/Index-CUg8_mlo.js              [39m[1m[2m  9.81 kB[22m[1m[22m[2m │ gzip:   3.54 kB[22m
+[2mpublic/build/[22m[36massets/Index-Cl3GaGzT.js              [39m[1m[2m  9.88 kB[22m[1m[22m[2m │ gzip:   3.63 kB[22m
+[2mpublic/build/[22m[36massets/Dashboard-GakPX7VY.js          [39m[1m[2m 10.52 kB[22m[1m[22m[2m │ gzip:   3.80 kB[22m
+[2mpublic/build/[22m[36massets/Index-BNbCyL9f.js              [39m[1m[2m 11.50 kB[22m[1m[22m[2m │ gzip:   4.14 kB[22m
+[2mpublic/build/[22m[36massets/CheckoutPay-50itNUnK.js        [39m[1m[2m 11.77 kB[22m[1m[22m[2m │ gzip:   3.93 kB[22m
+[2mpublic/build/[22m[36massets/Index-glPjnKHf.js              [39m[1m[2m 11.99 kB[22m[1m[22m[2m │ gzip:   4.35 kB[22m
+[2mpublic/build/[22m[36massets/Home-QKTN1pLh.js               [39m[1m[2m 13.50 kB[22m[1m[22m[2m │ gzip:   4.38 kB[22m
+[2mpublic/build/[22m[36massets/ProdukForm-D05rUwpk.js         [39m[1m[2m 14.70 kB[22m[1m[22m[2m │ gzip:   4.27 kB[22m
+[2mpublic/build/[22m[36massets/Index-B03x3UZr.js              [39m[1m[2m 14.91 kB[22m[1m[22m[2m │ gzip:   5.06 kB[22m
+[2mpublic/build/[22m[36massets/Show-BdOZbX9K.js               [39m[1m[2m 15.07 kB[22m[1m[22m[2m │ gzip:   5.18 kB[22m
+[2mpublic/build/[22m[36massets/Index-BaGaN094.js              [39m[1m[2m 50.76 kB[22m[1m[22m[2m │ gzip:  12.14 kB[22m
+[2mpublic/build/[22m[36massets/app-B5Dcyopd.js                [39m[1m[2m364.73 kB[22m[1m[22m[2m │ gzip: 114.38 kB[22m
+[32m✓ built in 3.40s[39m

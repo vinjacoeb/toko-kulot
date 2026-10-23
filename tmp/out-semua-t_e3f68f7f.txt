@@ -1,0 +1,40 @@
+== bundel harness ==
+bundel harness siap: tmp/uji-ssr-daftar-t_e3f68f7f.bundle.mjs, tmp/uji-pohon-daftar-t_e3f68f7f.bundle.mjs
+
+== render statis (SSR) header, layout, /login, /register ==
+OK    A1 Header tamu merender tanpa galat
+OK    A2 Header tamu: tepat satu tautan /register bertulis "Daftar"
+OK    A3 Header tamu: kelas tautan Daftar persis pola aksi header (D14)
+OK    A4 Header tamu: tautan Daftar disembunyikan < md (hidden + md:inline-flex)
+OK    A5 Header tamu: ikon Masuk tetap ada dan Daftar berada di sebelah kanannya
+OK    A6 Header tamu: navigasi, hamburger, cari, keranjang tidak berubah
+OK    A7 Header pembeli: tidak ada pintu Daftar/Masuk, nama + Keluar tetap
+OK    B1 PublicLayout tamu: skip link + konten + tepat satu pintu Daftar dari header
+OK    B2 PublicLayout pembeli: tanpa pintu Daftar/Masuk di halaman
+OK    C1 Login: tepat satu tautan /register, teks "Belum punya akun? Daftar"
+OK    C2 Login: tautan silang setelah </form>, tautan lupa sandi tetap
+OK    C3 Login: gaya tautan silang sama dengan tautan lupa sandi
+OK    C4 Login: field, tombol, dan galat per kolom tidak berubah
+OK    D1 Register: tepat satu tautan /login, teks "Sudah punya akun? Masuk"
+OK    D2 Register: tautan silang setelah </form>, tidak menautkan ke dirinya sendiri
+OK    D3 Register: gaya tautan silang sama dengan gaya tautan auth lain
+OK    D4 Register: 6 field + tombol Daftar tidak berubah
+OK    D5 Register: galat per kolom tetap tampil apa adanya
+OK    D6 Tidak ada NaN/undefined/[CONTOH]/lorem di markup halaman auth
+OK    E1 Tidak ada Ziggy/route(), localStorage, atau innerHTML di kode 4 berkas
+OK    E2 URL literal sesuai PRD §15.2 dan tidak ada rute karangan
+OK    E3 Register: impor @inertiajs/react tunggal berisi Link + useForm
+OK    E4 Jejak deviasi D14/D15/D16 tercatat di berkas yang tepat
+
+ringkasan: 23/23 pemeriksaan lulus
+
+== pohon elemen drawer + markup drawer terbuka ==
+OK    P1 PublicLayout tamu: drawer dapat footer dua pintu (div flex flex-col gap-2, 2 tautan) -> anak=2
+OK    P2 PublicLayout tamu: pintu tamu hanya dari props.footer, header tetap menerima tamu -> tautan_luar_footer=0
+OK    P3 Drawer terbuka: footer asli berada di dalam panel, Daftar sebelum Masuk -> posisi daftar=1561 masuk=1633
+OK    P4 PublicLayout pembeli: footer drawer = "Masuk sebagai ...", tanpa pintu tamu
+OK    P5 Halaman pembeli: header/footer/pengumuman tetap, cart.count halaman menang atas prop
+
+ringkasan: 5/5 pemeriksaan lulus
+
+HASIL: semua pemeriksaan harness lulus

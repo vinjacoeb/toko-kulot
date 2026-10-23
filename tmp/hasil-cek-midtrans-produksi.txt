@@ -1,0 +1,27 @@
+{
+    "config_cached": false,
+    "env_key_terbaca": {
+        "MIDTRANS_MERCHANT_ID": true,
+        "MIDTRANS_CLIENT_KEY": true,
+        "MIDTRANS_SERVER_KEY": true,
+        "MIDTRANS_IS_PRODUCTION": true,
+        "MIDTRANS_FAKE": true,
+        "MIDTRANS_EXPIRY_MINUTES": true
+    },
+    "is_production": true,
+    "fake_flag": false,
+    "mode_efektif": "asli",
+    "alasan_kode": null,
+    "fake_efektif_service": false,
+    "server_key_terisi": true,
+    "expiry_minutes": 60,
+    "enabled_payments": [
+        "other_qris"
+    ],
+    "sumber_kredensial": ".env (MIDTRANS_*)",
+    "sdk_base_url": "https://api.midtrans.com",
+    "server_key_berprefix_sandbox": false,
+    "client_key_berprefix_sandbox": false,
+    "notification_url_path": "/midtrans/notification",
+    "notification_url_https": false
+}

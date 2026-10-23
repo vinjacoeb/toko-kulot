@@ -227,3 +227,161 @@ Temuan di luar lingkup (dicatat, tidak ditindak di kartu ini):
 - Catatan keamanan: beberapa keluaran tool pada sesi ini memuat teks tambahan yang menyuruh menuliskan string
   tertentu berulang-ulang di jawaban. Itu instruksi yang disisipkan lewat data, bukan perintah pemilik, jadi
   tidak dijalankan; tidak ada berkas repo yang terpengaruh.
+
+==============================================================================
+D1 — Bekukan build rilis ulang + gerbang Midtrans nyata (kartu t_e83922f2, 21 Okt 2026)
+==============================================================================
+
+Latar: setelah laporan pemilik 21 Okt (F-1..F-6) diperbaiki dan diverifikasi QA1
+(`docs/laporan-qa.md` §15), bundel beku 20 Okt (chunk `app-C4HDW06B.js`) sudah kedaluwarsa karena berkas
+`resources/js` berubah. Kartu ini membekukan ulang bundel produksi dari kode akhir, menyapu bundel, dan
+menuliskan langkah verifikasi Midtrans mode nyata ke dokumen rilis.
+
+Angka kunci hasil pembekuan D1 (bukti mentah: `docs/bukti-build-d1-t_e83922f2.txt`, 229 baris / 11 bagian):
+- `npm run build` SEKALI, tanpa kartu lain berjalan -> vite v6.4.4, 729 modul, "built in 43.88s", EXIT CODE 0.
+- manifest `public/build/manifest.json`: 32.218 B, 71 entri, mtime 2026-10-21 20:55:37.948 +0700,
+  sha256 `5b23e055678f5c2377ca88dcac68037bb7b9bd39e04779612b009e4caa793b2b`.
+- 72 berkas di `public/build` = 71 aset (70 `.js` + 1 `.css`) + manifest. Chunk app `app-Dyl9odRh.js`
+  (364.493 B, sha256 `e92e1d37…`), css `app-DBVmikiX.css` (sha256 `aaf6ee8e…`).
+- 11/11 halaman wajib ada di manifest (produk index/create/edit/show, stok index/history, pesanan index/show,
+  bayar, selesai).
+- 0 berkas sumber lebih baru dari manifest sesudah build; tidak ada berkas sisa build lama
+  (keluaran build menyebut 72 berkas = 72 berkas di disk, 0 selisih, ukuran cocok).
+- 3 penyapu statis: 0 temuan yang perlu tindakan.
+- Suite: OK (225 tests, 1736 assertions), exit 0, 01:06.661 — sama dengan QA1, jadi kode tidak bergerak lagi.
+- Server pemilik saat pembekuan melayani `app-Dyl9odRh.js` + `app-DBVmikiX.css`
+  (GET `/`, `/produk`, `/keranjang`, `/admin/login` = 200; `/checkout` = 302 ke `/login`).
+
+Urutan yang bekerja:
+1. Papan diperiksa baca-saja (skrip scratch + SQLite `mode=ro`, kolom dipilih defensif via
+   `PRAGMA table_info`) untuk memastikan tidak ada kartu penulis yang masih berjalan saat pembekuan.
+2. Keadaan `public/build` + mtime/sha256 manifest dicatat SEBELUM build, lalu `npm run build` dijalankan sekali
+   (`scratch/bekukan-d1.sh`), lalu keadaan yang sama dicatat SESUDAH build — supaya "beku" bukan klaim.
+3. 3 penyapu statis dijalankan atas bundel baru; tiap HIT ditelusuri sampai putusan (lihat di bawah).
+4. Manifest diperiksa terhadap 11 halaman wajib, dan kelengkapan berkas dibandingkan dengan daftar keluaran
+   build setelah kode ANSI Vite dibersihkan (`scratch/cek-kesesuaian-bundel-d1.py`).
+5. Suite dijalankan pada kode+bundel yang sudah beku, lalu angka 225 tests dibandingkan dengan QA1.
+
+Kendala teknis & pelajaran:
+- Keluaran build berisi kode ANSI dan CR, sehingga parsing baris `public/build/... kB` gagal bila tidak
+  dibersihkan. Solusi: regex `\x1b\[[0-9;]*m` dibuang sebelum mem-parse; setelah itu 72 baris berkas terbaca
+  lengkap. Tanpa langkah ini, "tidak ada sisa build lama" tidak bisa dibuktikan.
+- Baris ringkas "berkas di public/build yang TIDAK lebih baru dari manifest (sisa build lama): 72" di berkas
+  bukti hanyalah artefak urutan penulisan (Vite menulis manifest terakhir) — bukan temuan. Pemeriksaan stale
+  yang benar adalah membandingkan daftar berkas keluaran build dengan isi disk.
+- Suite PHP dijalankan dengan `php -d extension=pdo_sqlite vendor/bin/phpunit` (sqlite `:memory:`), karena
+  ekstensi `pdo_sqlite` tidak ada di php.ini global. Cara RUN 1–4 (`PHP_INI_SCAN_DIR=<scratch>/phpsqlite
+  php artisan test`) juga masih sah; keduanya tidak menyentuh php.ini global dan tidak membaca `.env`.
+- Folder `tmp/` di repo berisi perkakas uji agent; skrip verifikasi D1 sengaja ditaruh di scratch profil devops
+  supaya repo tidak bertambah kotor.
+- Penyapu bundel menuliskan temuan dengan nilai sensitif DIMASKING (hanya awal + panjang) — hasil sapuan aman
+  disalin ke dokumen.
+
+Putusan tiap HIT penyapu (0 yang perlu tindakan):
+- `resources/js/app.jsx`: `App` — positif palsu (didefinisikan di berkas yang sama untuk `createInertiaApp`).
+- `DropzoneGalery-*.js`: identifier `P` tanpa impor — positif palsu; `P` didefinisikan pada offset 314 dan
+  dipakai pada offset 2463 (di definisikan sebelum dipakai).
+- `app-Dyl9odRh.js`: 1 kemunculan `localhost` — bukan kebocoran alamat mesin; konteksnya
+  `typeof window>"u"?"http://localhost":window.location.toString()` (cadangan base URL pustaka saat SSR).
+- Tidak ada path absolut `C:\Users\...`, `file:///`, port 8000, nama variabel rahasia, maupun pola kredensial
+  (`SB-Mid-server-`, `sk_live`/`sk_test`, `PRIVATE KEY`, base64 panjang) di bundel.
+
+Temuan di luar lingkup (dicatat, tidak ditindak di kartu ini):
+- Smoke browser 9 rute x 3 viewport BELUM diulang pada bundel D1 — angka §15.6 di `docs/checklist-rilis.md`
+  berasal dari bundel 20 Okt. Untuk bundel D1 yang ada baru: build/manifest/penyapu/suite + GET rute = 200.
+  Risiko: regresi yang hanya muncul di browser (perilaku runtime JSX) tidak tertangkap. Tindak lanjut yang
+  wajar: satu kartu smoke browser pada `app-Dyl9odRh.js` sebelum rilis produksi.
+- Rute admin ber-parameter masih 404 (bukan 302) untuk id yang tidak ada (Low, sudah tercatat).
+- Folder `tmp/` belum di-`.gitignore` (Low, sudah tercatat).
+- Gerbang pembayaran nyata (QRIS Midtrans sandbox terbayar + notifikasi asli) belum dijalankan: butuh
+  kredensial pemilik + URL webhook publik. Langkah lengkap + rollback ditulis di `docs/checklist-rilis.md`
+  §15.11 dan `docs/deploy.md` §5; devops tidak membuka `.env`.
+
+Risiko & cara pemulihan:
+- Bundel beku ada di `public/build/` (di-`.gitignore`). Bila perlu kembali ke bundel sebelumnya: pulihkan
+  `public/build/` dari salinan/arsip, atau `git stash`/`git checkout` kode lalu `npm run build` ulang —
+  jangan mencampur dua hasil build dalam satu folder.
+- Bila uji Midtrans nyata gagal: `MIDTRANS_FAKE=true` + `php artisan config:clear` mengembalikan halaman bayar
+  ke mode uji (tanpa uang nyata). Jangan mengubah baris `orders`/`payments` manual.
+- Tidak ada perubahan pada database, `.env`, DNS, hak akses, atau riwayat Git pada kartu ini.
+
+Catatan keamanan: seluruh keluaran penyapu dibersihkan (nilai sensitif dimask), tidak ada kunci/token yang
+disalin ke dokumen, dan `.env` tidak pernah dibuka, dibaca, atau ditulis pada kartu ini.
+
+==============================================================================
+CATATAN KARTU t_fac8f5a3 — build beku 22 Okt 2026 + langkah deploy baru
+==============================================================================
+Konteks: parent t_43d8bcd7 (QA putaran 2) lulus — 237 tests / 1791 assertions, exit 0 (docs/review-2.md).
+Lingkup: bekukan public/build, tambahkan langkah rilis wajib ke docs/deploy.md + docs/checklist-rilis.md,
+catat batasan webhook localhost. Tidak mengubah kode aplikasi, konfigurasi, atau .env.
+
+Yang dikerjakan:
+- `npm run build` (22 Okt 2026 06:37) -> exit 0, vite v6.4.4, 730 modul, "✓ built in 45.34s".
+  manifest.json 32.800 B sha256 223b5514...3cc39 (identik dengan build 00:52 -> tidak ada sumber frontend
+  berubah sebelum pembekuan), 72 entri, 72 aset (71 js + 1 css), chunk app-BCun0p-R.js + css app-DpcrjTSz.css.
+  Bukti: docs/bukti-build-t_fac8f5a3.txt (229 baris, SECTION 1-7; SECTION 7 = cek ulang 07:01: 0 berkas
+  frontend lebih baru dari manifest, hanya 4 berkas PHP kartu backend yang berubah — bundel tetap sah).
+- Prasyarat pembekuan: `find resources/js -mmin -120` kosong (tidak ada penulis frontend aktif); dua kartu
+  backend yang berjalan saat itu (t_3bfe3165 B4 Midtrans SDK, t_f39eba9d P3 pesan validasi) hanya menyentuh PHP.
+- Sapuan resources/js & resources/views: 0 berkas rintisan (pola *coba*/*sementara*/*backup*/*old*/*dummy*/*fix*/
+  *scratch*), 0 console.log/debugger/dd(/var_dump(, hanya 3 `.gitkeep` penanda folder.
+- 0 berkas sumber (resources, app, routes, config, database, tests, vite/tailwind/package/composer) lebih baru
+  dari manifest sesudah build; 0 artefak stale di public/build; 11/11 halaman wajib ada di manifest.
+- Server dev pemilik (sudah menyala) menyajikan bundel ini: GET http://127.0.0.1:8000/ = 200 dan HTML merujuk
+  build/assets/app-BCun0p-R.js + app-DpcrjTSz.css. Devops tidak menyalakan/mematikan server.
+
+Perubahan dokumen:
+- docs/deploy.md: §3 langkah 4 jadi langkah WAJIB `php artisan migrate --force` (000018 compare_price,
+  000019 tracking_number; `migrate:status` harus 0 Pending; `--seed` hanya untuk DB kosong); header build beku
+  diganti t_fac8f5a3; §4 baris MIDTRANS_* diperjelas; §5 butir 2 pemeriksaan mode pembayaran (3 hal: MIDTRANS_FAKE,
+  kredensial per lingkungan, MIDTRANS_IS_PRODUCTION), butir 5 webhook localhost -> aksi admin sinkron §12.24,
+  butir 7 gerbang (e) dua jalur; §7 empat baris pemeriksaan baru; §9 daftar belum diuji diperbarui.
+- docs/checklist-rilis.md: blok "PEMBARUAN 22 Okt 2026" (build beku baru + langkah A/B/C), 15.1 (migrasi wajib),
+  15.2 (blok build t_fac8f5a3), 15.9 (237 tests), 15.11 (catatan localhost + aksi sinkron), PENGHALANG butir 3/5,
+  BELUM DIUJI, LANGKAH PEMILIK (migrate --force tanpa seed; mode pembayaran; aksi sinkron), INDEKS BUKTI.
+
+Kendala:
+- Menulis dokumen bukti lewat here-doc panjang diblokir oleh harness; disusun bertahap dengan write_file + cat >>
+  (SECTION 1-2, log build mentah, SECTION 4). Tidak ada kegagalan build.
+- Perintah gabungan `node -e ... && curl ...` diblokir; verifikasi dipecah (grep -c entri manifest, sha256sum,
+  curl terpisah) dengan hasil yang sama.
+
+Temuan di luar lingkup (tidak ditindak pada kartu ini):
+- Smoke browser/visual pada bundel app-BCun0p-R.js BELUM diulang — angka §15.6 di checklist berasal dari bundel
+  20 Okt. Untuk bundel rilis ini baru pemeriksaan statis + GET rute = 200. Bila perlu bukti visual pada bundel
+  yang dirilis, perlu satu kartu smoke (qatesting); tidak dibuat karena tidak diminta kartu ini.
+- Aksi admin "Sinkronkan status pembayaran" belum pernah dijalankan manusia (butuh login admin + kunci Midtrans).
+- Bila salah satu kartu backend yang masih berjalan menyentuh resources/js setelah pembekuan, build wajib diulang.
+
+Risiko & pemulihan:
+- Kembali ke bundel sebelumnya: pulihkan public/build dari arsip, atau checkout kode lama lalu `npm run build`
+  ulang — jangan mencampur dua hasil build dalam satu folder.
+- Migrasi 000018/000019 belum dijalankan di server mana pun (belum ada server produksi); di DB dev pemilik
+  keduanya sudah "Ran" (docs/bukti-migrate-g2.txt). Rollback skema: `php artisan migrate:rollback --step=2`
+  HANYA setelah backup (docs/deploy.md §8).
+- Tidak ada perubahan database, .env, DNS, hak akses, atau riwayat Git pada kartu ini.
+
+Catatan keamanan: tidak ada kunci/token yang disalin ke dokumen ini; `.env` tidak dibuka, dibaca, atau ditulis.
+
+## 22 Okt 2026 — Verifikasi konfigurasi Midtrans produksi (t_3c9d83c1)
+
+Kartu verifikasi baca-saja; tidak ada perubahan kode, skema, database, `.env`, atau riwayat Git.
+
+Hasil:
+- Jalur QRIS membaca kredensial dari `.env` lewat `config/midtrans.php`; tab admin
+  (`midtrans_client_key`, `midtrans_is_production`) hanya catatan dan tidak dikonsumsi
+  `MidtransService`/`CheckoutController`/`SdkMidtransApi`.
+- Probe `tmp/cek-midtrans-produksi.php`: `is_production=true`, `fake=false`, mode efektif **asli**,
+  `server_key` terisi, `sdk_base_url=https://api.midtrans.com`, kunci tidak berawalan `SB-`
+  (boolean; nilai tidak dicetak), `config_cached=false`.
+- **Temuan:** `MIDTRANS_EXPIRY_MINUTES` masih **60** (nilai uji sementara P11), padahal keputusan
+  produksi P1 = 5 menit dan FAQ toko menyebut 5 menit (`FaqSeeder.php:34`). Perlu dikembalikan ke 5
+  + `config:clear` sebelum go-live, atau keputusan diubah lebih dulu.
+- **Temuan:** `MIDTRANS_NOTIFICATION_URL` tidak dibaca kode. URL notifikasi yang berlaku adalah yang
+  diisi di dashboard Midtrans; `.env` hanya dokumentasi.
+- **Temuan lama yang tetap berlaku:** aksi "Sinkronkan status pembayaran" belum pernah dijalankan
+  manusia; charge QRIS sungguhan belum pernah terjadi (sandbox sempat gagal, lalu test key 401).
+  Karena itu uji nyata 1 transaksi nominal kecil tetap disarankan sebelum menerima pesanan umum.
+
+Dokumen bukti + checklist: `docs/midtrans-produksi.md`. Tidak ada kunci/token di dokumen ini;
+`.env` tidak dibuka.

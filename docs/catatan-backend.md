@@ -1,5 +1,39 @@
 # Catatan Backend — Toko Kulot
 
+## Perbaikan 5 — halaman riwayat pesanan pembeli `GET /history` (kartu t_5b803c80, 2026-10-23)
+
+Rencana (maks 10 baris):
+
+1. Kontrak dulu: tambah §13 `GET /history` di `docs/kontrak-props.md` (paginator `orders`,
+   `ringkasan`, bentuk item, aturan `detail_url`).
+2. `app/Http/Controllers/HistoryController.php`: query `orders` milik user login, `with(items)`,
+   semua status, `created_at`/`id` turun, 10/halaman; gambar utama produk satu query batch.
+3. `routes/web.php`: `GET /history` name `history.index`, middleware `auth:web`.
+4. `tests/Feature/HistoryTest.php`: tamu → `/login`, hanya pesanan sendiri, batal ikut, item &
+   total benar, urutan, pagination 10, `detail_url`, empty state, ringkasan.
+5. Tanpa migrasi/skema baru; tidak menyentuh `.env`; test memakai SQLite `:memory:` (`phpunit.xml`).
+6. Berkas lain: `docs/catatan-backend.md` (catatan ini). Verifikasi: `php artisan test --filter=History`,
+   `php artisan route:list --name=history`, `php -l`, `vendor/bin/pint --test`.
+
+Hasil (2026-10-23):
+
+- Berkas dibuat: `app/Http/Controllers/HistoryController.php`, `tests/Feature/HistoryTest.php`,
+  `docs/bukti-backend-t_5b803c80.txt`. Diubah: `routes/web.php` (import + rute `history.index`),
+  `docs/kontrak-props.md` (§13, LOCKED), `docs/asumsi.md` (butir 29).
+- `php -l` 3 berkas bersih; `pint --test` passed; `route:list --name=history` menampilkan
+  `GET|HEAD history → history.index`.
+- `php artisan test --filter=History` → 5 passed (141 assertions); suite penuh → 279 passed
+  (2299 assertions). `pdo_sqlite` nonaktif di php.ini, jadi test dijalankan dengan
+  `PHP_INI_SCAN_DIR` menunjuk ini sementara di `storage/framework/testing/php-ini` (gitignored,
+  dihapus setelah verifikasi); php.ini/.env tidak diubah. Tanpa itu: `php -d extension=pdo_sqlite
+  vendor/bin/phpunit` (docs/langkah-pemilik.md).
+- Tidak ada migrasi baru: `orders`/`order_items` sudah ada di docs/db.md dan cocok dengan kode.
+  Test memakai SQLite `:memory:`; database pengembangan tidak disentuh.
+- Untuk frontend `t_326f766b`: pakai `orders.{data,links,meta}` + `ringkasan`; semua status termasuk
+  `batal` tampil; `detail_url` `null` bukan galat (render tanpa tautan detail).
+
+
+
 ## K4 — Migrasi & model seluruh domain (2026-10-20)
 
 Rencana (maks 10 baris):
@@ -181,7 +215,7 @@ Berkas dibuat:
 
 | Berkas | Isi |
 |---|---|
-| `config/midtrans.php` | `merchant_id`/`client_key`/`server_key` dari `env()` (nilai tidak ditulis di dokumen), `is_production`, `fake` (default `true`), `expiry_minutes` 15, `enabled_payments` `['other_qris']`, `notification_url` |
+| `config/midtrans.php` | `merchant_id`/`client_key`/`server_key` dari `env()` (nilai tidak ditulis di dokumen), `is_production`, `fake` (default `true`), `expiry_minutes` dari `env('MIDTRANS_EXPIRY_MINUTES', 5)` (kartu `t_e35050e8`; sebelumnya hard-code 15), `enabled_payments` `['other_qris']`, `notification_url` |
 | `app/Exceptions/CheckoutException.php` | Satu-satunya jalur galat yang aman ditampilkan ke pembeli (pesan Bahasa Indonesia) |
 | `app/Services/StockService.php` | Satu-satunya penulis `product_variants.stock` + `stock_movements`; tolak stok kurang; wajib di dalam `DB::transaction` + `lockForUpdate()` |
 | `app/Services/CartService.php` | Keranjang tamu (`carts.session_id`) vs pembeli (`carts.user_id`), adopsi/merge saat login, harga grosir dihitung ulang saat qty berubah, ringkasan + ongkir `settings.shipping_cost_default`, `cart_count` di sesi |
@@ -496,3 +530,742 @@ Hasil (20 Oktober 2026):
 - Suite penuh (`PHP_INI_SCAN_DIR=<scratch>/phpsqlite php artisan test`, sqlite `:memory:`): **1 failed, 189 passed (1108 assertions)**, 58,64 s. Satu-satunya merah = `AdminInboxTest::tandai pesan sudah dibaca` (`tests/Feature/Admin/AdminInboxTest.php:147` masih `->post(...)` sehingga 405) — persis kasus yang disebut DoD dan sudah dimiliki kartu QA `t_d21ef249`; kartu ini tidak menyentuh `tests/`. `RouteContractTest` seluruhnya hijau (5/5, termasuk "metode http rute admin sesuai prd"), jadi incomplete lama untuk rute ini hilang.
 - Belum dicek: pemanggilan rute dari sisi halaman admin di browser (halaman `Admin/Messages/Index.jsx` masih placeholder; pemilik serahan frontend `t_fc2c5b98`).
 - Temuan luar lingkup (tidak diubah kartu ini): `docs/laporan-qa.md:53` baris Q1 masih menulis putusan lama "POST menang" — ditutup lewat QA-005 oleh kartu QA `t_d21ef249`.
+
+---
+
+## B1 — Mode uji Midtrans terlihat + tagihan fake lama dibuat ulang (`t_9f4b6aee`, 21 Oktober 2026)
+
+Rencana (maks 10 baris):
+
+1. Kontrak dulu: `docs/kontrak-props.md` §7.5, §7.7 (`midtrans` + `pembayaran.galat`), §10.7 (prop `midtrans` tab Pembayaran) — sebelum controller disentuh; komentar ke kartu frontend F2 `t_e60e7733` karena §7.7 berstatus LOCKED.
+2. `MidtransService`: `modeInfo()` (mode efektif + kode alasan + alasan + langkah perbaikan + `server_key_terisi` + `sumber_kredensial`), `isFakeCharge()`, `needsRegeneration()`.
+3. `MidtransService::regenerateCharge()` menulis ulang **baris `payments` yang sama** (kontrak §7.5 = satu tagihan per pesanan) dengan kunci baris; `createQrisCharge()` memakai pembangun parameter yang sama.
+4. Seam uji tanpa jaringan: interface `App\Services\Midtrans\MidtransApi` + `SdkMidtransApi` (CoreApi/Transaction), di-bind di `AppServiceProvider`; test memakai fake.
+5. `CheckoutController::pay()` dan `status()`: bila mode nyata aktif & tagihan pending masih bermode uji → buat ulang charge; gagal → `pembayaran.galat` + log, halaman tetap 200.
+6. `Admin\SettingController::index()`: kirim prop `midtrans` (mode efektif + alasan + sumber kredensial `.env`) untuk tab Pembayaran.
+7. `config/midtrans.php` bawaan `fake` → `false` (tanpa server key tetap mode uji) + `.env.example`; mencegah mode uji ikut ke produksi (risiko 1 `docs/review.md`).
+8. Test: `tests/Feature/Checkout/MidtransModeTest.php`, `tests/Support/FakeMidtransApi.php`; `tests/Unit/Services/MidtransServiceTest.php` menyesuaikan konstruktor.
+9. Verifikasi: `php -l`, `PHP_INI_SCAN_DIR=<scratch>/phpsqlite php artisan test` (sqlite `:memory:`, tidak menyentuh DB pemilik), `route:list`; bukti ke `docs/bukti-backend-t_9f4b6aee.txt`.
+
+Berkas disentuh: `app/Services/MidtransService.php`, `app/Services/Midtrans/{MidtransApi,SdkMidtransApi}.php` (baru),
+`app/Providers/AppServiceProvider.php`, `app/Http/Controllers/CheckoutController.php`,
+`app/Http/Controllers/Admin/SettingController.php`, `config/midtrans.php`, `.env.example`,
+`tests/Support/FakeMidtransApi.php`, `tests/Feature/Checkout/MidtransModeTest.php`,
+`tests/Unit/Services/MidtransServiceTest.php`, `docs/kontrak-props.md`, `docs/catatan-backend.md`,
+`docs/asumsi.md`, `docs/langkah-pemilik.md` (langkah pemilik bila perlu).
+
+### Hasil (21 Oktober 2026)
+
+- Seam uji: `app/Services/Midtrans/{MidtransApi,SdkMidtransApi}.php` (baru) — interface `charge()`/`status()`; `SdkMidtransApi` memanggil `\Midtrans\CoreApi`/`\Midtrans\Transaction` (satu-satunya tempat SDK disentuh, `bootSdk()` pindah ke sana). Bind di `app/Providers/AppServiceProvider.php::register()`; test menukarnya dengan `tests/Support/FakeMidtransApi.php` sehingga jalur charge nyata teruji tanpa jaringan.
+- Mode efektif: `MidtransService::modeInfo()` mengembalikan `mode` (`asli`/`uji`), `fake`, `alasan_kode` (`fake_aktif` | `server_key_kosong` | null), `alasan` (kalimat siap tampil), `langkah_perbaikan[]`, `is_production`, `server_key_terisi`, `sumber_kredensial` = `.env (MIDTRANS_*)`. Dipakai `CheckoutController` (§7.5/§7.7) dan `Admin\SettingController` (§10.7).
+- Tagihan fake lama: `MidtransService::needsRegeneration()` + `regenerateCharge()` — charge ulang QRIS ke **baris `payments` yang sama** (transaksi + `lockForUpdate`; bila baris sudah bukan mode uji / sudah dibayar / tidak pending, tidak ditimpa). Dipanggil dari `CheckoutController::pay()` dan `status()`. Tidak ada baris `payments` baru; dibuktikan `tests/Feature/Checkout/PaymentModeTest.php` (7 test, semuanya hijau).
+- Gagal charge (mode nyata, jaringan/SDK bermasalah): tidak 500 — `pembayaran.galat` = `Gagal membuat pembayaran QRIS. Coba lagi.` + `Log::warning`, halaman bayar tetap tampil, baris `payments` tidak berubah.
+- Bawaan `config/midtrans.php` `fake` → `false` dan `.env.example` `MIDTRANS_FAKE=false`; tanpa `MIDTRANS_SERVER_KEY` perilaku tetap mode uji (`alasan_kode = server_key_kosong`), jadi alur pengembangan tanpa kredensial tidak berubah tetapi bawaan tidak lagi membawa mode uji ke produksi.
+- Halaman bayar & status kini memakai payload Midtrans nyata begitu `MIDTRANS_FAKE=false` + server key terisi: `qris_url`/`qr_string`/`transaction_id`/`payload` hasil `charge`, bukan EMVCo lokal.
+- `config/midtrans.php`: bawaan `env('MIDTRANS_FAKE', true)` → `env('MIDTRANS_FAKE', false)` (selaras `.env.example`), jadi selama `MIDTRANS_FAKE` tidak diisi eksplisit, QRIS mode uji tidak lagi dipakai tanpa sepengetahuan pemilik. Tanpa `MIDTRANS_SERVER_KEY`, `isFake()` tetap `true` (`alasan_kode = server_key_kosong`) sehingga pengembangan tanpa kredensial tidak berubah.
+- Verifikasi: `php -l` semua berkas PHP yang disentuh bersih; `PHP_INI_SCAN_DIR=<scratch>/phpsqlite php artisan test tests/Feature/Checkout tests/Unit/Services/MidtransServiceTest.php` → **31 passed (284 assertions)** (`docs/bukti-t_9f4b6aee.txt`); seluruh suite `php artisan test` → **198 passed (1263 assertions)** (`docs/bukti-suite-t_9f4b6aee.txt`). Keduanya memakai sqlite `:memory:` dari `phpunit.xml`; DB pengembangan pemilik tidak disentuh.
+- Belum dicek: pemindaian/transfer QRIS Midtrans sungguhan (butuh kredensial asli + HP pemilik); tampilan penanda mode uji di browser (milik kartu frontend F2 `t_e60e7733`).
+
+### Penutup kartu B1 (21 Oktober 2026)
+
+- **Berkas kode**: `app/Services/Midtrans/{MidtransApi,SdkMidtransApi}.php` (baru), `app/Services/MidtransService.php`, `app/Providers/AppServiceProvider.php`, `app/Http/Controllers/CheckoutController.php`, `app/Http/Controllers/Admin/SettingController.php`, `config/midtrans.php`, `.env.example`.
+- **Test**: `tests/Support/FakeMidtransApi.php` (baru), `tests/Feature/Checkout/PaymentModeTest.php` (baru, 7 test), `tests/Unit/Services/MidtransServiceTest.php` (+1 test `test_mode_info_bentuk_baku_mengikuti_kontrak`, konstruktor memakai fake).
+- **Kontrak**: `docs/kontrak-props.md` §7.5, §7.7, §7.8 (presisi aturan status), §10.7 — objek `midtrans` baku sama di tiga tempat, `pembayaran.fake`/`pembayaran.galat` ditambahkan. §7.7 dan §10.7 berstatus LOCKED → komentar perubahan ditinggalkan di kartu frontend F2 `t_e60e7733`.
+- **Keputusan penting**: (1) tetap satu tagihan per pesanan — baris `payments` lama ditimpa, bukan ditambah (kontrak §7.5); (2) kredensial efektif hanya dari `.env (MIDTRANS_*)`, kolom `settings.midtrans_*` tetap catatan tab admin; (3) penanda mode uji dikirim backend lewat `midtrans` (teks siap tampil), frontend tidak mengarang props; (4) `expires_at` dihitung lewat satu helper `expiresAt()` supaya pembuatan baru dan pembuatan ulang identik.
+- **Untuk frontend (F2 `t_e60e7733`)**: baca `midtrans.mode` (`asli`/`uji`) + `midtrans.alasan` + `midtrans.langkah_perbaikan` untuk penanda "MODE UJI" di `QrisPanel` dan status di tab Pembayaran `/admin/pengaturan`; render `pembayaran.galat` bila tidak `null`; jangan render penanda saat `mode = asli` (design §865 D9).
+- **Langkah pemilik**: lihat `docs/langkah-pemilik.md` bagian B1 (midtrans): set `MIDTRANS_FAKE=false` + kunci sandbox, `php artisan config:clear` bila pernah `config:cache`, lalu uji transfer QRIS nyata. Tagihan mode uji pada pesanan lama dibuat ulang otomatis saat halaman bayar dibuka.
+- **Luar lingkup (tidak dikerjakan di kartu ini)**: `docs/laporan-qa.md:53` masih menulis putusan lama "POST menang" untuk temuan Q1 — ditutup QA lewat kartu `t_d21ef249`; kolom `settings.midtrans_client_key`/`midtrans_is_production` masih catatan tampilan saja (keputusan pemilik `docs/pertanyaan-pemilik.md` §5 P3).
+
+---
+
+## Kartu B2 `t_e35050e8` — masa berlaku QRIS 5 menit (keputusan pemilik `docs/pertanyaan-pemilik.md` §5 P1)
+
+Rencana (21 Oktober 2026):
+
+1. `config/midtrans.php`: `expiry_minutes` dari hard-code `15` → `env('MIDTRANS_EXPIRY_MINUTES', 5)`; nilai tidak sah (kosong, bukan angka, 0, negatif) jatuh ke bawaan 5 menit.
+2. `app/Services/MidtransService.php`: helper publik `expiryMinutes()` + `DEFAULT_EXPIRY_MINUTES` — satu sumber untuk `expiresAt()` (kolom `payments.expires_at`) dan `chargeParams()` (`custom_expiry.expiry_duration`), supaya keduanya tidak bisa berbeda.
+3. `app/Http/Controllers/CheckoutController.php`: `pembayaran.expiry_minutes` memakai helper yang sama (angka di controller dihapus).
+4. `.env.example`, `README.md`, `docs/langkah-pemilik.md`: variabel `MIDTRANS_EXPIRY_MINUTES` + cara override (`php artisan config:clear`).
+5. Test: `15` → `5` di `tests/Feature/Checkout/CheckoutTest.php` + `tests/Feature/Checkout/PaymentModeTest.php`; berkas baru `tests/Unit/Services/MidtransExpiryTest.php` (bawaan berkas config, override env, nilai tidak sah, satu sumber nilai) dan `tests/Feature/Checkout/QrisExpiryTest.php` (`custom_expiry` = `expires_at` = 5 menit pada tagihan nyata, override 3 menit, buat ulang tagihan).
+6. Konten contoh: `database/seeders/FaqSeeder.php` masih menulis "Kode QRIS berlaku 15 menit" → 5 menit (berubah setelah pemilik menjalankan ulang seeder).
+7. Dokumen: `docs/kontrak-props.md` §7.5 contoh `expiry_minutes` 15 → 5 (§7.5 LOCKED → komentar di kartu frontend F2 `t_e60e7733`), `docs/asumsi.md` butir 4 ditandai digantikan keputusan pemilik, `docs/catatan-backend.md` (bagian ini).
+8. Di luar lingkup: `docs/PRD.md` §8 butir 6 + A17 (masih 15 menit) menunggu amendemen pemilik — dicatat di `docs/langkah-pemilik.md`.
+
+### Hasil (kartu `t_e35050e8`, 21 Oktober 2026)
+
+| Berkas | Perubahan |
+|---|---|
+| `config/midtrans.php` | `expiry_minutes` dari hard-code `15` → `env('MIDTRANS_EXPIRY_MINUTES', 5)`; hanya bilangan bulat ≥ 1 diterima (`filter_var` + `min_range`), nilai lain (kosong, teks, pecahan, 0, negatif) jatuh ke bawaan 5 |
+| `app/Services/MidtransService.php` | `DEFAULT_EXPIRY_MINUTES = 5` + helper publik `expiryMinutes()`; `expiresAt()` dan `chargeParams()` (`custom_expiry.expiry_duration`) memakai helper itu — satu sumber nilai |
+| `app/Http/Controllers/CheckoutController.php` | `pembayaran.expiry_minutes` dari helper yang sama (angka di controller dihapus) |
+| `.env.example`, `README.md` | `MIDTRANS_EXPIRY_MINUTES=5` + catatan `php artisan config:clear` bila diubah |
+| `database/seeders/FaqSeeder.php` | teks contoh FAQ "Kode QRIS berlaku 15 menit" → "berlaku 5 menit setelah pesanan dibuat" |
+| `docs/kontrak-props.md` | §7.5 contoh `pembayaran.expiry_minutes` → 5 + penjelasan sumber nilai; baris status §7.11 ditambah (LOCKED diperbarui) |
+| `docs/asumsi.md` | butir 4 (kedaluwarsa 15 menit) ditandai digantikan keputusan pemilik |
+| `docs/langkah-pemilik.md` | durasi 5 menit + cara override + catatan PRD belum diamendemen |
+| `tests/Feature/Checkout/CheckoutTest.php`, `PaymentModeTest.php` | nilai `midtrans.expiry_minutes` di test 15 → 5 |
+| `tests/Unit/Services/MidtransExpiryTest.php` (baru) | bawaan berkas config, override env, nilai env tidak sah, satu sumber nilai |
+| `tests/Feature/Checkout/QrisExpiryTest.php` (baru) | prop `pembayaran.expiry_minutes`, `custom_expiry`, kolom `payments.expires_at`, dan prop `pembayaran.expires_at` sama-sama 5 / 3 / 2 menit (tagihan baru dan tagihan mode uji yang dibuat ulang) |
+
+Verifikasi yang dijalankan:
+
+```
+PHP_INI_SCAN_DIR=<scratch>/phpsqlite php artisan test tests/Unit/Services/MidtransExpiryTest.php tests/Feature/Checkout
+```
+
+Hasil: **36 test lulus, 347 assertion** (seluruh `tests/Feature/Checkout` ikut dijalankan supaya tidak ada regresi). Keluaran tersimpan di `docs/bukti-t_e35050e8-test.txt`. Database test = SQLite `:memory:` (`phpunit.xml`), jadi database pengembangan tidak disentuh.
+
+Seluruh suite juga dijalankan: `php artisan test` → **206 test lulus, 1340 assertion** (exit 0, 59,47 detik), keluaran di `docs/bukti-suite-t_e35050e8.txt` — naik 8 test dari 198 test pada kartu B1 karena 4 test unit + 4 test feature baru di kartu ini.
+
+Belum dicek / butuh pemilik: (a) seeder FAQ belum dijalankan ulang, jadi teks FAQ di database pengembangan masih "15 menit" sampai pemilik menjalankan `php artisan db:seed --class=FaqSeeder`; (b) tagihan QRIS nyata ke Midtrans belum diuji (butuh kredensial sandbox).
+
+Untuk frontend (F2 `t_e60e7733`): **tidak ada perubahan wajib** — teks "lalu bayar dalam N menit" di `resources/js/Pages/Public/Checkout.jsx` sudah membaca `pembayaran.expiry_minutes`, dan `Countdown` memakai `pembayaran.expires_at`; yang berubah hanya angkanya (15 → 5). Catatan kontrak §7.5 sudah ditulis di kartu F2.
+
+## B1b — kolom + rute nomor resi pesanan (kartu `t_b078318d`, 21 Oktober 2026)
+
+Rencana (maks 10 baris) — bentuk sudah dibekukan techlead (`docs/keputusan-a15-resi.md` §1),
+kontrak §12.18a sudah ada jadi **tidak ada perubahan kontrak** di kartu ini:
+
+1. Migrasi baru `database/migrations/2026_10_21_000019_add_tracking_number_to_orders_table.php`
+   (kolom `orders.tracking_number` string 60, nullable, `after('paid_at')`; `down()` drop kolom).
+2. `tracking_number` masuk `App\Models\Order::$fillable` (tanpa cast, tanpa aksesori).
+3. Rute `PATCH /admin/pesanan/{order}/resi` name `admin.orders.resi` middleware
+   `throttle:admin-write`, tepat setelah `orders.status` di blok Pesanan `routes/admin.php`.
+4. `App\Http\Requests\Admin\UpdateOrderTrackingRequest` — `nullable|string|max:60`, `''` → `null`,
+   pesan persis kontrak: `Nomor resi maksimal 60 karakter.` / `Nomor resi harus berupa teks.`
+5. `OrderController@resi` hanya menulis kolom itu lalu `back()->with('success','Nomor resi pesanan diperbarui.')`.
+6. `OrderController::detail()` menambah key `tracking_number` (kontrak §12.17 sudah memuatnya).
+7. Test feature di `tests/Feature/Admin/AdminSalesTest.php` (sukses, kosong = hapus, >60 = 422 +
+   pesan kontrak, bukan teks, non-admin ditolak, props §12.17, `down()` migrasi).
+8. Verifikasi: `php -l`, `route:list`, test suite (SQLite `:memory:`), `migrate:status` (DB pengembangan).
+
+Berkas disentuh: migrasi baru, `app/Models/Order.php`, `routes/admin.php`,
+`app/Http/Requests/Admin/UpdateOrderTrackingRequest.php` (baru),
+`app/Http/Controllers/Admin/OrderController.php`, `tests/Feature/Admin/AdminSalesTest.php`,
+`docs/bukti-backend-t_b078318d.txt` (baru), `docs/catatan-backend.md`.
+
+### Hasil (kartu `t_b078318d`, 21 Oktober 2026)
+
+Kontrak: **tidak ada perubahan** — bentuk dibekukan techlead di `docs/keputusan-a15-resi.md` §1 dan kontrak
+§12.18a sudah ada; implementasi mengikutinya apa adanya (PATCH, `throttle:admin-write`, pesan galat & flash
+persis, `tracking_number` di props §12.17). `docs/db.md` juga sudah memuat kolom & baris migrasinya.
+
+| Berkas | Isi | Verifikasi |
+| --- | --- | --- |
+| `database/migrations/2026_10_21_000019_add_tracking_number_to_orders_table.php` (baru) | `orders.tracking_number` string(60) null `after('paid_at')`; `down()` `dropColumn` | `php -l` OK; `up()`/`down()` diuji di suite (sqlite `:memory:`); **belum dimigrasi** ke DB pengembangan (langkah pemilik) |
+| `app/Models/Order.php` | `tracking_number` masuk `$fillable`; docblock A15 | `php -l` OK, `AdminSalesTest` 13/13 hijau |
+| `app/Http/Requests/Admin/UpdateOrderTrackingRequest.php` (baru) | `nullable\|string\|max:60`; `''` → `null` (trim); pesan persis kontrak | kasus 60, 61 karakter, dan input bukan teks hijau |
+| `app/Http/Controllers/Admin/OrderController.php` | `resi()` hanya menulis satu kolom + `back()` + flash; `detail()` menambah key `tracking_number` | `route:list` memuat `admin.orders.resi`; 8 kasus baru hijau |
+| `routes/admin.php` | `PATCH /admin/pesanan/{order}/resi` name `admin.orders.resi`, middleware `throttle:admin-write`, tepat setelah `orders.status` | `route:list` OK (4 rute pesanan) |
+| `tests/Feature/Admin/AdminSalesTest.php` | 8 kasus baru (props, sukses+trim, kosong/null = hapus, >60 & bukan teks, non-admin, `up()`/`down()` migrasi, 422 untuk klien JSON) | `AdminSalesTest` + `AdminRouteAccessTest` → **20 lulus, 127 assertion** |
+| `docs/bukti-backend-t_b078318d.txt` (baru) | bukti mentah | `route:list`, `migrate:status`, suite penuh |
+
+Verifikasi yang dijalankan:
+- `php -l` → 6 berkas PHP bersih (migrasi, model, rute, request, controller, test).
+- `php artisan route:list --path=admin/pesanan` → 4 rute, termasuk `PATCH admin/pesanan/{order}/resi`.
+- `PHP_INI_SCAN_DIR=<scratch>/phpsqlite php artisan test` (suite penuh, sqlite `:memory:` dari `phpunit.xml`):
+  **213 passed, 1391 assertion**, exit 0. Fokus admin: **20 lulus, 127 assertion**. DB pengembangan tidak disentuh.
+- `php artisan migrate:status` (read-only, DB pengembangan): `2026_10_20_000018` (K11) dan
+  `2026_10_21_000019` (kartu ini) berstatus **Pending**. Sengaja tidak dijalankan: `php artisan migrate`
+  akan sekaligus menerapkan migrasi K11 yang di luar lingkup kartu ini. Langkah pemilik ditulis di
+  `docs/langkah-pemilik.md` §"Migrasi kolom nomor resi".
+
+Catatan untuk frontend: props detail pesanan `pesanan.tracking_number` sudah terisi (`string|null`) —
+form cukup PATCH ke `/admin/pesanan/{id}/resi` dengan field `tracking_number`; `''`/`null` menghapus.
+Sukses = redirect balik + `flash.success` `Nomor resi pesanan diperbarui.`; galat = `errors.tracking_number`
+(`Nomor resi maksimal 60 karakter.` / `Nomor resi harus berupa teks.`). Kolom belum ada di MySQL
+pengembangan sampai pemilik menjalankan `php artisan migrate`, jadi uji klik end-to-end menunggu langkah itu.
+
+Belum dicek: perilaku UI nyata (klik simpan/hapus di `resources/js/Pages/Admin/Orders/Show.jsx` belum
+memuat form resi — itu lingkup kartu frontend), dan migrasi belum diterapkan ke MySQL pengembangan.
+
+## B1 — `ulasan.boleh` §7.9: hitung sisa produk belum diulas (kartu `t_45344e00`, 21 Oktober 2026)
+
+Rencana (maks 10 baris) — definisi sudah dibekukan techlead (`docs/keputusan-f6-ulasan-boleh.md` §1–§2)
+dan tertulis di kontrak §7.9/§7.11, jadi **tidak ada perubahan kontrak** di kartu ini:
+
+1. `app/Http/Controllers/CheckoutController.php` — suntik `ReviewService`; `success()` mengirim
+   `boleh` = `ReviewService::isEligible($order)` **dan** masih ada `product_id` unik di `order_items`
+   yang belum ada di `reviews` order itu. Daftar status tetap satu sumber di `ReviewService` (tidak disalin).
+2. `ulasan.sudah` tidak berubah (daftar `product_id` yang sudah diulas). Tanpa rute, kolom, migrasi,
+   atau props baru.
+3. Test regresi 5 kasus di `tests/Feature/Checkout/CheckoutTest.php` (butuh produk ke-2 + helper
+   keranjang 2 produk + helper pesanan lunas).
+4. Verifikasi: `php -l` pada berkas yang disentuh, `php artisan test --filter=CheckoutTest`
+   (SQLite `:memory:` dari `phpunit.xml`, DB pengembangan tidak disentuh).
+
+Berkas disentuh: `app/Http/Controllers/CheckoutController.php`,
+`tests/Feature/Checkout/CheckoutTest.php`, `docs/bukti-backend-t_45344e00.txt` (baru),
+`docs/catatan-backend.md`.
+
+### Hasil (21 Oktober 2026)
+
+- `CheckoutController::success()` (baris 167–192): `ulasan.boleh` kini
+  `$belumDiulas !== [] && $this->reviews->isEligible($order)`. `$belumDiulas` = `product_id`
+  unik dari `$order->items` yang belum ada di `reviews` order itu; `ReviewService` disuntik
+  lewat konstruktor (tidak ada daftar status yang disalin ke controller — sumber tetap §9.1).
+  `ulasan.sudah` tidak berubah.
+- 5 test regresi baru (kasus 1–5 kartu) di `CheckoutTest.php`, dengan produk ke-2,
+  `isiKeranjangDuaProduk()`, `pesananDuaProdukLunas()`, dan `kirimUlasan()`.
+- `php artisan test --filter=CheckoutTest` → **19 passed (215 assertions)**; suite penuh
+  `php artisan test` → **218 passed (1492 assertions)**. Keluaran ditempel di
+  `docs/bukti-backend-t_45344e00.txt`.
+- Kontrol negatif: ekspresi lama (`'boleh' => $reviewedProductIds === []`) dipasang sementara →
+  test (2) `Failed asserting that false is identical to true` dan test (4) `... true is identical
+  to false`; berkas dikembalikan dan diverifikasi identik (`diff -q`). Jadi kedua test memang
+  mengunci bug §7.9.
+- Lingkungan: driver sqlite di `php.ini` Laragon masih dikomentari, jadi verifikasi memakai
+  `PHP_INI_SCAN_DIR=<scratch>/phpsqlite php artisan test ...` (isi: `extension=pdo_sqlite`,
+  `extension=sqlite3`). `php.ini` pemilik tidak diubah; tanpa env itu test gagal
+  `could not find driver (Connection: sqlite, Database: :memory:)`.
+- Belum dicek: halaman `/checkout/{order}/selesai` secara nyata di browser (lingkup pemilik,
+  frontend memakai props yang sama — bentuk props tidak berubah, hanya nilai `boleh`).
+- Tidak dijalankan di kartu ini: migrasi/seeder/db:seed, `migrate:fresh`, dan perintah apa pun
+  terhadap DB pengembangan.
+
+## B3 — Aksi admin sinkronkan status pembayaran (kartu `t_c374a29b`, 21 Oktober 2026)
+
+Rencana (maks 10 baris):
+
+1. Kontrak dulu: tambah §12.24 di `docs/kontrak-props.md` (rute, middleware, perilaku, flash);
+   jangan mengubah bagian lain — termasuk baris tabel §12.23.
+2. `MidtransService::syncStatusOrFail()` baru memakai `MidtransApi::status()` yang sudah ada;
+   `syncStatus()` (best-effort, polling pembeli) tidak diubah.
+3. Rute `PATCH /admin/pesanan/{order}/sinkron-pembayaran` (`admin.orders.sinkron-pembayaran`,
+   `throttle:admin-write`) di `routes/admin.php` sesudah `orders.resi`.
+4. `Admin\OrderController::syncPayment` — payment null / mode uji / sudah settlement → flash error
+   tanpa panggilan API; sisanya `syncStatusOrFail()`; `CheckoutException` → `flash.error`, bukan 500;
+   `Log::info` kode pesanan + status lama→baru tanpa rahasia.
+5. Test baru `tests/Feature/Admin/AdminSyncPaymentTest.php` memakai `Tests\Support\FakeMidtransApi`.
+6. Tidak ada kolom/migrasi baru; `docs/db.md` dikomentari (tanpa perubahan skema).
+
+Berkas disentuh: `docs/kontrak-props.md`, `app/Services/MidtransService.php`,
+`app/Http/Controllers/Admin/OrderController.php`, `routes/admin.php`,
+`tests/Feature/Admin/AdminSyncPaymentTest.php` (baru), `docs/bukti-backend-t_c374a29b.txt` (baru),
+`docs/catatan-backend.md`, `docs/db.md`.
+
+### Hasil (21 Oktober 2026)
+
+- Kontrak: `docs/kontrak-props.md` §12.24 ditambahkan setelah §12.18a (rute, middleware, perilaku,
+  tiga flash "tanpa panggilan API", dua flash sukses, flash galat, aturan log). Tidak ada bagian
+  lain yang diubah — khususnya baris tabel `tracking_number` §12.23 tetap apa adanya.
+- `MidtransService::syncStatusOrFail(Payment)` (`app/Services/MidtransService.php` baris ~310–337):
+  mode uji → `CheckoutException('Mode uji Midtrans: status tidak bisa disinkronkan.')`;
+  `order_id_midtrans` kosong → `CheckoutException` lain; sukses menerapkan status lewat
+  `applyStatus()` yang sudah ada (idempoten, status final tidak mundur, stok ikut kembali lewat
+  `StockService::restoreForCancellation`). `syncStatus()` lama TIDAK diubah (masih best-effort
+  untuk polling pembeli). Docblock kelas menyebut pemakaian baru ini.
+- `Admin\OrderController::syncPayment` (`app/Http/Controllers/Admin/OrderController.php` baris
+  155–207): urutan cek tanpa panggilan API = (1) `payment` null → flash error, (2) sudah
+  `settlement` → flash sukses "Pembayaran sudah lunas…", (3) mode uji (`isFake()` atau
+  `isFakeCharge()`) → flash error; baru sesudah itu `syncStatusOrFail()`. `CheckoutException`
+  ditangkap → `flash.error` "Gagal memeriksa status pembayaran. Coba lagi.", tidak ada HTTP 500.
+  Controller tidak menulis ke `payments`/`orders`/stok sendiri (satu jalur dengan webhook).
+  `Log::info` hanya memuat kode pesanan + `payment`/`order_status` lama→baru.
+  Konstruktor kini juga menerima `MidtransService` (Laravel menyuntik otomatis).
+- Rute: `PATCH /admin/pesanan/{order}/sinkron-pembayaran` → `admin.orders.sinkron-pembayaran`
+  (`routes/admin.php` baris 142–145), middleware `web` + `admin` + `throttle:admin-write`
+  (sama dengan §12.18a). Komentar blok pesanan diperbarui (`§12.16–§12.18a, §12.24`).
+- Test: `tests/Feature/Admin/AdminSyncPaymentTest.php` (baru, 12 kasus, `FakeMidtransApi`):
+  settlement→dibayar+`paid_at`, status sama, status tak dikenal, expire→batal+stok kembali
+  (`stock_movements` `in`, qty 2) , status final tidak mundur, tanpa tagihan, mode uji global,
+  tagihan lama mode uji, sudah lunas, kegagalan Midtrans → `flash.error` + status tersimpan utuh,
+  log tanpa rahasia (`Log::spy`), tamu/pembeli ditolak.
+- Verifikasi:
+  ```text
+  php -l (berkas disentuh)                                    -> tanpa syntax error
+  php artisan test tests/Feature/Admin/AdminSyncPaymentTest.php
+                                                              -> 12 passed (55 assertions)
+  php artisan test tests/Feature/Contract/RouteContractTest.php tests/Feature/Admin/AdminSyncPaymentTest.php
+                                                              -> 17 passed (60 assertions)
+  php artisan test                                            -> 237 passed (1791 assertions)
+  php artisan route:list --path=admin/pesanan -v              -> 5 rute; rute baru terdaftar
+                                                                 dengan web, admin, throttle:admin-write
+  ```
+  Keluaran lengkap: `docs/bukti-backend-t_c374a29b.txt`. Tambahan kecil di luar rencana:
+  dua nama rute pesanan (`admin.orders.resi`, `admin.orders.sinkron-pembayaran`) dimasukkan ke
+  daftar `tests/Feature/Contract/RouteContractTest.php` agar rute baru ikut terjaga kontraknya.
+- Lingkungan: driver sqlite di `php.ini` pemilik masih dikomentari, jadi test memakai
+  `PHP_INI_SCAN_DIR=<scratch php-ini>/ php artisan test` (isi `extension=pdo_sqlite`,
+  `extension=sqlite3`). `php.ini` dan `.env` pemilik tidak disentuh.
+- Belum dicek: tombolnya diklik di browser pada server pengembangan (lingkup pemilik/frontend);
+  kartu frontend memakai rute + flash yang sama (tidak ada key flash baru — `flash.success` /
+  `flash.error` saja). Tidak dijalankan di kartu ini: migrasi/seeder/`db:seed`, `migrate:fresh`,
+  dan perintah apa pun terhadap DB pengembangan.
+- Catatan: tidak ada kolom atau migrasi baru, jadi `docs/db.md` tidak berubah — `payments` dan
+  `orders` (termasuk `payment_status`, `paid_at`, `tracking_number`) sudah mendukung aksi ini.
+
+
+
+## G2 — 2 migrasi tertunda dijalankan di DB pemilik (kartu `t_576d4f09`, 21 Oktober 2026)
+
+Rencana (maks 10 baris):
+
+1. Rekam `php artisan migrate:status` sebelum — dua baris Pending: 000018 `compare_price`,
+   000019 `tracking_number`.
+2. Jalankan `php artisan migrate` (hanya ini; tanpa fresh/rollback/wipe) pada MySQL pemilik `toko-kulot`.
+3. Rekam `migrate:status` sesudah — keduanya Ran, baris Pending = 0.
+4. Bukti baca-saja di DB pemilik: `Schema::hasColumn('products','compare_price')`,
+   `Schema::hasColumn('orders','tracking_number')`, `SHOW COLUMNS`, dan baca contoh baris.
+5. Jalankan uji otomatis yang menyentuh kedua kolom (admin produk, resi pesanan, katalog, unit harga coret).
+6. Tanpa perubahan kode/migrasi/.env; berkas baru hanya di `docs/`.
+
+Berkas disentuh: `docs/bukti-migrate-g2.txt` (baru), `docs/catatan-backend.md`.
+
+### Hasil
+
+- `2026_10_20_000018_add_compare_price_to_products_table` dan
+  `2026_10_21_000019_add_tracking_number_to_orders_table` kini **Ran batch [2]** di MySQL pemilik
+  (`toko-kulot`); baris Pending 2 → 0; tanpa galat.
+- Baca-saja: `products.compare_price` bigint unsigned null, `orders.tracking_number` varchar(60) null;
+  `Schema::hasColumn` keduanya `true`; data lama utuh (11 produk, 9 pesanan; kolom baru masih NULL).
+- Uji: `php artisan test` gagal karena `pdo_sqlite` belum aktif di `php.ini` mesin ini (mesin, bukan
+  kode). Ulangan `php -d extension=pdo_sqlite vendor/bin/phpunit --filter '(AdminMasterDataTest|AdminSalesTest|CatalogIndexTest|CatalogShowTest|ProductPricingTest)'`
+  → **OK (49 tests, 415 assertions)**; DB uji SQLite `:memory:` dari `phpunit.xml`, DB pemilik tidak tersentuh.
+- Belum diuji: klik ulang `/admin/produk/tambah`, `/admin/produk/12/ubah`, dan resi
+  `/admin/pesanan/{order}` — butuh server + browser pemilik (DB pemilik tidak punya produk id=12).
+- Langkah pemilik bila ingin `php artisan test` jalan tanpa flag: aktifkan `extension=pdo_sqlite` +
+  `extension=sqlite3` di `php.ini` (`docs/langkah-pemilik.md` §7).
+
+
+## B4 — QRIS asli: normalisasi respons SDK Midtrans (kartu `t_3bfe3165`, 22 Oktober 2026)
+
+Rencana (maks 10 baris):
+
+1. Baca `docs/review-2.md` §6 G1 + docblock seam `MidtransApi.php:14-27`; kontrak props §7.7
+   tidak berubah (key `qris_url`/`qr_string`/`pembayaran.*` sudah ada, tidak ada key baru).
+2. `app/Services/Midtrans/SdkMidtransApi.php`: panggilan SDK dipisah ke seam test
+   `requestCharge()`/`requestStatus()`, lalu hasilnya dinormalkan **rekursif** (stdClass/objek →
+   array) sebelum dikembalikan, supaya docblock seam benar-benar dipenuhi.
+3. `MidtransService::qrUrl()` **tidak diubah** — perbaikan hanya di adapter.
+4. Test baru memakai bentuk respons SDK (`json_decode()` tanpa `true` → stdClass bersarang):
+   `charge()`, `status()`, dan alur `POST /checkout` → halaman bayar menampilkan QR asli.
+5. Test harus GAGAL pada adapter lama (bukti RED) lalu lulus sesudah perbaikan (GREEN).
+6. Jalankan `php -d extension=pdo_sqlite vendor/bin/phpunit ...` (pdo_sqlite belum aktif di
+   `php.ini` mesin ini) lalu suite penuh; rekam di `docs/bukti-backend-t_3bfe3165.txt`.
+7. Tanpa migrasi/kolom baru; `.env` tidak disentuh.
+
+Berkas disentuh: `app/Services/Midtrans/SdkMidtransApi.php`,
+`tests/Feature/Checkout/MidtransSdkShapeTest.php` (baru),
+`docs/bukti-backend-t_3bfe3165.txt` (baru), `docs/catatan-backend.md`.
+
+### Hasil (kartu `t_3bfe3165`, 22 Oktober 2026)
+
+- **Perbaikan.** `SdkMidtransApi` kini menormalkan respons SDK **rekursif** (`normalizeResponse()` /
+  `normalizeValue()`: objek/stdClass dan `JsonSerializable` → array, array disusuri sampai dalam) untuk
+  `charge()` dan `status()`, sehingga docblock seam `MidtransApi.php:14-27` benar-benar dipenuhi.
+  Panggilan SDK mentah dipisah ke `requestCharge()`/`requestStatus()` (`protected`, satu-satunya titik
+  jaringan) supaya test bisa memakai bentuk respons SDK apa adanya tanpa menghubungi Midtrans.
+  `MidtransService::qrUrl()` **tidak diubah**; tidak ada kolom/migrasi baru; `.env` tidak disentuh.
+- **Penyebab terbukti.** Skrip reproduksi (scratch, tidak masuk repo) memakai
+  `(array) json_decode($json)` + `$action['url']` (baris yang sama dengan `MidtransService.php:540`)
+  → `Error: Cannot use object of type stdClass as array`; dengan normalisasi rekursif → URL terbaca.
+  Bukti lengkap: `docs/bukti-backend-t_3bfe3165.txt` §2.
+- **Test baru** `tests/Feature/Checkout/MidtransSdkShapeTest.php` (4 test) memakai `json_decode()` tanpa
+  `true` — bentuk persis SDK. RED pada adapter lama (`Errors: 2, Failures: 2`, termasuk
+  `POST /checkout` gagal karena charge melempar `CheckoutException`); GREEN sesudah perbaikan
+  (`OK (4 tests, 49 assertions)`), termasuk `GET /checkout/{order}/bayar` → `pembayaran.qris_url`
+  terisi dan `pembayaran.galat` null.
+- **Uji.** `php -d extension=pdo_sqlite vendor/bin/phpunit` → **OK (242 tests, 1844 assertions)**
+  (sebelumnya 237/1791). Uji terkait Midtrans (6 kelas) → OK (57 tests, 555 assertions).
+  `vendor/bin/pint --test` → passed.
+- **`php artisan test`** tetap gagal total di mesin ini (`could not find driver`, proses anak tidak
+  mewarisi `-d extension=pdo_sqlite`) — masalah mesin, bukan kode; lihat `docs/langkah-pemilik.md`
+  §“Menjalankan test”. DB uji SQLite `:memory:`, DB MySQL pemilik tidak tersentuh.
+- **Kontrak.** Kontrak props §7.7 tidak berubah: tidak ada key baru, hanya `qris_url` yang kini benar-benar
+  terisi di mode asli seperti yang sudah dijanjikan §7.7 (`docs/kontrak-props.md:478`). Frontend tidak
+  perlu perubahan.
+- **Belum diuji (jujur).** Charge QRIS sungguhan ke Midtrans sandbox — butuh kredensial pemilik dan
+  server; kartu ini tidak menyentuh `.env`. Untuk gerbang G1 `t_fcfc3687`: pemilik harus membuat
+  **pesanan uji baru** setelah ini (transaksi lama tidak bisa di-`charge` ulang dengan `order_id` sama —
+  usulan **U8**, di luar lingkup kartu ini) lalu memeriksa QR tampil di `/checkout/{order}/bayar`.
+- **Di luar lingkup / dicatat.** Penanganan `order_id` duplikat saat charge ulang (U8) tidak dikerjakan
+  di sini. Selain itu `app/Services/Midtrans/SdkMidtransApi.php` dan
+  `app/Services/Midtrans/MidtransApi.php` masih belum terlacak git (`??`) — kebersihan repo, bukan
+  lingkup kartu ini. Commit tidak dibuat oleh agent; R8 (satu kartu satu commit) diserahkan ke
+  techlead/pemilik karena workspace berisi 42 berkas berubah milik kartu lain.
+
+
+
+
+
+
+## P3 — pesan `customer_city.max` di CheckoutRequest (kartu `t_f39eba9d`, 22 Oktober 2026)
+
+Temuan QA `docs/laporan-qa-2.md` OBS-1 (bukti `docs/bukti-qa-t_43d8bcd7.txt` §4B).
+
+Rencana (maks 10 baris):
+
+1. Hanya menambah satu entri `'customer_city.max' => 'Kota/kecamatan maksimal 100 karakter.'`
+   di `CheckoutRequest::messages()`; `rules()`, `attributes()`, pesan lain, dan frontend tidak diubah.
+2. Teks pesan disalin dari klien `resources/js/Pages/Public/Checkout.jsx:69` (sudah ada).
+3. Tambah 1 test regresi HTTP di `tests/Feature/Checkout/CheckoutTest.php`
+   (`test_validasi_kota_lebih_dari_100_karakter_memakai_pesan_indonesia`): POST `/checkout`
+   dengan kota 101 karakter harus memunculkan pesan itu dan 0 order.
+4. Bukti RED: cabut sementara baris pesan → test gagal dengan pesan bawaan Inggris
+   ("The kota/kabupaten field must not be greater than 100 characters."); pasang lagi → hijau.
+5. Verifikasi: `php artisan test --filter=Checkout` dan suite penuh; ekstensi sqlite dimuat
+   per-invokasi lewat `PHP_INI_SCAN_DIR` scratch (php.ini global dan `.env` tidak disentuh).
+6. Tanpa migrasi, seeder, paket baru, atau perubahan frontend.
+
+Hasil nyata:
+
+- Test regresi: `1 passed (4 assertions)`, exit 0.
+- `php artisan test --filter=Checkout`: `49 passed (730 assertions)`, exit 0.
+- Suite penuh: `242 passed (1844 assertions)`, exit 0.
+- RED terbukti (1 failed / 3 assertions, exit 1) saat baris pesan dicabut.
+
+Berkas disentuh: `app/Http/Requests/CheckoutRequest.php` (+1 baris),
+`tests/Feature/Checkout/CheckoutTest.php` (+1 test), `docs/bukti-backend-t_f39eba9d.txt` (baru),
+`docs/catatan-backend.md`. Kontrak props tidak berubah (tidak ada key baru, hanya teks galat).
+
+## U8 — `order_id` Midtrans unik per panggilan charge (kartu `t_a90d5215`, 22 Oktober 2026)
+
+Rencana (maks 10 baris):
+
+1. `MidtransService::nextMidtransOrderId()`: `{orders.code}-{6 hex}` (23 dari batas 60 char),
+   dihitung SEKALI per panggilan charge lalu dipakai untuk `chargeParams()` + `order_id_midtrans`.
+2. Jalur asli saja: `createQrisCharge()` non-fake dan `regenerateCharge()`; cabang mode uji
+   (`:123-137`) tetap `$order->code` (petunjuk techlead: `isFakeCharge()`/`needsRegeneration()`
+   bergantung penanda `fake-`/`payload.mode`, dan tidak memanggil Midtrans).
+3. Tanpa migrasi, tanpa perubahan `orders.code`, rute, bentuk respons, atau kontrak props.
+4. Test baru `tests/Feature/Checkout/MidtransOrderIdUniqueTest.php` (a) dua charge order sama →
+   ID berbeda, (b) checkout ulang setelah gagal pasca-charge tidak kena `order_id` duplikat,
+   (c) notifikasi dengan ID bersufiks tetap memperbarui status.
+5. `FakeMidtransApi` diberi opsi menolak ID duplikat + status bawaan; ekspektasi
+   `PaymentModeTest` dan `MidtransSdkShapeTest` yang masih `= orders.code` disesuaikan.
+6. Bukti: phpunit lewat `PHP_INI_SCAN_DIR` scratch (SQLite `:memory:`), `pint --test`;
+   hasil di `docs/bukti-backend-t_a90d5215.txt`.
+
+Hasil:
+
+- `MidtransService.php`: konstanta `MIDTRANS_ORDER_ID_MAX_LENGTH = 60` &
+  `MIDTRANS_ORDER_ID_SUFFIX_LENGTH = 6`; `nextMidtransOrderId()` (basis `mb_substr` 53 char,
+  sufiks 6 hex uppercase, cek tabrakan di `payments.order_id_midtrans`, retry 5x);
+  `chargeOrder(Order, string)` meneruskan ID ke `chargeParams()` sehingga parameter Midtrans
+  dan kolom DB dijamin sama; `createQrisCharge()` dan `regenerateCharge()` menghitung ID
+  SEKALI per charge. Cabang mode uji tidak diubah.
+- `tests/Support/FakeMidtransApi.php`: `rejectDuplicateOrderIds` + `usedOrderIds`
+  (simulasi 406) dan `defaultTransactionStatus` (status untuk ID yang tidak terdaftar).
+- `tests/Feature/Checkout/MidtransOrderIdUniqueTest.php` (3 test): dua charge → ID berbeda;
+  checkout gagal pasca-charge (actions stdClass) → 500 + rollback + checkout ulang sukses
+  walau ID duplikat ditolak; notifikasi dengan ID bersufiks → settlement + pesanan dibayar.
+- `tests/Feature/Checkout/PaymentModeTest.php` & `MidtransSdkShapeTest.php`: ekspektasi
+  `order_id`/`qris_url` memakai ID bersufiks dari baris `payments`, bukan `orders.code`.
+- Hasil: test baru `OK (3 tests, 38 assertions)`; filter Checkout|Midtrans|Payment
+  `OK (78 tests, 873 assertions)`; suite penuh `OK (245 tests, 1884 assertions)`;
+  `pint --test` pada 5 berkas `passed`.
+- RED terbukti: `nextMidtransOrderId()` sementara `return $order->code` → 3/3 test gagal
+  (13 assertions), lalu dikembalikan.
+- Tanpa migrasi, tanpa perubahan `orders.code`, rute, kontrak props, atau bentuk respons.
+- Catatan: docblock migrasi `2026_10_20_000012_create_payments_table.php:9` masih menulis
+  `order_id_midtrans = orders.code`. Migrasi sengaja tidak diubah (beku); semantik baru
+  adalah `orders.code + "-" + 6 hex`, dan pembacaan status/webhook tetap lewat kolom itu.
+
+## B6 — penyebab asli gagal charge Midtrans ikut dicatat (kartu `t_1f72a2d1`, 22 Oktober 2026)
+
+Rencana (maks 10 baris):
+
+1. `MidtransService::chargeOrder()` mencatat `exception` (kelas), `code`, dan `previous`
+   (daftar kelas/kode/pesan `getPrevious()` sampai 5 tingkat) di samping `error` yang sudah ada.
+2. Kredensial (`midtrans.server_key`/`client_key`) disensor dari pesan sebelum ditulis ke log,
+   walau pesan SDK saat ini tidak memuatnya.
+3. Tidak ada perubahan pesan untuk pembeli/admin (kontrak props §7.7 `pembayaran.galat` tetap
+   `Gagal membuat pembayaran QRIS. Coba lagi.`), rute, atau bentuk respons → kontrak tidak berubah.
+4. Test baru `tests/Feature/Checkout/MidtransChargeLogTest.php`: api palsu melempar exception
+   ber-previous "HTTP status code: 401 ... API response: ..." → log memuatnya, pesan tampil sama;
+   plus kasus tanpa previous.
+5. Tanpa migrasi, tanpa `.env`, tanpa server; bukti di `docs/bukti-backend-t_1f72a2d1.txt`.
+
+## B7a — kontrak warna varian di props publik (kartu `t_bc89df6d`, 22 Oktober 2026)
+
+Rencana (maks 10 baris):
+
+1. Bukti data: produk 13 "baju tidur pola kucing" punya 4 varian (L/XL × Hijau/Merah), semua
+   `is_active`; jadi varian tersimpan — masalahnya serialisasi warna + pemilihan di frontend.
+2. Kontrak dulu: `docs/kontrak-props.md` §8.3 — key aditif `variants[].color_hex`
+   (`#RRGGBB` dari peta baku; `null` bila `color` kosong/tidak dikenal); status §8.5 dicatat.
+3. `app/Support/VariantColor.php` — peta nama warna Indonesia/Inggris → hex, terima `#RGB`/`#RRGGBB`.
+4. `app/Services/ProductPresenter.php::variants()` menambah `color_hex` (kartu katalog + detail).
+5. Tanpa migrasi/kolom baru; `docs/db.md` tidak berubah (PRD §6 tidak memuat kolom warna hex).
+6. Test: unit `VariantColorTest`; feature admin tambah produk 2 ukuran × 2 warna → props
+   `/produk/{slug}` dan `/produk` memuat 4 varian dengan hex benar; warna tak dikenal `null`.
+7. Bukan lingkup card ini: tombol ukuran/warna saling mengunci di `Show.jsx` (kartu frontend
+   `t_7a62c713`); dikomentari di kartu itu, tidak diubah di sini.
+8. Bukti perintah di `docs/bukti-backend-t_bc89df6d.txt`.
+
+Hasil:
+
+- `app/Support/VariantColor.php` baru: peta nama warna Indonesia/Inggris → hex, isian
+  `#RGB`/`#RRGGBB` diteruskan, kata kunci terpanjang menang, tak dikenal → `null`.
+  `ProductPresenter::variants()` menambah `color_hex` tepat setelah `color`; kartu katalog,
+  beranda, dan detail memakai jalur yang sama sehingga tidak ada dua bentuk.
+- Kontrak `docs/kontrak-props.md` §8.3 + §8.5 diperbarui (key aditif, LOCKED 22 Okt 2026);
+  §11.1 mencatat tidak ada rute `/produk/barang`. Tanpa migrasi; `docs/db.md` tidak berubah.
+- Bukti data nyata: produk 13 (L/XL × Hijau/Merah) kini `#16A34A`/`#DC2626` per baris;
+  sebelum perubahan `color_hex` tidak ada (bukti bagian A–B).
+- Test unit + fitur **OK (8 tests, 48 assertions)**; regresi seluruh suite **OK (258 tests,
+  2041 assertions)** lewat `php -d extension=pdo_sqlite vendor/bin/phpunit` (pdo_sqlite tidak
+  aktif di php.ini, DLL-nya ada; DB tetap SQLite `:memory:`, tanpa mengubah konfigurasi).
+  `CatalogIndexTest` disesuaikan: key varian kartu kini memuat `color_hex` (`#111827` untuk
+  "Hitam"). `php -l` 5 berkas bersih; `pint --test` passed.
+- Temuan di luar lingkup: `Show.jsx` mengunci tombol ukuran & warna saat keduanya >1
+  (saling menunggu pilihan lain) — dikomentari di kartu frontend `t_7a62c713`, tidak diubah
+  di sini.
+
+## B7 — Dashboard admin sinkron dengan data aktual (kartu `t_1ef89050`, 22 Oktober 2026)
+
+Rencana (maks 10 baris):
+
+1. Temuan: `DashboardController@index` hanya mengirim `stats`; halaman `Admin/Dashboard` sudah
+   membaca `sales_14d`, `low_stock`, `recent_orders`, `recent_reviews`, `updated_at` → empat blok
+   selalu tampil empty walau DB berisi 13 order, 38 varian (2 stok < 5), 2 ulasan.
+2. Kontrak `docs/kontrak-props.md` §6.13 dilengkapi lebih dulu (bentuk tiap prop + aturan filter)
+   lalu dinaikkan ke LOCKED karena frontend sudah memakainya.
+3. `app/Services/DashboardService.php` baru: satu tempat agregasi (stats, sales 14 hari zero-fill,
+   stok kritis < 5, 5 pesanan terbaru, 5 ulasan terbaru) — tanpa cache, dihitung per request.
+4. `Order::REVENUE_STATUSES` jadi satu-satunya daftar status omzet (dipakai service + test).
+5. `DashboardController` tipis: injeksi service, kirim props + `updated_at` ISO 8601.
+6. Test `tests/Feature/Admin/AdminDashboardTest.php` diperluas (SQLite in-memory): bentuk 14 hari,
+   filter status omzet, stok kritis, limit/urutan 5 pesanan & 5 ulasan, user terhapus → null.
+7. Berkas disentuh: service baru, controller, model Order, test, kontrak, catatan, asumsi, bukti.
+8. Tanpa migrasi, tanpa rute/endpoint baru, tanpa perubahan frontend, tanpa `.env`.
+
+### Hasil
+
+- **Akar masalah**: `DashboardController@index` hanya mengirim `stats`. Empat blok lain yang sudah
+  dibaca `resources/js/Pages/Admin/Dashboard.jsx` (`sales_14d`, `low_stock`, `recent_orders`,
+  `recent_reviews`) tidak pernah dikirim, sehingga selalu jatuh ke nilai bawaan `null` → empty state
+  walau database berisi data. `updated_at` juga tidak dikirim sehingga label "Diperbarui …" kosong.
+- **Perbaikan**: `app/Services/DashboardService.php` (baru) menjadi satu tempat agregasi; controller
+  kini tipis dan mengirim `snapshot()` (6 key). Tanpa cache, tanpa migrasi, tanpa rute/endpoint baru.
+- **Status omzet**: `App\Models\Order::REVENUE_STATUSES` (baru) = dibayar/diproses/dikirim/selesai,
+  dipakai service dan test agar tidak ada dua daftar yang bisa menyimpang.
+- **Kontrak**: `docs/kontrak-props.md` §6.13 dilengkapi bentuk per field dan aturan filter, status
+  naik ke **LOCKED** karena frontend sudah memakainya. Baris tabel status dipecah (§6.10–§6.12 DRAFT,
+  §6.13 LOCKED).
+- **Test**: `tests/Feature/Admin/AdminDashboardTest.php` dari 3 → 8 test (149 assertion), semuanya
+  lulus di SQLite `:memory:` (phpunit.xml). Test baru: bentuk 14 hari + zero-fill, filter status dan
+  batas jendela, filter stok kritis (aktif, <5, produk aktif, batas 5 baris), 5 pesanan terbaru semua
+  status, 5 ulasan terbaru termasuk tersembunyi + `user_name` null.
+- **Verifikasi data nyata** (MySQL pengembangan, read-only, `docs/bukti-dashboard-t_1ef89050.txt`):
+  stats `{orders_total:13, orders_pending:7, revenue_total:884000, products_active:12}`;
+  `sales_14d` 14 entri (646.000 pada 15 Okt + 238.000 pada 16 Okt = 884.000, cocok dengan
+  `revenue_total`); `low_stock` 2 varian stok 3; `recent_orders` 5 (termasuk 3 batal); `recent_reviews` 2.
+- **Pint**: 4 berkas lulus `pint --test` (2 perbaikan otomatis: body konstruktor satu baris,
+  import `Category` di test).
+
+### Catatan / di luar lingkup
+
+- PRD §9 juga menyebut KPI "Omzet hari ini", "Omzet 30 hari", "AOV", "Pesanan per status", dan
+  "Produk terlaris", sedangkan `Admin/Dashboard.jsx` (K13) hanya merender 4 kartu: total pesanan,
+  pesanan baru, omzet total, produk aktif. Kartu ini **tidak menambah** KPI tersebut (di luar bug
+  sinkronisasi + tugas melarang fitur dashboard baru); bila diminta, backend dapat menambahkannya
+  aditif di `snapshot()` dan frontend menambah kartu.
+- Suite penuh akhir: **258 lulus (2041 assertion)**. Saat pengerjaan sempat ada 1 gagal sementara di
+  `tests/Feature/Catalog/CatalogIndexTest.php` (`color_hex`) karena `ProductPresenter.php` + test itu
+  sedang diubah agent lain bersamaan; test yang sama lulus saat dijalankan ulang, dan suite akhir bersih.
+  Bukan regresi dari kartu ini.
+- `php artisan test` di mesin ini butuh `PHP_INI_SCAN_DIR` berisi `pdo_sqlite`/`sqlite3`
+  (sudah tercatat di `docs/langkah-pemilik.md` §7 dan `docs/lingkungan.md`); tanpa itu seluruh test
+  gagal "could not find driver". Tidak ada perubahan php.ini/.env.
+
+## Kartu `t_2f443b75` — notif "Gagal membuat pembayaran QRIS. Coba lagi." saat buat pesanan
+
+Tanggal: 22 Oktober 2026. Lingkup: jalur charge QRIS (`MidtransService`) + kontrak props §7.6/§7.7.
+Tanpa migrasi, tanpa rute/endpoint baru, tanpa perubahan frontend, tanpa `.env`.
+
+### Rencana (ditulis sebelum mengubah kode)
+
+1. Bukti dulu: baca log `Midtrans charge gagal` dan payload yang benar-benar dikirim.
+2. `chargeParams()` berhenti mengirim `enabled_payments` (parameter Snap) untuk kanal `gopay`;
+   kanal dipilih lewat `qris.acquirer` saja, nilainya dari config `midtrans.qris_acquirer`
+   (`MIDTRANS_QRIS_ACQUIRER`, bawaan `gopay`).
+3. `chargeOrder()`: jawaban 402 "Payment channel is not activated" → satu percobaan ulang dengan
+   acquirer satunya (`other_qris`, `qris.acquirer` + `enabled_payments` konsisten, `order_id` sama);
+   kegagalan lain tidak diulang. Kedua kanal 402 → pesan yang menyebut aktivasi kanal.
+4. Test regresi `tests/Feature/Checkout/QrisAcquirerFallbackTest.php` (5 kasus), `FakeMidtransApi`
+   bisa menskrip kegagalan berurutan.
+5. Berkas: `app/Services/MidtransService.php`, `config/midtrans.php`, `.env.example`,
+   `tests/Support/FakeMidtransApi.php`, test baru, `docs/kontrak-props.md` §7.6/§7.7,
+   `docs/langkah-pemilik.md`, `docs/asumsi.md`.
+
+### Hasil
+
+- **Akar masalah (terbukti dari log, bukan dugaan)**: `storage/logs/laravel.log` mencatat 9 kegagalan
+  nyata (`local.ERROR`) sejak 21 Okt 19:30 sampai 22 Okt 10:13, semuanya
+  `HTTP status code: 402 API response: {"status_code":"402","status_message":"Payment channel is
+  not activated."}`. Contoh terakhir: pesanan `TK-20261022-0005`, `midtrans_order_id`
+  `TK-20261022-0005-98BC41`, 22 Okt 10:13:55.
+- **Sebab di kode**: `chargeParams()` mengirim `qris.acquirer = gopay` **dan**
+  `enabled_payments = ["other_qris"]` sekaligus. `enabled_payments` adalah parameter Snap; di Core
+  API kanal dipilih `qris.acquirer`, sehingga nilai warisan PRD §8 itu meminta kanal yang tidak aktif
+  di akun merchant → 402.
+- **Perbaikan**: `chargeParams(Order, string $orderId, string $acquirer)` tidak lagi mengirim
+  `enabled_payments` untuk `gopay`; kanal `other_qris` tetap mengirim `qris.acquirer = other_qris` +
+  `enabled_payments = ["other_qris"]` (konsisten, hanya di percobaan kedua).
+  `qrisAcquirers()` membaca `midtrans.qris_acquirer` (bawaan `gopay`, nilai tak sah → `gopay`) dan
+  menyiapkan acquirer cadangan. `chargeOrder()` mengulang **sekali** hanya bila
+  `isChannelInactive()` benar (kode 402 atau teks "Payment channel is not activated" di rantai
+  `getPrevious()`), memakai `order_id` yang sama karena transaksi 402 tidak pernah dibuat.
+- **Pesan ke UI**: kegagalan 402 ganda → `MidtransService::CHANNEL_INACTIVE_MESSAGE` =
+  `Pembayaran QRIS belum bisa dibuat karena kanal QRIS belum aktif di akun Midtrans penjual. Hubungi
+  penjual.` (kontrak §7.6/§7.7 diperbarui, aditif; teks lama tetap dipakai untuk kegagalan lain).
+  Tujuannya: pembeli/pemilik tidak disuruh "coba lagi" untuk hal yang hanya bisa diperbaiki lewat
+  aktivasi kanal di dashboard Midtrans.
+- **Log**: entri `Midtrans charge gagal` kini memuat `qris_acquirer`, `attempt`, dan
+  `channel_inactive` supaya kegagalan berikutnya bisa dibedakan tanpa menebak. Kredensial tetap
+  disensor (`redactSecret()`).
+- **Test**: `tests/Feature/Checkout/QrisAcquirerFallbackTest.php` — 5 lulus (40 assertion):
+  payload tanpa `enabled_payments`; fallback 402 → `other_qris` dan pesanan tetap dibuat; 402 dua kali
+  → pesan aktivasi, tanpa order/payment, stok utuh; kegagalan non-402 tidak diulang (1 percobaan);
+  `MIDTRANS_QRIS_ACQUIRER=other_qris` dipakai sebagai kanal pertama.
+  Suite penuh: **263 lulus (2081 assertion)**, exit 0, dijalankan dengan
+  `PHP_INI_SCAN_DIR=<scratch>/phpsqlite` (SQLite `:memory:`).
+- **Belum dibuktikan**: panggilan charge sungguhan ke akun Midtrans pemilik. Probe
+  `tmp/probe-qris-variants.php` sudah disiapkan tetapi berhenti sendiri karena mode produksi aktif
+  (sengaja: jangan membuat tagihan nyata). Bila 402 masih muncul setelah perubahan ini, artinya kanal
+  QRIS memang belum aktif di dashboard — langkah pemilik ada di `docs/langkah-pemilik.md`.
+
+### Catatan / di luar lingkup
+
+- PRD §8 masih menulis `enabled_payments: ["other_qris"]`. PRD bukan milik kartu ini dan tidak
+  diubah; penyimpangannya dicatat di `docs/asumsi.md` butir 27.
+- `docs/midtrans-produksi.md` «Kanal QRIS LULUS» hanya memeriksa **nilai config**, bukan panggilan
+  charge (kartu itu menyatakan tidak ada charge). Tidak ada kontradiksi, tetapi bacaannya jangan
+  dianggap bukti kanal aktif.
+- Kalau pemilik mengaktifkan `other_qris` saja, `MIDTRANS_QRIS_ACQUIRER=other_qris` menghindari satu
+  percobaan 402 yang sia-sia (bukan syarat; fallback tetap jalan).
+
+## Kartu `t_56062a5c` — QRIS: acquirer sah + pesan 402 terjaga (22 Oktober 2026)
+
+Rencana (maks 10 baris):
+
+1. `MidtransService`: `QRIS_ACQUIRERS` = `gopay` + `airpay shopee`; nilai config lama `other_qris`
+   dipetakan ke `airpay shopee`; `chargeParams()` tidak pernah mengirim `enabled_payments`.
+2. `chargeOrder()`: catat bila ADA percobaan yang 402; bila ya, pesan akhir tetap
+   `CHANNEL_INACTIVE_MESSAGE` walau cadangan gagal dengan galat lain (mis. 413).
+3. `config/midtrans.php` + `.env.example`: nilai sah `gopay` | `airpay shopee`, alias lama dipetakan.
+4. Test `QrisAcquirerFallbackTest`: cadangan `airpay shopee` tanpa `enabled_payments`; test baru
+   402 → cadangan sah, test baru 402 → 413 tetap pesan kanal tidak aktif, test alias config.
+5. Kontrak §7.7 + `docs/asumsi.md`: perbaiki keterangan acquirer cadangan (bentuk props tidak berubah).
+6. Verifikasi: phpunit fokus + suite penuh (SQLite `:memory:`), `pint --test`, grep `other_qris`.
+
+Berkas disentuh: `app/Services/MidtransService.php`, `config/midtrans.php`, `.env.example`,
+`tests/Feature/Checkout/QrisAcquirerFallbackTest.php`, `tests/Support/FakeMidtransApi.php` (komentar),
+`docs/kontrak-props.md`, `docs/asumsi.md`, `docs/catatan-backend.md`.
+
+### Hasil
+
+- **Acquirer sah.** `QRIS_ACQUIRERS = ['gopay', 'airpay shopee']`; `QRIS_ACQUIRER_ALIASES` memetakan
+  nilai config lama `other_qris` → `airpay shopee`; nilai kosong/salah tulis → `gopay`. Cadangan
+  dihitung dari daftar itu, jadi yang pernah terkirim hanya dua acquirer sah tersebut.
+- **`enabled_payments` dihapus total** dari `chargeParams()` (bukan hanya untuk `gopay`). Parameter
+  Snap itu tidak pernah lagi masuk payload Core API, termasuk pada percobaan cadangan.
+- **Pesan 402 dijaga.** `chargeOrder()` menandai `$channelInactiveSeen` untuk SETIAP percobaan;
+  bila ada satu saja yang 402, pengecualian akhir memakai `CHANNEL_INACTIVE_MESSAGE` walau
+  percobaan terakhir gagal dengan galat lain (mis. 413). Galat non-402 pada percobaan pertama tetap
+  tidak diulang dan tetap memakai pesan generik.
+- **Config/example.** `config/midtrans.php` memetakan alias lama sebelum validasi; `.env.example`
+  menyebut nilai sah `gopay` | `"airpay shopee"` dan menjelaskan pemetaan `other_qris`.
+- **Test** (`QrisAcquirerFallbackTest`, 7 test / 56 assertion): payload tanpa `enabled_payments`;
+  402 → cadangan `airpay shopee` berhasil dan pesanan tetap dibuat; kedua acquirer 402 → pesan
+  aktivasi tanpa pesanan/stok setengah jadi; **402 → cadangan 413 → tetap pesan aktivasi**;
+  non-402 tidak diulang; acquirer dari config; alias `other_qris` dipetakan ke `airpay shopee`.
+- **Verifikasi yang dijalankan:** `php artisan test --filter=QrisAcquirerFallbackTest` → 7 passed;
+  `php artisan test` (SQLite `:memory:` sesuai `phpunit.xml`) → **265 passed, 2097 assertions**;
+  `vendor/bin/pint --test` pada 4 berkas PHP → passed; `php -l` 4 berkas → bersih.
+- **Belum dicek / tidak boleh dicek di kartu ini:** charge QRIS nyata ke Midtrans (dilarang kartu;
+  butuh akun + uang nyata) dan status aktivasi kanal di dashboard (kewenangan pemilik, gerbang
+  `t_c9385bf0`). Tidak ada perubahan bentuk props/kontrak; teks `CHANNEL_INACTIVE_MESSAGE` sama.
+- **Temuan di luar lingkup (tidak diubah, batas kartu):** `README.md:20`, `docs/midtrans-produksi.md:24,47`,
+  dan probe di `tmp/` masih menyebut `enabled_payments: ["other_qris"]` — dokumentasi/probe lama,
+  bukan kode aktif. `docs/asumsi.md` butir 27 masih memuat kalimat lama, tetapi butir 28 menyatakan
+  menggantikannya.
+
+## BE-Pengaturan 5 — favicon, copyright footer, aset seed (kartu t_101b9145, 2026-10-23)
+
+Rencana (maks 10 baris):
+
+1. Kontrak dulu: `docs/kontrak-props.md` §1/§4/§10.7/§10.8 — key `footer_copyright`,
+   `store_favicon` di props bersama, catatan key non-publik.
+2. `SettingService::DEFINITIONS` + `UpdateSettingRequest`: `footer_copyright` (footer, text,
+   nullable maks 200).
+3. `HandleInertiaRequests`: pakai `SettingService`, jamin 4 key selalu ada di props `settings`,
+   buang key Midtrans dari props publik.
+4. `resources/views/app.blade.php`: `rel=icon` dari `store_favicon` + fallback `/favicon.ico`.
+5. `SettingSeeder`: `firstOrCreate`, tambah `store_favicon` + `footer_copyright`, tulis semua
+   aset seed (logo, favicon, hero, promo) + fallback ICO, pemeriksaan akhir gagal keras.
+6. Test: simpan copyright/favicon, batas 200, props bersama, tag favicon; jalankan
+   `php artisan test` (SQLite `:memory:`).
+7. Jalankan `php artisan db:seed --class=SettingSeeder` pada DB dev untuk membuat kunci/berkas
+   yang belum ada.
+8. Catat asumsi di `docs/asumsi.md`; langkah pemilik bila ada di `docs/langkah-pemilik.md`.
+
+Berkas disentuh: `app/Services/SettingService.php`,
+`app/Http/Requests/Admin/UpdateSettingRequest.php`,
+`app/Http/Middleware/HandleInertiaRequests.php`,
+`database/seeders/SettingSeeder.php`,
+`database/seeders/Concerns/WritesSeedImages.php`,
+`resources/views/app.blade.php`, `public/favicon.ico`,
+`tests/Feature/Admin/AdminSettingTest.php`, `tests/Unit/Services/SettingServiceTest.php`,
+`tests/Feature/Public/StorefrontIdentityTest.php`, `docs/kontrak-props.md`, `docs/asumsi.md`,
+`docs/db.md`, `docs/catatan-backend.md`.
+
+**Koreksi path test:** file test yang dibuat bernama
+`tests/Feature/Public/StorefrontSettingsTest.php` (bukan `StorefrontIdentityTest.php`).
+
+### Hasil implementasi
+
+- `SettingService::DEFINITIONS` kini memuat `footer_copyright` (grup `footer`, type `text`).
+  `UpdateSettingRequest` memvalidasi `nullable|string|max:200` dengan pesan
+  „Copyright footer maksimal 200 karakter.“
+- `HandleInertiaRequests::publicSettings()` memakai `SettingService::all()` (casting seragam),
+  selalu memuat `store_name`, `store_logo`, `store_favicon`, `footer_copyright` (string kosong
+  dinormalkan menjadi `null`), dan membuang `midtrans_client_key` + `midtrans_is_production`
+  dari props publik. Bila tabel `settings` belum dimigrasi, props `settings` = `[]` (tidak 500).
+- `resources/views/app.blade.php` menulis `<link rel="icon">` dari `settings.store_favicon`
+  (mendukung URL absolut, path `/...`, MIME png/ico/jpg/webp/gif/svg) dan fallback
+  `/favicon.ico` bertipe `image/x-icon` bila kosong.
+- `SettingSeeder`: 21 key, idempoten `firstOrCreate` (nilai pemilik tidak ditimpa), menulis
+  ulang aset seed yang hilang berdasarkan path `/images/seed/...` yang tersimpan di DB
+  (logo 240×64, favicon 64×64, hero & promo 1600×900), plus fallback `public/favicon.ico`
+  (ICO 32×32 berisi PNG) hanya bila belum ada/0 byte. `assertSeedComplete()` gagal keras bila
+  jumlah key, JSON, atau berkas aset tidak lengkap.
+- `WritesSeedImages::seedFaviconIco()` ditambahkan (butuh ekstensi GD; melempar
+  `RuntimeException` bila GD mati atau penulisan gagal).
+
+### Verifikasi
+
+- `php -l` untuk 8 berkas PHP inti yang disentuh: semua `No syntax errors detected`;
+  `tests/Feature/SettingSeederTest.php` dijalankan langsung lewat PHPUnit (lulus).
+- Test settings (unit + admin + storefront + seeder): **34 test lulus**, termasuk 5 test baru
+  `StorefrontSettingsTest` (props wajib ada saat tabel kosong, nilai settings, key Midtrans
+  tidak bocor, tag favicon, fallback ICO), 3 test admin baru (simpan copyright + unggah
+  favicon, batas 200, tolak unggahan non-gambar), dan `SettingSeederTest` (idempoten, 21 key,
+  nilai pemilik tidak tertimpa, aset favicon ada).
+- Seluruh suite: **280 test, 2.310 assertion, lulus** (SQLite `:memory:`, `RefreshDatabase`).
+- Catatan lingkungan: `pdo_sqlite`/`sqlite3` tidak aktif di `php.ini` mesin ini, dan
+  `php artisan test` menjalankan PHPUnit sebagai proses anak sehingga flag `-d` hilang.
+  Test dijalankan dengan
+  `php -d extension=pdo_sqlite -d extension=sqlite3 vendor/bin/phpunit` (DB test tetap
+  `:memory:`; tidak menyentuh DB dev).
+- `php artisan db:seed --class=SettingSeeder` dijalankan **dua kali** pada DB dev, exit 0.
+  Baris `settings` tetap 21 (tidak ada duplikat); nilai pemilik dipertahankan
+  (`store_logo`/`store_favicon` tetap unggahan `/storage/settings/...`, `landing_hero` tetap
+  konten pemilik `Liiora.id`, `footer_copyright` tetap kosong). `public/favicon.ico` dibuat
+  (214 byte, ICO 32×32), `favicon.png` 280 byte, `logo.png` 418 byte, `hero.png` 6.815 byte
+  — semuanya dikenali `file` sebagai PNG/ICO valid.
+
+### Untuk frontend (kartu `t_c915c033`)
+
+- Props `settings.footer_copyright` bisa `null`; tampilkan `© {tahun berjalan} {settings.store_name}`
+  bila null/kosong. Batas input 200 karakter.
+- `settings.store_favicon` bisa `null`/URL `/storage/...`; tag `<link rel="icon">` sudah diurus
+  Blade, jadi `PublicLayout.jsx` tidak perlu menulis tag itu lagi.
+- Panel admin `resources/js/Pages/Admin/Settings/Index.jsx` **belum** memuat field
+  `footer_copyright` (TAB_FIELDS footer: `footer_about`, `footer_links`, `footer_social`),
+  sehingga pemilik belum bisa mengubahnya dari UI meski backend menerima. Tambahkan field
+  (textarea/text, maks 200) di tab Footer — pekerjaan frontend, bukan diubah di kartu ini.
+
+

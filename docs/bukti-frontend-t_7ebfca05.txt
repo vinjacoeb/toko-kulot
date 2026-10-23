@@ -1,0 +1,110 @@
+BUKTI FRONTEND — kartu t_7ebfca05 (F1)
+Judul  : Badge keranjang menampilkan jumlah item (semua halaman publik)
+Tanggal: 21 Okt 2026
+Rujukan: docs/review.md F-1; docs/design.md §3.1 (header + badge keranjang); docs/kontrak-props.md §1/§7
+         (props bersama `cart` = { count }); docs/PRD.md §12 R14; docs/brief-frontend.md (DoD kartu)
+Lingkup: 1 berkas kode — resources/js/Layouts/PublicLayout.jsx. Header.jsx TIDAK diubah (sudah
+         menyembunyikan badge saat 0). Tidak ada perubahan backend, rute, dokumen acuan, atau paket.
+
+== 1. AKAR MASALAH (dari berkas, sebelum perbaikan) ==
+resources/js/Layouts/PublicLayout.jsx:22  `cartCount = 0` (parameter bawaan selalu berupa angka)
+resources/js/Layouts/PublicLayout.jsx:43  `Number(cartCount ?? sharedCart ?? settings?.cart_count ?? 0) || 0`
+=> `??` tidak pernah jatuh ke `page.props.cart.count` karena `cartCount` selalu 0 (bukan null/undefined).
+Server sudah benar: app/Http/Middleware/HandleInertiaRequests.php:39-41 membagikan
+`cart.count = (int) session('cart_count')`; app/Services/CartService.php:427 menulis
+`session([cart_count => (int) $cart->items()->sum('qty')])` (dan :420 -> 0 saat keranjang kosong).
+Jadi tidak ada kebutuhan perubahan backend.
+
+== 2. PERBAIKAN ==
+resources/js/Layouts/PublicLayout.jsx:
+- helper `toCount(value)`: `null`/`undefined`/`''` -> `null`; angka tidak sah/<= 0 -> `0`;
+  angka sah -> `Math.floor(Number(value))`. Aman untuk nilai string dari server, tidak pernah NaN.
+- urutan sumber: `page.props.cart.count` -> prop halaman `cartCount` -> `settings.cart_count` -> `0`
+  (baris 57). Prop halaman tetap didukung sebagai cadangan, jadi 4 halaman yang masih mengirim
+  `cartCount` bawaan 0 (Home.jsx:134, Products/Index.jsx:146, Products/Show.jsx:140, Contact.jsx:76)
+  tidak perlu disentuh dan tidak lagi menutupi props bersama.
+- komentar kepala berkas diperbarui: sumber utama, urutan cadangan, dan alasan badge terbaru
+  tanpa reload manual (kunjungan Inertia penuh + `usePage()`).
+
+Header (tidak diubah, dipakai sebagai bukti "0 -> tidak tampil"):
+resources/js/Components/Header.jsx:81  `badge={count > 0 ? count : null}`
+resources/js/Components/IconButton.jsx:25  `badge !== null && badge !== undefined && badge !== ''` -> `<span class="absolute right-1 top-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent-500 px-1 text-badge text-ink">`
+=> kelas badge cocok design §3.1 (`size-[18px] rounded-full bg-accent-500 text-badge text-ink`).
+
+Pemakaian layout (semua halaman publik memakai PublicLayout):
+`grep -rn "PublicLayout" resources/js --include=*.jsx` -> 8 halaman: Home, Products/Index,
+Products/Show, Contact, Cart, Checkout, CheckoutPay, CheckoutSuccess. `Header` hanya dipakai
+PublicLayout (grep import `Header`) -> satu titik perbaikan menutup semua halaman publik.
+
+== 3. UJI LOGIKA (logika diambil dari berkas, bukan disalin) ==
+$ node tmp/cek-badge-keranjang-t_7ebfca05.mjs
+== Ekspresi baru (dari resources/js/Layouts/PublicLayout.jsx) ==
+OK   cart.count=3 (prop halaman 0 bawaan): dapat 3, harap 3
+OK   cart.count="4" (string dari server): dapat 4, harap 4
+OK   cart.count=0 -> badge disembunyikan: dapat 0, harap 0
+OK   cart.count=null, cartCount=5 -> pakai prop: dapat 5, harap 5
+OK   cart.count undefined, cartCount undefined, settings=2: dapat 2, harap 2
+OK   semua kosong -> 0: dapat 0, harap 0
+OK   cart.count="abc" -> 0 (bukan NaN): dapat 0, harap 0
+OK   cart.count=NaN -> 0: dapat 0, harap 0
+OK   cart.count=-2 -> 0: dapat 0, harap 0
+OK   cart.count=2.7 -> 2 (integer): dapat 2, harap 2
+OK   cart.count="" (string kosong) -> jatuh ke prop 7: dapat 7, harap 7
+
+== Kontrol negatif: ekspresi LAMA (sebelum perbaikan) ==
+OK   lama: cart.count=3, prop bawaan 0 -> 0 (bug pemilik): dapat 0, harap 0
+
+== Header: badge hanya dirender saat > 0 ==
+Header.jsx: badge={count > 0 ? count : null}
+OK   badge null saat 0, angka saat > 0
+
+LULUS — semua pemeriksaan selesai
+EXIT=0
+Catatan: harness mengekstrak blok `toCount` + baris `const count = ...` dari berkas sumber lalu
+menjalankannya dengan mock props (bukan implementasi ulang); kontrol negatif mereproduksi bug
+pemilik (jumlah 3 di server -> badge 0).
+
+== 4. BUILD ==
+$ npm run build > tmp/build-t_7ebfca05.txt 2>&1
+BUILD_EXIT=0
+$ grep -n "modules transformed\|built in" tmp/build-t_7ebfca05.txt
+7:✓ 714 modules transformed.
+61:✓ built in 10.15s
+Dijalankan sendirian (tidak bersamaan kartu frontend lain, sesuai catatan rantai F1->F3->...).
+
+== 5. BUKTI DI BUNDEL PRODUKSI ==
+$ grep -o ".\{250\}Number.isFinite.\{150\}" public/build/assets/PublicLayout-BYUxUlFg.js
+... w=e=>{if(e==null||e==="")return null;const t=Number(e);return Number.isFinite(t)&&t>0?Math.floor(t):0};
+    function X({settings:e={},cartCount:t=null,user:c=null,children:h}){ ...
+$ grep -o ".\{200\}cart_count.\{60\}" public/build/assets/PublicLayout-BYUxUlFg.js
+... n=w((I=(_=l==null?void 0:l.props)==null?void 0:_.cart)==null?void 0:I.count)??w(t)??w(e==null?void 0:e.cart_count)??0; ...
+=> helper dan urutan sumber baru benar-benar ada di bundel rilis (bukan hanya di sumber).
+
+== 6. SAPU REGRESI ==
+$ python tmp/cek-komponen-tanpa-import.py .
+file diperiksa: 81
+resources\js\app.jsx: App        (false positive dikenal: parameter `setup({el, App, props})`)
+EXIT_PY=0
+$ python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build
+chunk .js diperiksa: 49
+OK: tidak ada identifier komponen JSX tanpa import/definisi di bundel.
+EXIT_PY=0
+
+== 7. PERUBAHAN BERKAS ==
+$ git status --short          (hanya berkas kartu ini yang berubah dari sisi saya)
+ M resources/js/Layouts/PublicLayout.jsx
+$ git diff --stat -- resources/js
+ resources/js/Layouts/PublicLayout.jsx | 20 +++++++++++++++++++-
+Tidak ada commit (R8), tidak ada server dijalankan (R11), tidak ada migrasi/seeder, `.env` dan
+tailwind.config.js tidak disentuh. Perubahan dokumen oleh agent lain (docs/design.md,
+docs/kontrak-props.md, docs/traceability.md, dsb.) tidak saya sentuh.
+
+== 8. BELUM DIUJI (butuh browser — pemilik yang menjalankan server) ==
+- Tampilan nyata badge di 8 halaman publik (angka muncul setelah tambah item, hilang saat 0).
+- Perubahan angka tanpa reload manual setelah POST /keranjang, PATCH/DELETE /keranjang/{item}.
+- Responsif 360/768/1024/1280 px, navigasi keyboard, zoom 200%, kontras terukur di layar.
+Langkah aman untuk pemilik (tanpa mengubah apa pun):
+1) buka /produk, tambah 1 produk -> ikon keranjang di header harus menampilkan "1";
+2) buka /keranjang, ubah qty -> angka ikut berubah tanpa reload;
+3) hapus semua item -> badge hilang (0 tidak ditampilkan);
+4) ulangi di beranda, detail produk, dan /kontak-kami (badge harus sama, tanpa reload manual).

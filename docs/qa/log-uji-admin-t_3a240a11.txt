@@ -1,0 +1,25 @@
+=== Harness render SSR halaman daftar Admin — kartu t_3a240a11 (butir 4) ===
+node: v26.7.0
+md5  4206e91c0edbe630c9efa83972a0e46c  resources/js/Pages/Admin/Products/Index.jsx
+md5  c44fb81175891ea884f52d047740c2e4  resources/js/Pages/Admin/Stocks/Index.jsx
+md5  b10aff7fcd2fcb96eb4cca6d100f6bf2  resources/js/Pages/Admin/Orders/Index.jsx
+
+--- A1 Admin/Products/Index.jsx (markup 20740 karakter) ---
+  LULUS  A1.1  baris produk dirender
+  LULUS  A1.2  gambar produk dipakai sebagai <img src> + alt
+  LULUS  A1.3  KPI ringkasan tampil
+  LULUS  A1.4  tidak ada "[object Object]" (prop salah bentuk)
+
+--- A2 Admin/Stocks/Index.jsx (markup 19644 karakter) ---
+  LULUS  A2.1  baris varian + slug produk dirender
+  LULUS  A2.2  badge status baris tampil
+  LULUS  A2.3  nama tombol aksi memuat produk + varian (aria-label)
+  LULUS  A2.4  tidak ada "[object Object]" (prop salah bentuk)
+
+--- A3 Admin/Orders/Index.jsx (markup 20345 karakter) ---
+  LULUS  A3.1  baris pesanan dirender (kode + pelanggan)
+  LULUS  A3.2  label status pembayaran/status pesanan tampil
+  LULUS  A3.3  kolom pencarian pesanan tampil
+  LULUS  A3.4  tidak ada "[object Object]" (prop salah bentuk)
+
+RINGKASAN: seluruh check render admin LULUS

@@ -8,6 +8,9 @@ import Button from '../../Components/Button';
 import { CheckIcon } from '../../Components/icons';
 import { formatDateTime, formatNumber, rupiah } from '../../lib/format';
 
+/** Status order yang boleh dinilai — kontrak §9.1, sama dengan `ReviewService::isEligible`. */
+const STATUS_BOLEH_DINILAI = ['dibayar', 'diproses', 'dikirim', 'selesai'];
+
 /**
  * `/checkout/{order}/selesai` — kontrak props §7.9 dan §9.1, design §5.8.
  * Props: `{ pesanan, ulasan: { boleh, sudah } }` + `errors` hasil validasi Inertia.
@@ -18,6 +21,13 @@ export default function CheckoutSuccess({ pesanan = null, ulasan = null, errors 
     const items = Array.isArray(pesanan?.items) ? pesanan.items : [];
     const sudah = (Array.isArray(ulasan?.sudah) ? ulasan.sudah : []).map((id) => Number(id));
 
+    /** Gerbang penilaian dari server — kontrak §7.9. */
+    const boleh = ulasan?.boleh === true;
+
+    /** Syarat kirim ulasan (kontrak §9.1): order sudah `settlement` dan statusnya boleh dinilai. */
+    const syaratDinilai =
+        pesanan?.payment_status === 'settlement' && STATUS_BOLEH_DINILAI.includes(String(pesanan?.status ?? ''));
+
     const [busyProduct, setBusyProduct] = useState(null);
     const [submittedId, setSubmittedId] = useState(null);
     const [justRated, setJustRated] = useState({});
@@ -26,6 +36,27 @@ export default function CheckoutSuccess({ pesanan = null, ulasan = null, errors 
     const pending = items.filter(
         (item) => !sudah.includes(Number(item.product_id)) && justRated[item.product_id] === undefined
     );
+
+    /** Produk yang ulasannya sudah tersimpan — dari server atau dari kiriman di sesi ini. */
+    const sudahAda = items.filter(
+        (item) => sudah.includes(Number(item.product_id)) || justRated[item.product_id] !== undefined
+    );
+
+    /**
+     * Gerbang penilaian memakai `boleh` dari server — kontrak §7.9, dibekukan 21 Okt 2026: `boleh`
+     * bernilai `true` hanya bila server akan menerima minimal satu kiriman ulasan sekarang (syarat
+     * §9.1 lewat `ReviewService::isEligible` dan masih ada produk yang belum diulas). Klien tidak
+     * mengulang syarat itu sebagai gerbang dan tidak menambal props yang berbeda; cabang
+     * "kontradiksi" lama dihapus bersama deviasi servernya (`docs/keputusan-f6-ulasan-boleh.md` §3).
+     */
+    const tampilkanForm = boleh && pending.length > 0;
+
+    /**
+     * Masih ada produk yang belum dinilai tetapi syarat §9.1 belum terpenuhi (belum `settlement`
+     * atau statusnya belum boleh dinilai) — notice alasan, bukan gerbang. Saling eksklusif dengan
+     * form supaya alasan tidak pernah muncul di atas form yang sedang tampil.
+     */
+    const alasanBelumBoleh = !tampilkanForm && !syaratDinilai && pending.length > 0;
 
     /** Satu kiriman = satu entri `ulasan[]` (kontrak §9.1), jadi galat selalu di indeks 0. */
     const errorFor = (item) =>
@@ -157,7 +188,7 @@ export default function CheckoutSuccess({ pesanan = null, ulasan = null, errors 
 
                 <section className="mt-8" aria-labelledby="judul-penilaian">
                     <h2 id="judul-penilaian" className="text-h2 text-ink">
-                        {pending.length > 0 ? 'Beri Penilaian' : 'Penilaianmu'}
+                        {tampilkanForm ? 'Beri Penilaian' : 'Penilaianmu'}
                     </h2>
 
                     {errors?.ulasan && (
@@ -166,39 +197,41 @@ export default function CheckoutSuccess({ pesanan = null, ulasan = null, errors 
                         </InlineNotice>
                     )}
 
-                    {pending.length === 0 && (
+                    {alasanBelumBoleh && (
+                        <InlineNotice tone="warning" className="mt-3">
+                            <p>Ulasan bisa dikirim setelah pembayaran berhasil.</p>
+                        </InlineNotice>
+                    )}
+
+                    {sudahAda.length > 0 && pending.length === 0 && (
                         <InlineNotice tone="success" className="mt-3">
                             <p>Terima kasih! Penilaianmu membantu pembeli lain.</p>
                         </InlineNotice>
                     )}
 
                     <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                        {pending.map((item) => (
-                            <ReviewForm
-                                key={`isi-${item.product_id}`}
-                                productId={item.product_id}
-                                product={item}
-                                submitting={busyProduct === item.product_id}
-                                error={errorFor(item)}
-                                onSubmit={submitReview}
-                            />
-                        ))}
-
-                        {items
-                            .filter(
-                                (item) =>
-                                    sudah.includes(Number(item.product_id)) || justRated[item.product_id] !== undefined
-                            )
-                            .map((item) => (
+                        {tampilkanForm &&
+                            pending.map((item) => (
                                 <ReviewForm
-                                    key={`sudah-${item.product_id}`}
+                                    key={`isi-${item.product_id}`}
                                     productId={item.product_id}
                                     product={item}
-                                    rating={justRated[item.product_id] ?? 0}
-                                    submitted={justRated[item.product_id] !== undefined}
-                                    alreadyReviewed={justRated[item.product_id] === undefined}
+                                    submitting={busyProduct === item.product_id}
+                                    error={errorFor(item)}
+                                    onSubmit={submitReview}
                                 />
                             ))}
+
+                        {sudahAda.map((item) => (
+                            <ReviewForm
+                                key={`sudah-${item.product_id}`}
+                                productId={item.product_id}
+                                product={item}
+                                rating={justRated[item.product_id] ?? 0}
+                                submitted={justRated[item.product_id] !== undefined}
+                                alreadyReviewed={justRated[item.product_id] === undefined}
+                            />
+                        ))}
                     </div>
                 </section>
 

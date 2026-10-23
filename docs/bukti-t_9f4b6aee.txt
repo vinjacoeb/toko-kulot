@@ -1,0 +1,41 @@
+
+   PASS  Tests\Feature\Checkout\PaymentModeTest
+  ✓ halaman checkout menampilkan mode uji                                                                        2.28s  
+  ✓ mode uji terlihat pada props halaman bayar                                                                   0.22s  
+  ✓ tagihan mode uji dibuat ulang ke baris yang sama                                                             0.17s  
+  ✓ pembuatan ulang gagal menampilkan galat dan tidak mengubah tagihan                                           0.22s  
+  ✓ status membuat ulang tagihan lalu menanyakan midtrans                                                        0.17s  
+  ✓ status mode uji tidak menghubungi midtrans                                                                   0.13s  
+  ✓ tab pembayaran admin menjelaskan mode uji                                                                    0.16s  
+
+   PASS  Tests\Unit\Services\MidtransServiceTest
+  ✓ mode info bentuk baku mengikuti kontrak                                                                      0.12s  
+  ✓ pemetaan status midtrans ke status pembayaran                                                                0.06s  
+  ✓ status midtrans tidak dikenal diabaikan                                                                      0.06s  
+  ✓ mode fake aktif saat server key kosong                                                                       0.06s  
+  ✓ mode fake mengikuti flag konfigurasi                                                                         0.08s  
+  ✓ signature valid diterima                                                                                     0.09s  
+  ✓ signature salah ditolak                                                                                      0.08s  
+  ✓ signature dengan field tidak lengkap ditolak                                                                 0.08s  
+  ✓ tanpa server key dan tanpa mode fake notifikasi ditolak                                                      0.06s  
+  ✓ mode fake menerima notifikasi lokal                                                                          0.17s  
+
+   PASS  Tests\Feature\Checkout\CheckoutTest
+  ✓ checkout membuat pesanan memotong stok dan tagihan qris                                                      0.24s  
+  ✓ checkout dengan keranjang kosong kembali ke keranjang                                                        0.11s  
+  ✓ checkout menolak stok yang sudah habis                                                                       0.14s  
+  ✓ validasi formulir checkout mengembalikan galat                                                               0.16s  
+  ✓ notifikasi settlement menandai pesanan dibayar                                                               0.18s  
+  ✓ notifikasi settlement idempoten                                                                              0.19s  
+  ✓ notifikasi expire mengembalikan stok dan membatalkan pesanan                                                 0.15s  
+  ✓ notifikasi dengan signature salah ditolak                                                                    0.16s  
+  ✓ notifikasi dengan nominal tidak cocok ditolak                                                                0.17s  
+  ✓ pesanan orang lain tidak bisa dibuka                                                                         0.22s  
+  ✓ tamu diarahkan ke login sebelum checkout                                                                     0.13s  
+  ✓ halaman bayar menampilkan qr string dan batas waktu                                                          0.14s  
+  ✓ halaman selesai menolak pesanan yang belum dibayar                                                           0.15s  
+  ✓ halaman selesai tampil setelah dibayar                                                                       0.19s  
+
+  Tests:    31 passed (284 assertions)
+  Duration: 7.37s
+

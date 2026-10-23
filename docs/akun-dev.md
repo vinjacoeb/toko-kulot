@@ -28,8 +28,8 @@ FAQ, pengaturan, akun admin). `staff` hanya membantu operasional (lihat PRD §14
 - Gambar contoh: `public/images/seed/` (dibuat lokal oleh seeder, bukan unduhan).
 - Kode order contoh: `TK-20261015-0001` (selesai), `TK-20261016-0001` (dikirim),
   `TK-20261018-0001` (menunggu pembayaran).
-- `midtrans_client_key` sengaja kosong. Pemilik mengisinya lewat panel admin, bukan lewat `.env`
-  dari sisi backend.
+- `midtrans_client_key` sengaja kosong dan **tidak dipakai** jalur bayar — kredensial efektif dibaca dari
+  `.env` (`MIDTRANS_*`); kolom di tab Pembayaran hanya catatan (P3, `docs/pertanyaan-pemilik.md` §6 P10).
 
 ## Cara mengulang
 

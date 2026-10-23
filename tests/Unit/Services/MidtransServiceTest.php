@@ -5,6 +5,7 @@ namespace Tests\Unit\Services;
 use App\Models\Order;
 use App\Services\MidtransService;
 use App\Services\StockService;
+use Tests\Support\FakeMidtransApi;
 use Tests\TestCase;
 
 /**
@@ -20,7 +21,42 @@ class MidtransServiceTest extends TestCase
     {
         parent::setUp();
 
-        $this->service = new MidtransService(new StockService);
+        $this->service = new MidtransService(new StockService, new FakeMidtransApi);
+    }
+
+    public function test_mode_info_bentuk_baku_mengikuti_kontrak(): void
+    {
+        config([
+            'midtrans.fake' => true,
+            'midtrans.server_key' => 'kunci-uji',
+            'midtrans.client_key' => 'kunci-client',
+        ]);
+
+        $info = $this->service->modeInfo();
+
+        $this->assertSame('uji', $info['mode']);
+        $this->assertSame('fake_aktif', $info['alasan_kode']);
+        $this->assertNull($info['client_key'], 'Kunci klien tidak dipublikasikan di mode uji.');
+        $this->assertTrue($info['server_key_terisi']);
+        $this->assertNotEmpty($info['langkah_perbaikan']);
+        $this->assertNotEmpty($info['alasan']);
+        $this->assertSame('.env (MIDTRANS_*)', $info['sumber_kredensial']);
+
+        config(['midtrans.fake' => false]);
+        $asli = $this->service->modeInfo();
+
+        $this->assertSame('asli', $asli['mode']);
+        $this->assertSame('kunci-client', $asli['client_key']);
+        $this->assertNull($asli['alasan_kode']);
+        $this->assertNull($asli['alasan']);
+        $this->assertSame([], $asli['langkah_perbaikan']);
+
+        config(['midtrans.server_key' => '']);
+        $tanpaKunci = $this->service->modeInfo();
+
+        $this->assertSame('uji', $tanpaKunci['mode'], 'Tanpa server key tidak boleh memanggil Midtrans.');
+        $this->assertSame('server_key_kosong', $tanpaKunci['alasan_kode']);
+        $this->assertFalse($tanpaKunci['server_key_terisi']);
     }
 
     public function test_pemetaan_status_midtrans_ke_status_pembayaran(): void

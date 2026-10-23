@@ -3,7 +3,10 @@
 namespace App\Services;
 
 use App\Models\Product;
+use App\Models\ProductImage;
+use App\Models\ProductVariant;
 use App\Models\Review;
+use App\Support\VariantColor;
 use App\Support\VariantSize;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -117,11 +120,14 @@ class ProductPresenter
     /**
      * Varian aktif, urut ukuran baku lalu warna lalu id (kontrak §8.3).
      *
+     * `color_hex` diturunkan dari `color` lewat VariantColor supaya kartu katalog
+     * dan halaman detail mengirim nilai siap pakai untuk swatch.
+     *
      * @return array<int, array<string, mixed>>
      */
     private function variants(Product $product): array
     {
-        /** @var Collection<int, \App\Models\ProductVariant> $variants */
+        /** @var Collection<int, ProductVariant> $variants */
         $variants = $product->relationLoaded('variants')
             ? $product->variants->where('is_active', true)
             : $product->variants()->where('is_active', true)->get();
@@ -142,6 +148,7 @@ class ProductPresenter
             'id' => (int) $variant->id,
             'size' => $variant->size,
             'color' => $variant->color,
+            'color_hex' => VariantColor::hex($variant->color),
             'sku' => $variant->sku,
             'price_delta' => (int) $variant->price_delta,
             'stock' => (int) $variant->stock,
@@ -154,7 +161,7 @@ class ProductPresenter
      */
     private function images(Product $product): array
     {
-        /** @var Collection<int, \App\Models\ProductImage> $images */
+        /** @var Collection<int, ProductImage> $images */
         $images = $product->relationLoaded('images')
             ? $product->images->sortBy([['sort_order', 'asc'], ['id', 'asc']])->values()
             : $product->images()->orderBy('sort_order')->orderBy('id')->get();

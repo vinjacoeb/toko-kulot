@@ -1,5 +1,5 @@
 import React from 'react';
-import { useForm } from '@inertiajs/react';
+import { Link, useForm } from '@inertiajs/react';
 import AuthLayout from '@/Layouts/AuthLayout';
 import Button from '@/Components/Button';
 import Field from '@/Components/Field';
@@ -11,6 +11,7 @@ import Input from '@/Components/Input';
  * URL literal `POST /register` (PRD §15.2 melarang Ziggy/`route()`).
  * Field: name, email, phone, password, password_confirmation, terms.
  * State: idle | submitting | error-field | error-global | success (flash dari server).
+ * Tautan silang ke `/login` (teks "Sudah punya akun? Masuk") — deviasi D16, kartu t_e3f68f7f.
  */
 export default function Register({ settings = null, flash = null }) {
   const { data, setData, post, processing, errors } = useForm({
@@ -136,6 +137,14 @@ export default function Register({ settings = null, flash = null }) {
           Daftar
         </Button>
       </form>
+
+      {/* Tautan silang Daftar↔Masuk — deviasi D16 (design.md §5.5/§11.3; kartu t_e3f68f7f). */}
+      <p className="mt-4 text-meta">
+        Sudah punya akun?{' '}
+        <Link href="/login" className="text-brand underline underline-offset-4">
+          Masuk
+        </Link>
+      </p>
     </AuthLayout>
   );
 }

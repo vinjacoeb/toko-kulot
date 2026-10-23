@@ -1,0 +1,141 @@
+// ========================================================== B. modal aksi stok
+/**
+ * Judul, deskripsi, dan tombol modal ada di props elemen `Modal` (Modal memakai hook,
+ * jadi tidak ikut dirender di sini); isi form ada di anak-anaknya.
+ */
+const modalDari = (pohon, judul) => cari(pohon, (el) => bernama('Modal')(el) && el.props.title === judul);
+
+const modalProps = (ubah = {}) => ({
+    open: true,
+    mode: 'in',
+    baris: barisIndex(),
+    onClose: null,
+    ...ubah,
+});
+
+const simpanDari = (modal) =>
+    cari(modal.props.footer, (el) => bernama('Button')(el) && el.props.form === 'form-stok-aksi');
+
+const medanDari = (pohon, htmlFor) =>
+    cari(pohon, (el) => bernama('Field')(el) && el.props.htmlFor === htmlFor);
+
+/** Isi qty (dan catatan) lalu kirim form pada pass yang sama. */
+const isiDanKirim = (pohon, qty, note = null) => {
+    kirimKejadian(cari(pohon, berid('stok-aksi-qty')), qty);
+
+    if (note !== null) kirimKejadian(cari(pohon, berid('stok-aksi-note')), note);
+
+    poskan(cari(pohon, (el) => el.type === 'form'));
+};
+
+uji('B1 validasi klien: pesan per kondisi, tanpa memanggil server', () => {
+    const kasus = [
+        ['', 'Jumlah wajib diisi.'],
+        ['0', 'Jumlah minimal 1.'],
+        ['abc', 'Jumlah minimal 1.'],
+        ['2.5', 'Jumlah minimal 1.'],
+        ['100001', 'Jumlah maksimal 100.000.'],
+    ];
+
+    kasus.forEach(([nilai, pesan]) => {
+        bersihkanStore();
+        bersihkan();
+        isiDanKirim(renderPohon(StokAksiModal, modalProps()), nilai);
+
+        harus(kendali.kunjungan.length === 0, `qty "${nilai}" tetap dikirim ke server`);
+        sama(medanDari(renderPohon(StokAksiModal, modalProps()), 'stok-aksi-qty').props.error, pesan, `pesan untuk qty "${nilai}" salah`);
+        sama(cari(renderPohon(StokAksiModal, modalProps()), berid('stok-aksi-qty')).props.error, pesan, 'Input tidak menerima galat dari Field');
+    });
+});
+
+uji('B2 kirim sah: URL literal, data form, opsi Inertia, tutup saat sukses', () => {
+    let ditutup = 0;
+    const props = () => modalProps({ onClose: () => (ditutup += 1) });
+
+    isiDanKirim(renderPohon(StokAksiModal, props()), '5', 'Kiriman supplier');
+
+    const kirim = kunjunganTerakhir();
+    harus(kirim.metode === 'post', 'aksi stok bukan POST');
+    harus(kirim.url === '/admin/stok/12/masuk', `URL masuk salah: ${kirim.url}`);
+    sama(kirim.data, { qty: '5', note: 'Kiriman supplier' }, 'data form tidak sesuai');
+    harus(kirim.opsi.preserveState === true, 'modal harus tetap terbuka saat server menolak (preserveState)');
+    harus(kirim.opsi.preserveScroll === true, 'preserveScroll hilang');
+    harus(ditutup === 0, 'modal ditutup sebelum server menjawab');
+
+    const modal = modalDari(renderPohon(StokAksiModal, props()), 'Catat stok masuk');
+    harus(modal !== null, 'judul modal masuk hilang');
+    harus(teksPohon(modal.props.footer).includes('Simpan stok masuk'), 'tombol simpan masuk hilang');
+    harus(simpanDari(modal)?.props.type === 'submit', 'tombol simpan bukan type submit');
+    harus(teksPohon(modal.props.footer).includes('Batal'), 'tombol Batal hilang');
+    harus(String(modal.props.description).includes('stok tercatat saat ini 9'), 'deskripsi stok masuk salah');
+
+    kirim.opsi.onSuccess();
+    harus(ditutup === 1, 'modal tidak ditutup setelah sukses');
+});
+
+uji('B3 mode keluar: URL keluar, judul, hint stok saat ini, dan tombolnya', () => {
+    const props = () => modalProps({ mode: 'out', baris: barisIndex({ stock: 3 }) });
+    const pohon = renderPohon(StokAksiModal, props());
+
+    const modal = modalDari(pohon, 'Catat stok keluar');
+    harus(modal !== null, 'judul modal keluar hilang');
+    harus(String(modal.props.description).includes('stok tercatat saat ini 3'), 'stok saat ini tidak ditampilkan di deskripsi');
+    harus(teksPohon(modal.props.footer).includes('Simpan stok keluar'), 'tombol simpan keluar hilang');
+
+    const medan = medanDari(pohon, 'stok-aksi-qty');
+    harus(String(medan.props.hint).includes('Stok tercatat saat ini 3.'), `hint stok keluar salah: ${medan.props.hint}`);
+
+    isiDanKirim(renderPohon(StokAksiModal, props()), '2');
+    harus(kunjunganTerakhir().url === '/admin/stok/12/keluar', `URL keluar salah: ${kunjunganTerakhir().url}`);
+    sama(kunjunganTerakhir().data, { qty: '2' }, 'data keluar salah');
+});
+
+uji('B4 jumlah dikirim sekali saja saat server masih memproses', () => {
+    kendali.berikutnya.processing = true;
+    const pohon = renderPohon(StokAksiModal, modalProps());
+    const simpan = simpanDari(modalDari(pohon, 'Catat stok masuk'));
+
+    harus(simpan.props.loading === true, 'tombol tidak menampilkan keadaan memproses');
+
+    isiDanKirim(pohon, '5');
+    harus(kendali.kunjungan.length === 0, 'kirim ganda saat processing tidak dicegah');
+});
+
+uji('B5 varian null: tombol simpan mati dan tidak ada URL /null/', () => {
+    const props = () => modalProps({ baris: null });
+    const modal = modalDari(renderPohon(StokAksiModal, props()), 'Catat stok masuk');
+
+    harus(simpanDari(modal)?.props.disabled === true, 'tombol simpan tetap aktif tanpa varian');
+    harus(String(modal.props.description) === '', 'deskripsi harus kosong tanpa varian');
+
+    isiDanKirim(renderPohon(StokAksiModal, props()), '5');
+    harus(kendali.kunjungan.length === 0, 'varian null tetap mengirim permintaan');
+});
+
+uji('B6 galat server per kolom terhubung aria-describedby, galat lain jadi notice', () => {
+    kendali.berikutnya.errors = { qty: 'Stok tidak cukup — stok saat ini 1.' };
+    const pohon = renderPohon(StokAksiModal, modalProps({ baris: barisIndex({ stock: 1 }) }));
+    const pesan = 'Stok tidak cukup — stok saat ini 1.';
+
+    sama(medanDari(pohon, 'stok-aksi-qty').props.error, pesan, 'Field tidak menerima galat qty');
+    sama(cari(pohon, berid('stok-aksi-qty')).props.error, pesan, 'Input tidak menerima galat qty');
+
+    // Field dan Input tidak memakai hook: dirender sendiri untuk membuktikan sambungan aria.
+    const fieldJadi = renderPohon(Field, medanDari(pohon, 'stok-aksi-qty').props);
+    harus(teksPohon(fieldJadi).includes(pesan), 'pesan galat tidak dirender Field');
+    harus(cari(fieldJadi, (el) => el.props?.role === 'alert') !== null, 'galat Field tanpa role=alert');
+    harus(cari(fieldJadi, (el) => el.props?.id === 'stok-aksi-qty-error') !== null, 'elemen galat tanpa id stok-aksi-qty-error');
+    harus(teksPohon(fieldJadi).includes('Jumlah *'), 'label wajib hilang dari Field');
+
+    const inputJadi = cari(renderPohon(Input, cari(pohon, berid('stok-aksi-qty')).props), (el) => el.type === 'input');
+    harus(inputJadi.props['aria-invalid'] === 'true', 'input galat tanpa aria-invalid');
+    sama(inputJadi.props['aria-describedby'], 'stok-aksi-qty-error', 'input galat tanpa aria-describedby yang benar');
+    harus(inputJadi.props.min === 1 && inputJadi.props.max === 100000, 'batas min/max qty hilang');
+    harus(inputJadi.props.inputMode === 'numeric', 'inputMode numeric hilang');
+
+    kendali.berikutnya.errors = { stok: 'Varian tidak aktif.' };
+    const pohonLain = renderPohon(StokAksiModal, modalProps());
+    harus(teksPohon(pohonLain).includes('Varian tidak aktif.'), 'galat non-kolom tidak tampil');
+    harus(teksPohon(pohonLain).includes('Perubahan stok gagal disimpan'), 'judul notice galat hilang');
+});
+

@@ -1,0 +1,469 @@
+BUKTI FRONTEND — kartu t_8e89556f (F8)
+Tombol "Sinkronkan status pembayaran" di /admin/pesanan/{order}
+
+Tanggal kerja : 2026-10-22
+Workspace     : C:/Users/LENOVO/Downloads/toko-kulot (branch master; tanpa commit — R8, sama seperti kartu F1-F5b/F9)
+Perintah ulang: bash tmp/jalankan-uji-t_8e89556f.sh
+Harness       : tmp/uji-aksi-sinkron-t_8e89556f.mjs (esbuild + shim React + stub @inertiajs/react)
+
+Berkas yang diuji dan md5 saat dokumen ini dibuat:
+  resources/js/Pages/Admin/Orders/partials/SyncPaymentButton.jsx  7a0367438c19e80d7ac25fd2443bbcb5
+  resources/js/Pages/Admin/Orders/Show.jsx                        9662113234a8786727e2937da1a4df95
+Kecocokan dengan md5 "setelah pulih" di log C/E/G:
+  SyncPaymentButton.jsx: COCOK
+  Show.jsx            : COCOK
+
+Acuan yang dipakai (bukan karangan):
+  docs/kontrak-props.md baris 1412-1443  §12.24 PATCH /admin/pesanan/{order}/sinkron-pembayaran
+  docs/design.md baris 872               §11.3 D13 (tombol sekunder + notice hasil, teks beku, state loading)
+  docs/design.md                         §5.12 kartu "Bukti pembayaran", §4.1 Button, §4.23 InlineNotice,
+                                         §4.8 Toast, §4.0 alasan state disabled harus terlihat
+  docs/catatan-uiux.md baris 30          U6-1 (satu sumber hasil; toast halaman di-suppress)
+  docs/brief-frontend.md                 item F8
+
+Ringkasan hasil (angka diambil dari log di bawah, bukan diketik ulang):
+  - Harness interaksi      : 14/14 OK, 0 gagal, exit 0 (bagian A); diulang 14/14 OK setelah pemulihan (bagian H)
+  - Kontrol negatif        : 3 sabotase sementara masing-masing menggigit
+                             (label 12/14, URL 12/14, suppress 13/14), lalu dipulihkan sampai md5 identik
+  - Regresi kartu F5       : 26 uji, 0 gagal (bagian J)
+  - Sapu impor/bundel      : hanya temuan lama yang sudah dinilai false positive (bagian K)
+  - npm run build          : exit 0; CSS memuat .min-w-\[16rem\]{min-width:16rem} (bagian I)
+
+Yang diperiksa harness (14 uji di bagian A):
+  A1 satu tombol, label beku, varian secondary, lebar dikunci
+  A2 klik -> PATCH URL literal §12.24, tanpa body, preserveScroll + preserveState
+  A3 state memproses: label "Memproses...", disabled, aria-busy, kelas lebar tetap
+  A4 klik ganda saat memproses tidak menembak dua kali
+  A5 flash.error -> InlineNotice tone error + pesan server apa adanya
+  A6 flash.success -> InlineNotice tone success
+  A7 klik berikutnya menghapus notice lama sebelum jawaban baru
+  A8 tanpa id pesanan tombol tidak dirender (tidak menembak URL tanpa id)
+  A9 higiene teks: tanpa undefined/NaN/[CONTOH]/placeholder di semua state
+  B1 Show merender tombol di dalam kartu "Bukti pembayaran" dengan pesanan.id
+  B2 payment null/absen -> tombol tidak dirender (D13)
+  B3 flash aksi lain tetap menjadi Toast halaman (suppress tidak bocor)
+  B4 flash aksi sinkron di-suppress dari Toast setelah dilaporkan partial (U6-1)
+  B5 integrasi Show -> klik -> URL kontrak -> pesan server tampil di kartu
+
+
+==============================================================================
+N. Potongan kode + nomor baris (keadaan berkas saat dokumen ini dibuat)
+==============================================================================
+
+--- partial baru: tombol + notice hasil (SyncPaymentButton.jsx:1-82) ---
+   1| import React, { useState } from 'react';
+   2| import { useForm } from '@inertiajs/react';
+   3| import Button from '../../../../Components/Button';
+   4| import InlineNotice from '../../../../Components/InlineNotice';
+   5| 
+   6| /**
+   7|  * Tombol "Sinkronkan status pembayaran" + notice hasil — kartu F8 `t_8e89556f`.
+   8|  *
+   9|  * Kontrak props §12.24: PATCH `/admin/pesanan/{order}/sinkron-pembayaran`
+  10|  * (`admin.orders.sinkron-pembayaran`), tanpa body, jawaban berupa kembali ke halaman asal
+  11|  * dengan `flash.success` atau `flash.error`. Tampilan mengikuti keputusan desain D13
+  12|  * (`docs/design.md` §11.3) dan keputusan UIUX U6-1 (`docs/catatan-uiux.md`).
+  13|  *
+  14|  * - §4.1 `Button` varian `secondary`; label beku "Sinkronkan status pembayaran"; saat memproses
+  15|  *   `loading` → label "Memproses…" + `disabled` (dikelola `Button`) dan lebar dikunci
+  16|  *   (`min-w-[16rem]`) supaya tata letak tidak melompat.
+  17|  * - Dirender pemanggil hanya saat `pesanan.payment` tidak `null` (D13).
+  18|  * - Tombol tetap aktif saat lunas maupun mode uji: alasan penolakan datang dari server lewat
+  19|  *   flash, bukan dari state `disabled` tanpa alasan terlihat (§4.0).
+  20|  * - Hasil dirender SATU KALI sebagai §4.23 `InlineNotice` di dalam kartu yang sama; pasangan
+  21|  *   flash yang sudah dikonsumsi dilaporkan lewat `onHasilSinkron` supaya halaman menekan
+  22|  *   Toast §4.8 untuk pesan yang sama.
+  23|  */
+  24| 
+  25| const asText = (nilai) => (nilai === null || nilai === undefined ? '' : String(nilai));
+  26| 
+  27| export default function SyncPaymentButton({ pesananId = null, onHasilSinkron = null }) {
+  28|     const form = useForm({});
+  29|     const [hasil, setHasil] = useState(null);
+  30| 
+  31|     const id = asText(pesananId).trim();
+  32| 
+  33|     // Tanpa id pesanan tidak ada rute sah yang bisa dituju — jangan merender tombol yang pasti gagal.
+  34|     if (id === '') {
+  35|         return null;
+  36|     }
+  37| 
+  38|     const sinkronkan = () => {
+  39|         if (form.processing) {
+  40|             return;
+  41|         }
+  42| 
+  43|         setHasil(null);
+  44| 
+  45|         form.patch(`/admin/pesanan/${encodeURIComponent(id)}/sinkron-pembayaran`, {
+  46|             preserveScroll: true,
+  47|             preserveState: true,
+  48|             onSuccess: (halaman) => {
+  49|                 const flashHalaman = halaman?.props?.flash ?? {};
+  50|                 const sukses = asText(flashHalaman.success);
+  51|                 const galat = asText(flashHalaman.error);
+  52| 
+  53|                 if (sukses !== '') {
+  54|                     setHasil({ tone: 'success', pesan: sukses });
+  55|                 } else if (galat !== '') {
+  56|                     setHasil({ tone: 'error', pesan: galat });
+  57|                 }
+  58| 
+  59|                 if ((sukses !== '' || galat !== '') && onHasilSinkron) {
+  60|                     onHasilSinkron(`${sukses}|${galat}`);
+  61|                 }
+  62|             },
+  63|         });
+  64|     };
+  65| 
+  66|     return (
+  67|         <div className="flex flex-col gap-4">
+  68|             <div>
+  69|                 <Button
+  70|                     variant="secondary"
+  71|                     className="min-w-[16rem]"
+  72|                     loading={form.processing}
+  73|                     onClick={sinkronkan}
+  74|                 >
+  75|                     Sinkronkan status pembayaran
+  76|                 </Button>
+  77|             </div>
+  78| 
+  79|             {hasil !== null && <InlineNotice tone={hasil.tone}>{hasil.pesan}</InlineNotice>}
+  80|         </div>
+  81|     );
+  82| }
+
+--- state + efek suppress Toast halaman (Show.jsx:57-78) ---
+  57|     const [modalTerbuka, setModalTerbuka] = useState(false);
+  58|     const [toast, setToast] = useState(null);
+  59|     const [flashSinkron, setFlashSinkron] = useState(null);
+  60| 
+  61|     const final = berikut.length === 0;
+  62|     const pasanganFlash = `${asText(flash?.success)}|${asText(flash?.error)}`;
+  63| 
+  64|     useEffect(() => {
+  65|         if (flashSinkron !== null && pasanganFlash !== '|' && pasanganFlash === flashSinkron) {
+  66|             // Flash milik aksi "Sinkronkan status pembayaran" sudah dirender satu kali sebagai
+  67|             // InlineNotice di kartu "Bukti pembayaran" (D13 + U6-1) — jangan dobel sebagai Toast.
+  68|             setToast(null);
+  69| 
+  70|             return;
+  71|         }
+  72| 
+  73|         if (flash?.success) {
+  74|             setToast({ tone: 'success', title: 'Berhasil', message: asText(flash.success) });
+  75|         } else if (flash?.error) {
+  76|             setToast({ tone: 'error', title: 'Gagal', message: asText(flash.error) });
+  77|         }
+  78|     }, [flash?.success, flash?.error, flashSinkron, pasanganFlash]);
+
+--- kartu "Bukti pembayaran": render kondisional tombol (Show.jsx:223-236) ---
+ 223|                 <div className="grid gap-6 lg:grid-cols-2">
+ 224|                     <KartuBagian
+ 225|                         title="Bukti pembayaran"
+ 226|                         description="Pratinjau readonly — kode QR dan ID transaksi dikirim penyedia pembayaran."
+ 227|                     >
+ 228|                         <div className="flex flex-col gap-4">
+ 229|                             <BuktiPembayaran payment={data.payment ?? null} paymentLabel={data.payment_label ?? null} />
+ 230| 
+ 231|                             {data.payment !== null && data.payment !== undefined && (
+ 232|                                 <SyncPaymentButton pesananId={data.id} onHasilSinkron={setFlashSinkron} />
+ 233|                             )}
+ 234|                         </div>
+ 235|                     </KartuBagian>
+ 236| 
+
+==============================================================================
+A. Harness interaksi (14 uji) — hasil dasar
+==============================================================================
+### A. Harness interaksi: tmp/uji-aksi-sinkron-t_8e89556f.mjs
+$ md5sum SyncPaymentButton.jsx Show.jsx  (sebelum)
+7a0367438c19e80d7ac25fd2443bbcb5
+9662113234a8786727e2937da1a4df95
+=== Hasil harness aksi kartu t_8e89556f (F8) ===
+01. [OK] A1. Render: satu tombol, label beku, varian secondary, lebar dikunci min-w-[16rem]
+02. [OK] A2. Klik: PATCH URL literal kontrak §12.24, tanpa body, preserveScroll + preserveState
+03. [OK] A3. State memproses: label "Memproses…" + disabled + aria-busy, kelas lebar tetap
+04. [OK] A4. Klik ganda saat memproses: tidak ada kunjungan kedua
+05. [OK] A5. Jawaban flash.error: InlineNotice tone error + pesan server apa adanya + pelaporan pasangan
+06. [OK] A6. Jawaban flash.success: InlineNotice tone success + pelaporan pasangan
+07. [OK] A7. Klik berikutnya: notice lama hilang sebelum jawaban baru
+08. [OK] A8. Tanpa id pesanan: tidak merender tombol (tidak menembak URL tanpa id)
+09. [OK] A9. Higiene teks: tanpa undefined/NaN/[CONTOH]/placeholder di semua state
+10. [OK] B1. Show: tombol dirender di dalam kartu "Bukti pembayaran" dengan props dari pesanan.id
+11. [OK] B2. Show: payment null/absen → tombol sinkron tidak dirender (D13)
+12. [OK] B3. Show: flash aksi lain tetap menjadi Toast halaman (suppress tidak bocor)
+13. [OK] B4. Show: flash aksi sinkron di-suppress dari Toast setelah dilaporkan partial (U6-1)
+14. [OK] B5. Integrasi: props dari Show → klik → URL kontrak → flash.error server tampil di kartu
+
+RINGKAS: 14/14 OK, 0 GAGAL
+$ echo $?  ->  0
+
+==============================================================================
+B. Kontrol negatif 1: label beku dirusak sementara
+==============================================================================
+### B. Kontrol negatif A (sabotase sementara: label 'Sinkronkan status pembayaran' -> 'Sinkronkan pembayaran')
+$ sed -i 's/Sinkronkan status pembayaran/Sinkronkan pembayaran/' resources/js/Pages/Admin/Orders/partials/SyncPaymentButton.jsx
+=== Hasil harness aksi kartu t_8e89556f (F8) ===
+01. [GAGAL] A1. Render: satu tombol, label beku, varian secondary, lebar dikunci min-w-[16rem]
+      -> label beku tidak ditemukan
+02. [OK] A2. Klik: PATCH URL literal kontrak §12.24, tanpa body, preserveScroll + preserveState
+03. [OK] A3. State memproses: label "Memproses…" + disabled + aria-busy, kelas lebar tetap
+04. [OK] A4. Klik ganda saat memproses: tidak ada kunjungan kedua
+05. [OK] A5. Jawaban flash.error: InlineNotice tone error + pesan server apa adanya + pelaporan pasangan
+06. [OK] A6. Jawaban flash.success: InlineNotice tone success + pelaporan pasangan
+07. [OK] A7. Klik berikutnya: notice lama hilang sebelum jawaban baru
+08. [OK] A8. Tanpa id pesanan: tidak merender tombol (tidak menembak URL tanpa id)
+09. [OK] A9. Higiene teks: tanpa undefined/NaN/[CONTOH]/placeholder di semua state
+10. [OK] B1. Show: tombol dirender di dalam kartu "Bukti pembayaran" dengan props dari pesanan.id
+11. [OK] B2. Show: payment null/absen → tombol sinkron tidak dirender (D13)
+12. [OK] B3. Show: flash aksi lain tetap menjadi Toast halaman (suppress tidak bocor)
+13. [OK] B4. Show: flash aksi sinkron di-suppress dari Toast setelah dilaporkan partial (U6-1)
+14. [GAGAL] B5. Integrasi: props dari Show → klik → URL kontrak → flash.error server tampil di kartu
+      -> label beku harus tampil
+
+RINGKAS: 12/14 OK, 2 GAGAL
+$ echo $?  ->  1
+
+==============================================================================
+C. Pemulihan kontrol negatif 1
+==============================================================================
+sisa_sabotase_label=0
+md5_setelah_pulih=7a0367438c19e80d7ac25fd2443bbcb5
+
+==============================================================================
+D. Kontrol negatif 2: URL kontrak dirusak sementara
+==============================================================================
+### C. Kontrol negatif B (sabotase sementara: URL simpan -> /sinkron-pembayaran-tiruan)
+$ sed -i 's|/sinkron-pembayaran`|/sinkron-pembayaran-tiruan`|' resources/js/Pages/Admin/Orders/partials/SyncPaymentButton.jsx
+=== Hasil harness aksi kartu t_8e89556f (F8) ===
+01. [OK] A1. Render: satu tombol, label beku, varian secondary, lebar dikunci min-w-[16rem]
+02. [GAGAL] A2. Klik: PATCH URL literal kontrak §12.24, tanpa body, preserveScroll + preserveState
+      -> url harus /admin/pesanan/5/sinkron-pembayaran, dapat /admin/pesanan/5/sinkron-pembayaran-tiruan
+03. [OK] A3. State memproses: label "Memproses…" + disabled + aria-busy, kelas lebar tetap
+04. [OK] A4. Klik ganda saat memproses: tidak ada kunjungan kedua
+05. [OK] A5. Jawaban flash.error: InlineNotice tone error + pesan server apa adanya + pelaporan pasangan
+06. [OK] A6. Jawaban flash.success: InlineNotice tone success + pelaporan pasangan
+07. [OK] A7. Klik berikutnya: notice lama hilang sebelum jawaban baru
+08. [OK] A8. Tanpa id pesanan: tidak merender tombol (tidak menembak URL tanpa id)
+09. [OK] A9. Higiene teks: tanpa undefined/NaN/[CONTOH]/placeholder di semua state
+10. [OK] B1. Show: tombol dirender di dalam kartu "Bukti pembayaran" dengan props dari pesanan.id
+11. [OK] B2. Show: payment null/absen → tombol sinkron tidak dirender (D13)
+12. [OK] B3. Show: flash aksi lain tetap menjadi Toast halaman (suppress tidak bocor)
+13. [OK] B4. Show: flash aksi sinkron di-suppress dari Toast setelah dilaporkan partial (U6-1)
+14. [GAGAL] B5. Integrasi: props dari Show → klik → URL kontrak → flash.error server tampil di kartu
+      -> url harus /admin/pesanan/5/sinkron-pembayaran, dapat /admin/pesanan/5/sinkron-pembayaran-tiruan
+
+RINGKAS: 12/14 OK, 2 GAGAL
+$ echo $?  ->  1
+
+==============================================================================
+E. Pemulihan kontrol negatif 2
+==============================================================================
+sisa_sabotase_url=0
+md5_setelah_pulih=7a0367438c19e80d7ac25fd2443bbcb5
+
+==============================================================================
+F. Kontrol negatif 3: logika suppress Toast dirusak sementara
+==============================================================================
+### D. Kontrol negatif C (sabotase sementara: syarat suppress Toast -> false)
+$ sed -i 's/pasanganFlash === flashSinkron/false/' resources/js/Pages/Admin/Orders/Show.jsx
+=== Hasil harness aksi kartu t_8e89556f (F8) ===
+01. [OK] A1. Render: satu tombol, label beku, varian secondary, lebar dikunci min-w-[16rem]
+02. [OK] A2. Klik: PATCH URL literal kontrak §12.24, tanpa body, preserveScroll + preserveState
+03. [OK] A3. State memproses: label "Memproses…" + disabled + aria-busy, kelas lebar tetap
+04. [OK] A4. Klik ganda saat memproses: tidak ada kunjungan kedua
+05. [OK] A5. Jawaban flash.error: InlineNotice tone error + pesan server apa adanya + pelaporan pasangan
+06. [OK] A6. Jawaban flash.success: InlineNotice tone success + pelaporan pasangan
+07. [OK] A7. Klik berikutnya: notice lama hilang sebelum jawaban baru
+08. [OK] A8. Tanpa id pesanan: tidak merender tombol (tidak menembak URL tanpa id)
+09. [OK] A9. Higiene teks: tanpa undefined/NaN/[CONTOH]/placeholder di semua state
+10. [OK] B1. Show: tombol dirender di dalam kartu "Bukti pembayaran" dengan props dari pesanan.id
+11. [OK] B2. Show: payment null/absen → tombol sinkron tidak dirender (D13)
+12. [OK] B3. Show: flash aksi lain tetap menjadi Toast halaman (suppress tidak bocor)
+13. [GAGAL] B4. Show: flash aksi sinkron di-suppress dari Toast setelah dilaporkan partial (U6-1)
+      -> flash aksi sinkron tidak boleh muncul lagi sebagai Toast (dobel dengan InlineNotice)
+14. [OK] B5. Integrasi: props dari Show → klik → URL kontrak → flash.error server tampil di kartu
+
+RINGKAS: 13/14 OK, 1 GAGAL
+$ echo $?  ->  1
+
+==============================================================================
+G. Pemulihan kontrol negatif 3
+==============================================================================
+sisa_sabotase_suppress=1
+md5_setelah_pulih=9662113234a8786727e2937da1a4df95
+
+==============================================================================
+H. Harness interaksi dijalankan ulang setelah semua pemulihan
+==============================================================================
+### E. Ulang setelah dipulihkan (harus 100% OK lagi)
+=== Hasil harness aksi kartu t_8e89556f (F8) ===
+01. [OK] A1. Render: satu tombol, label beku, varian secondary, lebar dikunci min-w-[16rem]
+02. [OK] A2. Klik: PATCH URL literal kontrak §12.24, tanpa body, preserveScroll + preserveState
+03. [OK] A3. State memproses: label "Memproses…" + disabled + aria-busy, kelas lebar tetap
+04. [OK] A4. Klik ganda saat memproses: tidak ada kunjungan kedua
+05. [OK] A5. Jawaban flash.error: InlineNotice tone error + pesan server apa adanya + pelaporan pasangan
+06. [OK] A6. Jawaban flash.success: InlineNotice tone success + pelaporan pasangan
+07. [OK] A7. Klik berikutnya: notice lama hilang sebelum jawaban baru
+08. [OK] A8. Tanpa id pesanan: tidak merender tombol (tidak menembak URL tanpa id)
+09. [OK] A9. Higiene teks: tanpa undefined/NaN/[CONTOH]/placeholder di semua state
+10. [OK] B1. Show: tombol dirender di dalam kartu "Bukti pembayaran" dengan props dari pesanan.id
+11. [OK] B2. Show: payment null/absen → tombol sinkron tidak dirender (D13)
+12. [OK] B3. Show: flash aksi lain tetap menjadi Toast halaman (suppress tidak bocor)
+13. [OK] B4. Show: flash aksi sinkron di-suppress dari Toast setelah dilaporkan partial (U6-1)
+14. [OK] B5. Integrasi: props dari Show → klik → URL kontrak → flash.error server tampil di kartu
+
+RINGKAS: 14/14 OK, 0 GAGAL
+$ echo $?  ->  0
+
+==============================================================================
+I. npm run build + jejak kelas/teks di bundel
+==============================================================================
+### F. npm run build + jejak kelas/teks di bundel
+[2mpublic/build/[22m[36massets/Index-Biazmt12.js              [39m[1m[2m  9.84 kB[22m[1m[22m[2m │ gzip:   3.61 kB[22m
+[2mpublic/build/[22m[36massets/Dashboard-D-Wzp-l3.js          [39m[1m[2m 10.52 kB[22m[1m[22m[2m │ gzip:   3.80 kB[22m
+[2mpublic/build/[22m[36massets/Index-CX9myFdt.js              [39m[1m[2m 11.46 kB[22m[1m[22m[2m │ gzip:   4.13 kB[22m
+[2mpublic/build/[22m[36massets/CheckoutPay-DGKt7J4e.js        [39m[1m[2m 11.77 kB[22m[1m[22m[2m │ gzip:   3.93 kB[22m
+[2mpublic/build/[22m[36massets/Index-B-3QCOVT.js              [39m[1m[2m 11.85 kB[22m[1m[22m[2m │ gzip:   4.12 kB[22m
+[2mpublic/build/[22m[36massets/Index-ByVZ8YTX.js              [39m[1m[2m 11.95 kB[22m[1m[22m[2m │ gzip:   4.34 kB[22m
+[2mpublic/build/[22m[36massets/Home-DRpL3ZfJ.js               [39m[1m[2m 13.50 kB[22m[1m[22m[2m │ gzip:   4.38 kB[22m
+[2mpublic/build/[22m[36massets/Show-Clb62TXI.js               [39m[1m[2m 14.04 kB[22m[1m[22m[2m │ gzip:   4.82 kB[22m
+[2mpublic/build/[22m[36massets/ProdukForm-Cfhocq_3.js         [39m[1m[2m 14.70 kB[22m[1m[22m[2m │ gzip:   4.28 kB[22m
+[2mpublic/build/[22m[36massets/Index-BuQtlxKJ.js              [39m[1m[2m 50.76 kB[22m[1m[22m[2m │ gzip:  12.14 kB[22m
+[2mpublic/build/[22m[36massets/app-BCun0p-R.js                [39m[1m[2m364.67 kB[22m[1m[22m[2m │ gzip: 114.34 kB[22m
+[32m✓ built in 13.93s[39m
+$ echo ${PIPESTATUS[0]}  ->  0
+$ grep -c 'min-width:16rem' public/build/assets/*.css
+1
+$ grep -o 'min-w-[^{]*{min-width:16rem}' public/build/assets/*.css | head -3
+min-w-\[16rem\]{min-width:16rem}
+$ grep -o 'Sinkronkan status pembayaran' public/build/assets/*.js | head -3
+public/build/assets/SyncPaymentButton-TLkCqPKk.js:Sinkronkan status pembayaran
+$ grep -o 'sinkron-pembayaran' public/build/assets/*.js | head -3
+public/build/assets/SyncPaymentButton-TLkCqPKk.js:sinkron-pembayaran
+
+==============================================================================
+J. Regresi kartu F5 (modal ubah status + bukti pembayaran)
+==============================================================================
+### G. Regresi harness kartu F5 (halaman yang sama): tmp/uji-ssr-pesanan-t_018b2723.mjs
+=== UJI SSR + STATIK kartu t_018b2723 (F5 Admin Pesanan) ===
+[OK] S1 tidak ada fetch/axios/SPA client di berkas Orders
+[OK] S2 tidak ada route()/Ziggy, storage, atau dangerouslySetInnerHTML
+[OK] S3 semua impor relatif ada di disk (kedalaman path benar)
+[OK] S4 props halaman ⊆ props yang dikirim OrderController (kontrak §12.16/§12.17)
+[OK] S5 URL literal halaman cocok dengan rute admin.php
+[OK] S6 tidak ada placeholder; isian resi memakai rute simpan yang ada (F5b t_d1028202)
+[OK] S7 state galat Index punya pesan konkret + tombol Coba lagi
+[OK] I1 daftar terisi: kode, pembeli, status, ringkasan, hitung, pager
+[OK] I2 kosong tanpa filter: ajakan, bukan galat
+[OK] I3 kosong karena filter: pesan "tidak cocok" + aksi tampilkan semua
+[OK] I4 props hilang/null: halaman tetap render aman
+[OK] I5 angka string & nilai null: "-" bukan NaN/undefined
+[OK] I6 filter terpilih mengikuti props (q, status, bayar, tanggal)
+[OK] I7 ringkasan hilang: kartu "-" (bukan 0 karangan); meta hilang: "-"
+[OK] I8 penanganan flash server ada (toast, bukan efek SSR)
+[OK] H1 detail terisi: pembeli, alamat, item, total, status
+[OK] H2 status final: tombol nonaktif + penjelasan, tanpa modal terbuka
+[OK] H3 status tidak final: tombol aktif, modal tetap tertutup
+[OK] H4 bukti pembayaran: ada -> detail, null -> pesan jelas (bukan galat)
+[OK] H5 items kosong & catatan kosong punya pesan sendiri
+[OK] H6 props hilang/null: halaman tetap render aman
+[OK] H7 isian resi tampil dengan nilai dari props server (F5b t_d1028202)
+[OK] H8 flash sukses ditangani halaman detail (toast, bukan efek SSR)
+[OK] M1 modal terbuka: label server, opsi status, tombol simpan
+[OK] M2 galat server per kolom terhubung aria-describedby
+[OK] M3 bukti pembayaran tanpa QR: peringatan, bukan galat mati
+
+TOTAL: 26 uji, 0 gagal
+$ echo $?  ->  0
+
+==============================================================================
+K. Sapu regresi impor komponen & identifier bebas di bundel
+==============================================================================
+### H. Sapu regresi impor & bundel
+$ python tmp/cek-komponen-tanpa-import.py .
+file diperiksa: 96
+resources\js\app.jsx: App
+$ python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build
+chunk .js diperiksa: 71
+DropzoneGalery-CR5cU0GV.js -> FREE: P  (import: B, D, a, p, w)
+$ grep -n 'dangerouslySetInnerHTML\|localStorage\|route(' resources/js/Pages/Admin/Orders/partials/SyncPaymentButton.jsx resources/js/Pages/Admin/Orders/Show.jsx
+(tidak ada)
+
+==============================================================================
+L. Rute backend, kontrak §12.24, D13, U6-1
+==============================================================================
+### I. Rute & kontrak (sisi backend kartu B3 t_c374a29b)
+$ grep -n 'sinkron' routes/admin.php
+143:    Route::patch('/pesanan/{order}/sinkron-pembayaran', [OrderController::class, 'syncPayment'])
+145:        ->name('orders.sinkron-pembayaran');
+$ grep -n 'function syncPayment' -A 3 app/Http/Controllers/Admin/OrderController.php
+165:    public function syncPayment(Order $order): RedirectResponse
+166-    {
+167-        $order->loadMissing('payment');
+168-        $payment = $order->payment;
+$ grep -n '12.24' docs/kontrak-props.md | head -3
+1412:### 12.24 PATCH `/admin/pesanan/{order}/sinkron-pembayaran` — `admin.orders.sinkron-pembayaran`
+$ grep -n 'D13' docs/design.md | head -3
+872:| D13 | Kartu **"Bukti pembayaran"** pada detail pesanan `/admin/pesanan/{order}` (§5.12) mendapat tombol sekunder **"Sinkronkan status pembayaran"** + notice hasil — elemen baru, bukan penyimpangan dari elemen lama | Keputusan techlead kartu `t_caaa8fa4`: rute `PATCH /admin/pesanan/{order}/sinkron-pembayaran` (`admin.orders.sinkron-pembayaran`) + `Admin\OrderController::syncPayment`, kontrak **§12.24** (`docs/kontrak-props.md:1412-1443`, dikerjakan backend kartu `t_c374a29b`, B3), tombol dikerjakan kartu `t_8e89556f` (F8). Asal temuan laporan pemilik butir 5 (`docs/review-2.md` §2 butir 5): `routes/admin.php` hanya memuat `orders.index`/`show`/`status`/`resi` dan `app/Http/Controllers/Admin/OrderController.php` hanya punya `index`/`show`/`status`/`resi`, sehingga admin tidak punya cara menarik status bayar (webhook Midtrans tidak bisa masuk localhost). Kode saat ini `resources/js/Pages/Admin/Orders/Show.jsx:204-214`: kartu "Bukti pembayaran" dibuka lewat komponen `KartuBagian` dan hanya memuat pratinjau readonly `BuktiPembayaran` (`payment` + `payment_label`), berdampingan (`lg:grid-cols-2`) dengan kartu "Catatan pembeli" — tombol ini belum punya acuan tampilan | **Diterima sebagai deviasi — asal laporan pemilik butir 5 ("status bayar mandek"); keputusan + nama rute + kontrak §12.24 dari techlead kartu `t_caaa8fa4`; pengerjaan backend `t_c374a29b` (B3) + tombol `t_8e89556f` (F8).** Alasan: status bayar tidak pernah berubah padahal sudah dibayar, dan webhook tidak bisa masuk di localhost. Batas: **tanpa komponen, token, atau warna baru** — hanya §4.1 `Button` varian `secondary` (47px, radius 9px, `border-line`) dan §4.23 `InlineNotice` (tone `info` = `bg-brand-100 text-ink` (13,13:1); `success` = `bg-success/10 text-ink`; `error` = `bg-red-50 border border-danger text-ink` — semuanya `text-ink`, lolos AA; tone `error` memakai `role="alert"`). **Teks beku + state:** label `Sinkronkan status pembayaran`; saat memproses label `Memproses…` + `disabled` (§4.1 state `loading`, lebar dikunci agar layout tidak melompat). **Muncul hanya bila `pesanan.payment` tidak `null`** (§12.17) — tanpa baris `payments` kontrak §12.24 hanya menjawab `flash.error` (`Pesanan ini belum punya tagihan pembayaran…`), dan satu-satunya cara agar admin tidak menekan tombol tanpa hasil adalah tidak merendernya. **Tombol tetap aktif saat `payment_status` `settlement`** dan saat mode uji: hasilnya tetap lewat flash (`flash.success` = `Pembayaran sudah lunas, sinkronisasi tidak perlu dijalankan.`; mode uji = `flash.error` `Mode uji Midtrans: status tidak bisa disinkronkan.`) — ini dipilih daripada `disabled` agar §4.0 (state `disabled` wajib punya alasan terlihat) tidak dilanggar dan alasan penolakan datang dari server sebagai satu sumber kebenaran. **Hasil aksi dirender satu kali** lewat §4.23 `InlineNotice` di dalam kartu yang sama; halaman ini sudah mengubah `flash.success`/`flash.error` menjadi `Toast` §4.8 lewat efek global (`Show.jsx:56-63`), sehingga bila keduanya dipasang untuk key yang sama pesan muncul **dua kali** — toast halaman di-*suppress* untuk aksi ini (keputusan UIUX U6-1, `docs/catatan-uiux.md`). |
+$ grep -n -i 'U6-1' docs/catatan-uiux.md | head -5
+30:### Keputusan U6-1 — D13: satu sumber hasil; tombol tidak `disabled` hanya karena "sudah lunas"
+
+==============================================================================
+M. Berkas tersentuh kartu ini (git status)
+==============================================================================
+### J. Berkas tersentuh kartu ini
+$ git status --short resources/js/Pages/Admin/Orders docs/catatan-frontend.md tmp/
+ M docs/catatan-frontend.md
+ M resources/js/Pages/Admin/Orders/Index.jsx
+?? resources/js/Pages/Admin/Orders/Show.jsx
+?? resources/js/Pages/Admin/Orders/partials/
+?? tmp/akhir-t_2de36f29.txt
+?? tmp/anak-t_321bf03c.py
+?? tmp/append-f2.py
+?? tmp/append-f5b-t_d1028202.py
+?? tmp/b-baru-t_321bf03c.txt
+?? tmp/baca-kartu-t_2de36f29.py
+?? tmp/bagian-f5b-catatan.md
+?? tmp/bangun-bukti-t_d1028202.py
+?? tmp/buat-bukti-t_02c3d20c.py
+?? tmp/build-daftar-check-t_e3f68f7f.mjs
+?? tmp/build-final-t_7ebfca05.txt
+?? tmp/build-t_2de36f29.txt
+?? tmp/build-t_321bf03c.txt
+?? tmp/build-t_5988a39e.txt
+?? tmp/build-t_7ebfca05.txt
+?? tmp/cek-badge-keranjang-t_7ebfca05.mjs
+?? tmp/cek-jam-t_2de36f29.py
+?? tmp/cek-minw-t_8e89556f.mjs
+?? tmp/daftar-kartu-t_2de36f29.out.txt
+?? tmp/daftar-kartu-t_2de36f29.py
+?? tmp/dump-kartu-baca-t_321bf03c.py
+
+================================================================================
+BATAS BUKTI
+================================================================================
+- Harness berjalan di Node (esbuild + shim React + stub @inertiajs/react), tanpa browser dan tanpa
+  pustaka uji baru. Yang diperiksa: markup elemen (type, label, disabled, aria-busy, kelas), urutan
+  state, kontrak pemanggilan Inertia (URL/metode/opsi), dan logika suppress Toast halaman.
+- Bukan bukti rendering CSS nyata, tata letak, fokus keyboard, atau kontras terukur.
+- Bukan bukti integrasi ke server nyata: rute `admin.orders.sinkron-pembayaran` ada di
+  `routes/admin.php:143-145` dan `Admin\OrderController::syncPayment` ada di berkas backend
+  (bagian L), tetapi klik nyata -> PATCH -> flash Midtrans belum dijalankan dari sini.
+
+BELUM DIUJI (butuh browser + server yang dijalankan pemilik)
+1. Tata letak 360/768/1024/1280 px pada kartu "Bukti pembayaran" setelah tombol ditambahkan.
+2. Fokus keyboard (tombol dapat dijangkau Tab, Enter/Space memicu aksi), zoom 200%, kontras terukur.
+3. Perilaku nyata: klik -> label berubah "Memproses..." sesaat -> notice muncul TEPAT SEKALI di kartu
+   dan TIDAK muncul sebagai Toast di pojok kanan bawah.
+
+Instruksi aman untuk pemilik (tanpa mengubah .env / database):
+1. Jalankan server seperti biasa, masuk sebagai admin.
+2. Buka /admin/pesanan/{id} untuk pesanan yang punya tagihan (punya baris payment).
+   - Kartu "Bukti pembayaran" harus menampilkan tombol sekunder "Sinkronkan status pembayaran".
+   - Klik: label berubah "Memproses..." dengan lebar tombol tidak melompat; hasil muncul satu kali
+     sebagai notice di dalam kartu (hijau bila berhasil, merah bila ditolak server).
+3. Buka pesanan tanpa tagihan (payment null): tombol TIDAK tampil, kartu hanya berisi pratinjau kosong.
+4. Perkecil jendela ke 360 px: tombol tetap terbaca dan tidak memotong kartu.

@@ -1,0 +1,5 @@
+### G. Kode gate di bundel rilis
+$ grep -rl 'Ulasan bisa dikirim setelah pembayaran berhasil' public/build/assets/
+public/build/assets/CheckoutSuccess-D5s1AHje.js
+$ grep -rl 'Beri Penilaian' public/build/assets/
+public/build/assets/CheckoutSuccess-D5s1AHje.js

@@ -1,0 +1,19 @@
+PHPUnit 11.5.57 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.3.32
+Configuration: C:\Users\LENOVO\Downloads\toko-kulot\phpunit.xml
+
+.......                                                             7 / 7 (100%)
+
+Time: 00:05.444, Memory: 50.00 MB
+
+Ulasan Boleh Verifikasi Qa (Tests\Feature\Checkout\UlasanBolehVerifikasiQa)
+ ✔ Boleh sama persis dengan kemampuan server menerima ulasan
+ ✔ Dua produk satu ulasan boleh true dan sisa produk masih diterima
+ ✔ Settlement status batal boleh false dan kiriman ditolak
+ ✔ Bentuk props ulasan tidak berubah
+ ✔ Produk sama dua varian dihitung sekali
+ ✔ Ulasan ganda produk sama ditolak walau boleh sempat true
+ ✔ Batas laju kiriman ulasan dibatasi per menit
+
+OK (7 tests, 244 assertions)

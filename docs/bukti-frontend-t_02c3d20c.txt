@@ -1,0 +1,254 @@
+BUKTI FRONTEND — kartu B2 t_02c3d20c
+Gate ulasan di `resources/js/Pages/Public/CheckoutSuccess.jsx` memakai `ulasan.boleh` (kontrak §7.9, dibekukan 21 Okt 2026).
+Berkas ini dirakit otomatis oleh `tmp/buat-bukti-t_02c3d20c.py` dari keluaran mentah; urutan bagian sama dengan runner.
+Runner: `bash tmp/jalankan-uji-t_02c3d20c.sh` (log per bagian: `tmp/log-bukti-t_02c3d20c/`).
+Waktu perakitan: 2026-10-21 19:24:36
+
+==============================================================================
+A. Harness SSR gate §7.9 (kartu B2)  [01-b2.txt]
+==============================================================================
+### A. Harness SSR gate §7.9 (kartu B2): tmp/uji-ssr-gate-boleh-t_02c3d20c.mjs
+$ md5sum resources/js/Pages/Public/CheckoutSuccess.jsx  (sebelum)
+2e4df85a082cae829efecc0580ce373a
+OK    | 1. boleh=false, masih ada sisa produk -> TANPA form, tanpa notice alasan (DoD-1)                     | 
+OK    | 2. boleh=true, masih ada sisa produk -> form tampil (DoD-2)                                          | 
+OK    | 3. semua produk sudah diulas (boleh=false) -> tanpa form + terima kasih (DoD-3)                      | 
+OK    | 4. boleh=false + sisa produk, syarat §9.1 belum terpenuhi -> notice alasan tampil                    | 
+OK    | 5. boleh=false + sisa produk, status batal -> tanpa form + notice alasan                             | 
+OK    | 6. props `boleh=true` dipercaya apa adanya (keputusan §3: klien tidak menggandakan §9.1)             | 
+OK    | 7. gate statis: `boleh && pending.length > 0`, cabang kontradiksi hilang, alasan pakai syaratDinilai | 
+OK    | 8. props `ulasan` tidak dikirim -> gerbang tertutup, halaman utuh                                    | 
+OK    | 9. sapu kotor (NaN/undefined/placeholder) di semua state di atas                                     | 
+
+RINGKASAN: 9/9 uji lulus
+$ echo $?  ->  0
+
+==============================================================================
+B. Regresi harness SSR F6 (uji 3, 7, 12 disesuaikan)  [02-f6-ssr.txt]
+==============================================================================
+### B. Regresi harness SSR F6 (uji 3, 7, 12 diperbarui): tmp/uji-ssr-ulasan-t_2de36f29.mjs
+OK    | 1. boleh=true, belum ada ulasan -> 2 form, tanpa notice alasan                          | 
+OK    | 2. boleh=true, 1 dari 2 sudah diulas -> 1 form + 1 kartu terkunci                       | 
+OK    | 3. boleh=false padahal masih ada sisa produk -> tanpa form, tanpa notice alasan         | 
+OK    | 4. boleh=false, semua sudah diulas -> tanpa form + terima kasih + 2 kartu               | 
+OK    | 5. belum lunas (payment_status pending) -> tanpa form + alasan                          | 
+OK    | 6. settlement status=batal -> tanpa form + alasan                                       | 
+OK    | 7. props `boleh=true` dipercaya apa adanya (server = sumber aturan §9.1) -> form tampil | 
+OK    | 8. flash.error dari server ditampilkan                                                  | 
+OK    | 9. galat validasi ulasan (errors.ulasan) ditampilkan                                    | 
+OK    | 10. angka dari server sebagai string -> tanpa NaN, rupiah benar                         | 
+OK    | 11. items kosong -> tidak ada form/notice, tidak crash                                  | 
+OK    | 12. props `ulasan` tidak dikirim (null) -> gerbang tertutup (tanpa form), halaman utuh  | 
+OK    | 13. sapu kotor (NaN/undefined/placeholder) di semua state di atas                       | 
+
+RINGKASAN: 13/13 uji lulus
+$ echo $?  ->  0
+
+==============================================================================
+C. Regresi harness interaksi F6 (uji 7 baru)  [03-f6-aksi.txt]
+==============================================================================
+### C. Regresi harness interaksi F6 (uji 7 baru): tmp/uji-aksi-ulasan-t_2de36f29.mjs
+OK    | 1. kirim ulasan -> POST /checkout/{order}/ulasan payload kontrak §9.1            | 
+OK    | 2. kirim ganda dicegah selama kiriman pertama belum selesai                      | 
+OK    | 3. boleh=false & semua sudah diulas -> tanpa form, kartu terkunci, terima kasih  | 
+OK    | 4. belum boleh dinilai -> tidak ada jalur kirim ulasan sama sekali               | 
+OK    | 5. galat validasi server menempel pada produk yang dikirim                       | 
+OK    | 6. seluruh produk selesai dinilai dalam sesi -> form habis + terima kasih        | 
+OK    | 7. boleh=false + masih ada sisa produk -> tanpa form aktif, nol panggilan router | 
+
+RINGKASAN: 7/7 uji lulus
+$ echo $?  ->  0
+
+==============================================================================
+D. Kontrol negatif: gate dirusak sementara lalu dipulihkan  [04-sabotase.txt]
+==============================================================================
+### D. Kontrol negatif (sabotase sementara: gate -> 'pending.length > 0', boleh dilepas)
+$ sed -i 's/const tampilkanForm = boleh && pending.length > 0;/const tampilkanForm = pending.length > 0;/' resources/js/Pages/Public/CheckoutSuccess.jsx
+GAGAL | 1. boleh=false, masih ada sisa produk -> TANPA form, tanpa notice alasan (DoD-1)                     | form harus 0 saat boleh=false, dapat 1
+OK    | 2. boleh=true, masih ada sisa produk -> form tampil (DoD-2)                                          | 
+OK    | 3. semua produk sudah diulas (boleh=false) -> tanpa form + terima kasih (DoD-3)                      | 
+GAGAL | 4. boleh=false + sisa produk, syarat §9.1 belum terpenuhi -> notice alasan tampil                    | form harus 0, dapat 2
+GAGAL | 5. boleh=false + sisa produk, status batal -> tanpa form + notice alasan                             | form harus 0, dapat 2
+OK    | 6. props `boleh=true` dipercaya apa adanya (keputusan §3: klien tidak menggandakan §9.1)             | 
+GAGAL | 7. gate statis: `boleh && pending.length > 0`, cabang kontradiksi hilang, alasan pakai syaratDinilai | gate resmi `const tampilkanForm = boleh && pending.length > 0;` tidak ditemukan
+GAGAL | 8. props `ulasan` tidak dikirim -> gerbang tertutup, halaman utuh                                    | form harus 0 tanpa props ulasan, dapat 2
+OK    | 9. sapu kotor (NaN/undefined/placeholder) di semua state di atas                                     | 
+
+RINGKASAN: 4/9 uji lulus
+$ echo $?  ->  1
+--- regresi F6 SSR pada kondisi sabotase:
+OK    | 1. boleh=true, belum ada ulasan -> 2 form, tanpa notice alasan                          | 
+OK    | 2. boleh=true, 1 dari 2 sudah diulas -> 1 form + 1 kartu terkunci                       | 
+GAGAL | 3. boleh=false padahal masih ada sisa produk -> tanpa form, tanpa notice alasan         | form harus 0 saat boleh=false, dapat 1
+OK    | 4. boleh=false, semua sudah diulas -> tanpa form + terima kasih + 2 kartu               | 
+GAGAL | 5. belum lunas (payment_status pending) -> tanpa form + alasan                          | form harus 0 saat belum lunas, dapat 2
+GAGAL | 6. settlement status=batal -> tanpa form + alasan                                       | form harus 0 saat status batal, dapat 2
+OK    | 7. props `boleh=true` dipercaya apa adanya (server = sumber aturan §9.1) -> form tampil | 
+OK    | 8. flash.error dari server ditampilkan                                                  | 
+OK    | 9. galat validasi ulasan (errors.ulasan) ditampilkan                                    | 
+OK    | 10. angka dari server sebagai string -> tanpa NaN, rupiah benar                         | 
+OK    | 11. items kosong -> tidak ada form/notice, tidak crash                                  | 
+GAGAL | 12. props `ulasan` tidak dikirim (null) -> gerbang tertutup (tanpa form), halaman utuh  | tanpa props ulasan gerbang harus tertutup, dapat 2
+OK    | 13. sapu kotor (NaN/undefined/placeholder) di semua state di atas                       | 
+
+RINGKASAN: 9/13 uji lulus
+$ echo $?  ->  1
+--- regresi F6 interaksi pada kondisi sabotase:
+OK    | 1. kirim ulasan -> POST /checkout/{order}/ulasan payload kontrak §9.1            | 
+OK    | 2. kirim ganda dicegah selama kiriman pertama belum selesai                      | 
+OK    | 3. boleh=false & semua sudah diulas -> tanpa form, kartu terkunci, terima kasih  | 
+GAGAL | 4. belum boleh dinilai -> tidak ada jalur kirim ulasan sama sekali               | tidak boleh ada kartu penilaian
+OK    | 5. galat validasi server menempel pada produk yang dikirim                       | 
+OK    | 6. seluruh produk selesai dinilai dalam sesi -> form habis + terima kasih        | 
+GAGAL | 7. boleh=false + masih ada sisa produk -> tanpa form aktif, nol panggilan router | form aktif harus 0 saat boleh=false, dapat 1
+
+RINGKASAN: 5/7 uji lulus
+$ echo $?  ->  1
+
+==============================================================================
+E. Bukti pemulihan berkas  [05-pulih.txt]
+==============================================================================
+sisa_sabotase_gate=0
+md5_setelah_pulih=2e4df85a082cae829efecc0580ce373a
+
+==============================================================================
+F. Ulang ketiga harness setelah pemulihan  [06-pulih-uji.txt]
+==============================================================================
+### E. Ulang setelah dipulihkan
+B2 SSR: exit 0
+F6 SSR: exit 0
+F6 AKSI: exit 0
+md5_setelah_ulang=2e4df85a082cae829efecc0580ce373a
+
+==============================================================================
+G. `npm run build`  [07-build.txt]
+==============================================================================
+### F. npm run build
+[2mpublic/build/[22m[36massets/Index-CfMx9vF5.js            [39m[1m[2m  9.84 kB[22m[1m[22m[2m │ gzip:   3.62 kB[22m
+[2mpublic/build/[22m[36massets/Dashboard-CpMthWkP.js        [39m[1m[2m 10.52 kB[22m[1m[22m[2m │ gzip:   3.81 kB[22m
+[2mpublic/build/[22m[36massets/Index-Dc9vF31b.js            [39m[1m[2m 11.46 kB[22m[1m[22m[2m │ gzip:   4.13 kB[22m
+[2mpublic/build/[22m[36massets/CheckoutPay-nXiKqEM1.js      [39m[1m[2m 11.77 kB[22m[1m[22m[2m │ gzip:   3.94 kB[22m
+[2mpublic/build/[22m[36massets/Index-B5ietkMq.js            [39m[1m[2m 11.85 kB[22m[1m[22m[2m │ gzip:   4.12 kB[22m
+[2mpublic/build/[22m[36massets/Index-DzmbrW_Y.js            [39m[1m[2m 11.95 kB[22m[1m[22m[2m │ gzip:   4.34 kB[22m
+[2mpublic/build/[22m[36massets/Home-DSFpuzVJ.js             [39m[1m[2m 13.50 kB[22m[1m[22m[2m │ gzip:   4.39 kB[22m
+[2mpublic/build/[22m[36massets/Show-j5_kyYDd.js             [39m[1m[2m 14.04 kB[22m[1m[22m[2m │ gzip:   4.83 kB[22m
+[2mpublic/build/[22m[36massets/ProdukForm-DCIYWJ7z.js       [39m[1m[2m 14.70 kB[22m[1m[22m[2m │ gzip:   4.28 kB[22m
+[2mpublic/build/[22m[36massets/Index-DKYFDGY_.js            [39m[1m[2m 50.76 kB[22m[1m[22m[2m │ gzip:  12.15 kB[22m
+[2mpublic/build/[22m[36massets/app-Dyl9odRh.js              [39m[1m[2m364.49 kB[22m[1m[22m[2m │ gzip: 114.32 kB[22m
+[32m✓ built in 15.28s[39m
+$ echo ${PIPESTATUS[0]}  ->  0
+
+==============================================================================
+H. Kode gate hadir di bundel rilis  [08-bundel.txt]
+==============================================================================
+### G. Kode gate di bundel rilis
+$ grep -rl 'Ulasan bisa dikirim setelah pembayaran berhasil' public/build/assets/
+public/build/assets/CheckoutSuccess-D5s1AHje.js
+$ grep -rl 'Beri Penilaian' public/build/assets/
+public/build/assets/CheckoutSuccess-D5s1AHje.js
+
+==============================================================================
+I. Sapu regresi impor & bundel  [09-sapu.txt]
+==============================================================================
+### H. Sapu regresi impor & bundel
+$ python tmp/cek-komponen-tanpa-import.py .
+file diperiksa: 95
+resources\js\app.jsx: App
+$ python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build
+chunk .js diperiksa: 70
+DropzoneGalery-CEzyM6YO.js -> FREE: P  (import: B, D, a, p, w)
+
+==============================================================================
+J. Gate di kode (statis) + rujukan kontrak/desain  [10-statistik.txt]
+==============================================================================
+### I. Gerbang di kode (statis) & kontrak/desain rujukan
+$ grep -n 'kontradiksiBoleh' -r resources/js/ || true
+(tidak ada)
+$ sed -n '44,60p' resources/js/Pages/Public/CheckoutSuccess.jsx
+
+    /**
+     * Gerbang penilaian memakai `boleh` dari server — kontrak §7.9, dibekukan 21 Okt 2026: `boleh`
+     * bernilai `true` hanya bila server akan menerima minimal satu kiriman ulasan sekarang (syarat
+     * §9.1 lewat `ReviewService::isEligible` dan masih ada produk yang belum diulas). Klien tidak
+     * mengulang syarat itu sebagai gerbang dan tidak menambal props yang berbeda; cabang
+     * "kontradiksi" lama dihapus bersama deviasi servernya (`docs/keputusan-f6-ulasan-boleh.md` §3).
+     */
+    const tampilkanForm = boleh && pending.length > 0;
+
+    /**
+     * Masih ada produk yang belum dinilai tetapi syarat §9.1 belum terpenuhi (belum `settlement`
+     * atau statusnya belum boleh dinilai) — notice alasan, bukan gerbang. Saling eksklusif dengan
+     * form supaya alasan tidak pernah muncul di atas form yang sedang tampil.
+     */
+    const alasanBelumBoleh = !tampilkanForm && !syaratDinilai && pending.length > 0;
+
+$ grep -n 'ulasan.boleh = ' -A 6 docs/kontrak-props.md | head -12
+
+==============================================================================
+K. Berkas tersentuh kartu ini  [11-git.txt]
+==============================================================================
+### J. Berkas tersentuh kartu ini
+$ git status --short resources/js/Pages/Public/CheckoutSuccess.jsx docs/catatan-frontend.md
+ M docs/catatan-frontend.md
+ M resources/js/Pages/Public/CheckoutSuccess.jsx
+$ git status --short | wc -l
+163
+
+==============================================================================
+L. Pemeriksaan tambahan saat merakit bukti
+==============================================================================
+
+$ md5sum resources/js/Pages/Public/CheckoutSuccess.jsx
+2e4df85a082cae829efecc0580ce373a *resources/js/Pages/Public/CheckoutSuccess.jsx
+$ echo $?  ->  0
+
+$ ls -l public/build/assets/CheckoutSuccess-*.js
+-rw-r--r-- 1 LENOVO 197121 8472 Oct 21 19:22 public/build/assets/CheckoutSuccess-D5s1AHje.js
+$ echo $?  ->  0
+
+$ md5sum public/build/assets/CheckoutSuccess-*.js
+86fb90af14dd85817b665253901c20cd *public/build/assets/CheckoutSuccess-D5s1AHje.js
+$ echo $?  ->  0
+
+$ grep -rn 'kontradiksiBoleh' resources/js/ || echo '(tidak ada di resources/js)'
+'(tidak ada di resources/js)'
+$ echo $?  ->  0
+
+$ grep -rn 'ulasan.boleh' docs/kontrak-props.md | head -4
+526:`ulasan.boleh` = **`true` hanya bila server akan menerima minimal satu kiriman ulasan sekarang** (§9.1):
+562:| §7.9 — **definisi** `ulasan.boleh` (bukan bentuk respons): `true` hanya bila §9.1 menerima minimal satu kiriman ulasan — `settlement` + status boleh dinilai + masih ada produk belum diulas | **LOCKED** diperbarui 21 Okt 2026 (kartu `t_2b031326`, temuan F6 `docs/catatan-frontend.md`; keputusan `docs/keputusan-f6-ulasan-boleh.md`) | K12, K13, F6 |
+$ echo $?  ->  0
+
+$ sed -n '526,533p' docs/kontrak-props.md
+`ulasan.boleh` = **`true` hanya bila server akan menerima minimal satu kiriman ulasan sekarang** (§9.1):
+order `payment_status = settlement`, `status` ∈ (`dibayar`, `diproses`, `dikirim`, `selesai`) — sama
+dengan `ReviewService::isEligible` — **dan** masih ada minimal satu `product_id` unik pada
+`pesanan.items` yang belum ada di `reviews` order itu. Jadi `boleh` tetap `true` pada pesanan
+multi-produk yang baru sebagian diulas, dan `false` hanya bila syarat §9.1 tidak terpenuhi atau
+semua produk sudah diulas. **Dibekukan 21 Okt 2026** (kartu `t_2b031326`, temuan F6
+`docs/catatan-frontend.md`; sebelumnya hanya berbunyi "order sudah `settlement` dan pembeli belum
+mengulas semua produk").
+$ echo $?  ->  0
+
+$ git check-ignore -v public/build/assets/CheckoutSuccess-D5s1AHje.js
+.gitignore:3:/public/build	public/build/assets/CheckoutSuccess-D5s1AHje.js
+$ echo $?  ->  0
+
+$ python tmp/papan-t_02c3d20c.py
+db: C:\Users\LENOVO\AppData\Local\hermes\kanban\boards\toko-kulot\kanban.db
+tabel: ['kanban_notify_subs', 'sqlite_sequence', 'task_attachments', 'task_comments', 'task_events', 'task_links', 'task_runs', 'tasks']
+waktu: 2026-10-21 19:24:38
+kolom: ['id', 'title', 'body', 'assignee', 'status', 'priority', 'created_by', 'created_at', 'started_at', 'completed_at', 'workspace_kind', 'workspace_path', 'branch_name', 'project_id', 'claim_lock', 'claim_expires', 'tenant', 'result', 'idempotency_key', 'consecutive_failures', 'worker_pid', 'worker_started_at', 'last_failure_error', 'max_runtime_seconds', 'last_heartbeat_at', 'current_run_id', 'workflow_template_id', 'current_step_key', 'skills', 'model_override', 'provider_override', 'reasoning_effort', 'max_retries', 'goal_mode', 'goal_max_turns', 'session_id', 'block_kind', 'block_recurrences', 'completion_contract']
+running  | frontenddeveloper  | t_e60e7733 | F2: Penanda mode uji Midtrans di halaman bayar + status mode di 
+running  | frontenddeveloper  | t_02c3d20c | B2: gate ulasan di CheckoutSuccess memakai `boleh` (hapus cabang
+running  | qatesting          | t_2c9f8b01 | QA2: verifikasi nomor resi pesanan (kontrak §12.17/§12.18a)
+todo     | devops             | t_e83922f2 | D1: Bekukan build rilis + checklist Midtrans nyata
+todo     | qatesting          | t_3a240a11 | QA1: Verifikasi perbaikan laporan pemilik 21 Okt 2026
+todo     | qatesting          | t_4ef6e8bd | B3: verifikasi `ulasan.boleh` §7.9 (props server + gate klien)
+$ echo $?  ->  0
+
+
+RINGKASAN YANG DIVERIFIKASI ULANG SAAT MERAKIT:
+- md5 sumber komponen: 2e4df85a082cae829efecc0580ce373a
+- sisa sabotase gate di sumber: 0 kemunculan (bagian E)
+- harness B2/F6-SSR/F6-AKSI: exit 0 pada keadaan akhir (bagian F)

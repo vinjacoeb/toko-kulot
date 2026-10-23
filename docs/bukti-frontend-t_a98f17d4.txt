@@ -1,0 +1,262 @@
+BUKTI FRONTEND — kartu t_a98f17d4
+Halaman /checkout: state `error-field` + validasi klien yang mencerminkan aturan server
+Tanggal kerja: 2026-10-21 · Profil: frontenddeveloper
+
+====================================================================
+1. BERKAS YANG DIUBAH
+====================================================================
+resources/js/Pages/Public/Checkout.jsx   (+123 / -15 terhadap commit 15241a1)
+
+Hanya satu berkas aplikasi yang disentuh; sisanya berkas bukti/harness di docs/ dan tmp/.
+Baris yang dihapus semuanya versi lama dari baris yang sama (validate() ringkas, pola email,
+impor useState, JSDoc, OrderSummary self-closing) — tidak ada pekerjaan kartu lain yang dihapus.
+Bukti: git diff -U0 -- resources/js/Pages/Public/Checkout.jsx | grep '^-'
+
+====================================================================
+2. LINGKUP KARTU (a)–(d) → LOKASI KODE
+====================================================================
+
+(a) Validasi di klien memakai aturan + pesan yang sama dengan server.
+    Checkout.jsx baris 43–78 (pola di baris 12–14):
+
+function validate(values) {
+    const errors = {};
+    const teks = (nilai) => String(nilai ?? '').trim();
+
+    const nama = teks(values.customer_name);
+    if (nama === '') errors.customer_name = 'Nama penerima wajib diisi.';
+    else if (nama.length < 3) errors.customer_name = 'Nama penerima minimal 3 karakter.';
+    else if (nama.length > 100) errors.customer_name = 'Nama penerima maksimal 100 karakter.';
+
+    const telepon = teks(values.customer_phone);
+    if (telepon === '') errors.customer_phone = 'Nomor WhatsApp wajib diisi.';
+    else if (!PHONE_PATTERN.test(telepon)) errors.customer_phone = 'Nomor WhatsApp tidak valid.';
+    ... (email, alamat, kota, kode pos, catatan; semuanya memakai teks()/trim yang sama)
+
+    const kodePos = teks(values.customer_postal_code);
+    if (kodePos === '') errors.customer_postal_code = 'Kode pos wajib diisi.';
+    else if (!POSTAL_PATTERN.test(kodePos)) errors.customer_postal_code = 'Kode pos harus 5 angka.';
+
+    if (teks(values.note).length > 500) errors.note = 'Catatan maksimal 500 karakter.';
+
+    return errors;
+}
+
+    Padanan aturan server (app/Http/Requests/CheckoutRequest.php baris 24–32) satu per satu:
+      customer_name        required|string|min:3|max:100   -> wajib / min 3 / maks 100
+      customer_phone       required|regex ^(\+62|62|0)8[0-9]{7,12}$ -> PHONE_PATTERN identik
+      customer_email       required|email|max:150          -> diisi / pola / maks 150
+      customer_address     required|string|min:10|max:500   -> diisi / min 10 / maks 500
+      customer_city        required|string|min:3|max:100    -> diisi / min 3 / maks 100
+      customer_postal_code required|string|digits:5         -> diisi / 5 angka
+      note                 nullable|string|max:500          -> hanya maks 500 (opsional)
+
+    Klien tidak pernah lebih ketat dari server: pola email dilonggarkan ke
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/ (tanpa syarat TLD >= 2 huruf) supaya nilai yang diterima
+    server (filter_var) tidak diblokir di klien.
+
+(b) Notice "Ada N kolom yang perlu diperbaiki" + tombol "Perbaiki kolom".
+    Checkout.jsx baris 173–192:
+
+    const noticeValidasi = (className) => {
+        if (jumlahBermasalah === 0) return null;
+
+        const label = LABEL_KOLOM[kolomPertama] ?? kolomPertama;
+        const pesan = fieldError(kolomPertama);
+        const ringkas = jumlahBermasalah === 1 ? `Kolom ${label}: ${pesan}` : `Kolom pertama ${label}: ${pesan}`;
+
+        return (
+            <InlineNotice
+                tone="error"
+                className={className}
+                title={`Ada ${jumlahBermasalah} kolom yang perlu diperbaiki`}
+            >
+                <p>{ringkas}</p>
+                <Button variant="secondary" className="mt-3" onClick={() => gulirKeKolom(kolomPertama)}>
+                    Perbaiki kolom
+                </Button>
+            </InlineNotice>
+        );
+    };
+
+    Dipasang di DUA tempat:
+      baris 235  {noticeValidasi('mt-4')}                        -> di atas formulir
+      baris 405  {noticeValidasi('mt-4')} di dalam <OrderSummary> baris 393–406 -> tepat di atas CTA
+    Urutan kolom "pertama" mengikuti isi formulir (URUTAN_KOLOM baris 17–25):
+    nama, telepon, email, alamat, kota, kode pos, catatan.
+
+(c) Galat dari server digulirkan otomatis ke kolom pertama (state `error-field`, design §5.7).
+    Checkout.jsx baris 134–140:
+
+    const kunciGalatServer = URUTAN_KOLOM.filter((key) => Boolean(form.errors?.[key])).join(',');
+
+    useEffect(() => {
+        if (kunciGalatServer === '') return;
+
+        gulirKeKolom(kunciGalatServer.split(',')[0], { fokus: false });
+    }, [kunciGalatServer]);
+
+    gulirKeKolom() baris 81–95: scrollIntoView({ behavior: 'smooth' | 'instant' sesuai
+    prefers-reduced-motion, block: 'center' }) dan fokus-kan kolom (preventScroll) — fokus
+    sengaja TIDAK direbut saat jawaban server datang (`{ fokus: false }`).
+
+(d) CTA tetap tombol submit formulir yang sama, anti kirim ganda.
+    Checkout.jsx baris 393–406: <OrderSummary form="checkout-form" ... loading={form.processing}
+    disabled={isEmpty || form.processing} ctaLabel="Buat Pesanan"> dengan noticeValidasi sebagai
+    anak. Kirim lewat submit() baris 147–167:
+      - `if (form.processing) return;`  -> klik kedua saat memproses tidak mengirim apa pun
+      - `const found = validate(form.data); ... if (Object.keys(found).length > 0) return;`
+        -> formulir tidak sah tidak pernah sampai ke jaringan
+      - `form.post('/checkout', { preserveScroll: true, onHttpException ... })` -> URL literal
+        sesuai kontrak §7.6, 429 ditampilkan sebagai pesan tunggu.
+
+====================================================================
+3. VERIFIKASI YANG BENAR-BENAR DIJALANKAN
+====================================================================
+
+Perintah 1 — harness interaksi (React asli + stub Inertia, tanpa browser):
+  ./node_modules/@esbuild/win32-x64/esbuild.exe tmp/uji-aksi-checkout-t_a98f17d4.mjs --bundle \
+    --platform=node --format=esm --jsx=automatic --packages=external \
+    --outfile=tmp/uji-aksi-checkout-t_a98f17d4.bundle.mjs \
+    --alias:react/jsx-runtime=./tmp/shim-jsx-runtime-t_321bf03c.mjs \
+    --alias:react=./tmp/shim-react-t_321bf03c.mjs \
+    --alias:@inertiajs/react=./tmp/stub-inertia-t_321bf03c.mjs
+  node tmp/uji-aksi-checkout-t_a98f17d4.bundle.mjs
+
+Keluaran nyata (exit 0):
+
+=== UJI INTERAKSI kartu t_a98f17d4 (/checkout) ===
+[OK]   A1 CTA "Buat Pesanan" submit ke form yang sama, mati hanya saat processing/keranjang kosong
+[OK]   A2 validate() gagal: tidak ada permintaan ke server, notice di atas form DAN di atas CTA
+[OK]   A3 pesan klien sama persis dengan pesan server (dibaca dari CheckoutRequest.php)
+[OK]   A4 kirim sah: URL literal, data form utuh, dan processing mencegah kirim ganda
+[OK]   B1 galat dari server: notice sama + gulir ke kolom pertama tanpa merebut fokus
+[OK]   B2 tombol "Perbaiki kolom": scrollIntoView + focus kolom pertama, hormat prefers-reduced-motion
+[OK]   B3 galat kolom kedua kali (setelah semua lengkap) menggulir ke kolom yang benar
+[OK]   B4 order tidak dobel saat error-payment (design §5.7): pesan flash server tetap tampil
+
+TOTAL: 8 uji, 0 gagal
+Cek 1: pesan server terbaca 16 kunci dari CheckoutRequest.php
+
+    Apa yang dibuktikan tiap uji (ringkas):
+    A1  CTA menunjuk 'checkout-form', label 'Buat Pesanan', aktif saat keranjang berisi;
+        mati (loading) saat processing; mati saat keranjang kosong / keranjang null.
+    A2  Submit formulir kosong: 0 permintaan ke server; DUA notice tone=error
+        (judul 'Ada 6 kolom yang perlu diperbaiki', 'Kolom pertama Nama Penerima: Nama penerima
+        wajib diisi.', tombol 'Perbaiki kolom' di keduanya); urutan dokumen notice < form < notice-CTA;
+        galat sampai ke Field (pesan + id 'customer_name-error') dan ke input
+        (aria-invalid='true', aria-describedby='customer_name-error'); mengisi satu kolom
+        menghapus galat kolom itu; catatan opsional tidak dianggap salah.
+    A3  10 kondisi (nama min/maks, telepon 2 bentuk, email, alamat, kota, kode pos 2 bentuk,
+        catatan > 500) -> pesan klien SAMA PERSIS dengan 16 pesan di CheckoutRequest.php;
+        nilai sah termasuk '+6281234567890' lolos ke server.
+    A4  Kirim sah = POST '/checkout' dengan 7 kunci data apa adanya + preserveScroll + penangan 429
+        (pesan 'Terlalu banyak percobaan membuat pesanan…' tampil); saat processing, klik kedua
+        tidak menambah permintaan.
+    B1  Galat server (email + kode pos) -> dua notice, judul 'Ada 2 kolom yang perlu diperbaiki',
+        'Kolom pertama Email: Email tidak valid.', gulir ke #customer_email dan TIDAK ada
+        panggilan focus().
+    B2  Klik 'Perbaiki kolom' (kedua notice) -> scrollIntoView #customer_name {smooth, center}
+        + focus {preventScroll:true}; dengan prefers-reduced-motion: reduce -> behavior 'instant'.
+    B3  Hanya kode pos yang salah -> 'Ada 1 kolom yang perlu diperbaiki', 'Kolom Kode Pos: …',
+        fokus jatuh ke #customer_postal_code (bukan kolom pertama formulir).
+    B4  Galat pembayaran dari server tampil apa adanya, tidak memunculkan notice kolom,
+        dan CTA tetap menunjuk formulir yang sama (order tidak dibuat dua kali).
+
+Perintah 2 — build produksi:
+  npm run build
+Keluaran nyata (tail):
+  public/build/assets/Checkout-ClSQTu8Z.js           9.40 kB │ gzip:   3.29 kB
+  public/build/assets/app-C9D8JKkG.js              364.49 kB │ gzip: 114.31 kB
+  ✓ built in 4.57s
+  (exit 0)
+
+Perintah 3 — sapu kelas bug "komponen JSX dipakai tanpa import" (penyebab halaman putih):
+  python tmp/cek-komponen-tanpa-import.py .
+Keluaran nyata:
+  file diperiksa: 95
+  resources\js\app.jsx: App
+  -> satu-satunya temuan adalah false positive yang sudah dikenal (parameter `setup({el, App, props})`
+     di resolver Inertia), bukan komponen tanpa import.
+  Keenam komponen yang dipakai Checkout.jsx (OrderSummary, Button, InlineNotice, Field, Input,
+  Textarea) semuanya memuat `import React` (grep -c "import React" -> 1 per berkas).
+
+Perintah 4 — halaman tidak memuat teks placeholder:
+  grep -n -i "placeholder|lorem|TBD|\[CONTOH\]" resources/js/Pages/Public/Checkout.jsx
+  -> satu-satunya hasil adalah atribut HTML sah  placeholder="08xxxxxxxxxx"  pada input WhatsApp.
+
+Perintah 5 — kontrol negatif (sabotase sementara, dibuktikan harness memang bisa gagal):
+
+  A. Judul notice (Checkout.jsx:184) diubah sementara menjadi 'Ada kolom yang salah',
+     lalu bundel dibangun ulang:
+       [GAGAL] A2 ... -> notice kolom bermasalah tidak tampil dua kali (dapat 0)
+       [GAGAL] B1 ... -> notice galat server tidak tampil dua kali (dapat 0)
+       [GAGAL] B3 ... -> Cannot read properties of undefined (reading 'props')
+       TOTAL: 8 uji, 3 gagal
+  B. URL kirim (Checkout.jsx:156) diubah sementara menjadi '/checkout-tiruan':
+       [GAGAL] A3 ... -> URL kirim salah (dapat "/checkout-tiruan", harap "/checkout")
+       [GAGAL] A4 ... -> URL checkout salah (dapat "/checkout-tiruan", harap "/checkout")
+       TOTAL: 8 uji, 2 gagal
+  Pulih dari salinan: md5 resources/js/Pages/Public/Checkout.jsx kembali
+  780639a0938f7da9b9acb846e3d21391, sisa_sabotase=0, ulang harness -> exit 0, 8/8 lulus.
+  Build akhir: npm run build -> exit 0, "✓ built in 3.89s"; kode kartu ini terbukti ada di
+  bundel rilis public/build/assets/Checkout-ClSQTu8Z.js (grep -o "kolom yang perlu diperbaiki"
+  dan grep -rl "Perbaiki kolom" menemukannya di chunk itu).
+
+CATATAN JUJUR: belum pernah dijalankan di browser sungguhan.
+
+====================================================================
+4. BELUM DIUJI — BUTUH BROWSER (langkah aman untuk pemilik)
+====================================================================
+Kondisi: server pengembangan sudah berjalan di http://127.0.0.1:8000 dengan keranjang berisi
+minimal satu produk. Tidak ada perintah server/migrasi yang dijalankan dari sisi frontend.
+
+  Skenario a (validasi klien)
+    1. Buka /checkout, langsung tekan tombol "Buat Pesanan" tanpa mengisi apa pun.
+    2. Harap: tidak ada permintaan jaringan baru (DevTools > Network), muncul notice merah
+       "Ada 6 kolom yang perlu diperbaiki" di atas formulir DAN tepat di atas tombol,
+       dengan "Kolom pertama Nama Penerima: Nama penerima wajib diisi."
+    3. Isi nama 2 huruf -> setelah kirim, pesan "Nama penerima minimal 3 karakter."
+  Skenario b (tombol Perbaiki kolom)
+    4. Klik "Perbaiki kolom" -> layar menggulir ke kolom pertama yang salah DAN kursor masuk
+       ke kolom itu (fokus terlihat). Ulangi dari notice yang ada di dekat tombol "Buat Pesanan".
+  Skenario c (galat dari server)
+    5. Isi semua kolom dengan nilai sah, lalu kirim. Jika server menolak (mis. email ditolak
+       validator server), halaman menggulir sendiri ke kolom pertama yang bermasalah tanpa
+       memindahkan fokus, dan notice muncul di dua tempat.
+  Skenario d (anti kirim ganda)
+    6. Klik "Buat Pesanan" dua kali cepat saat koneksi lambat (throttling Network ke Slow 3G):
+       tombol harus nonaktif/berputar dan hanya ada SATU permintaan POST /checkout.
+  Tampilan & aksesibilitas (belum diuji):
+    7. Lebar 360 / 768 / 1024 / 1280 px: formulir satu kolom di 360, dua kolom + ringkasan
+       sticky di >=1024; notice tidak meluber.
+    8. Keyboard saja: Tab melewati kolom menurut urutan formulir, tombol "Perbaiki kolom"
+       dapat dijangkau dan diaktifkan Enter/Space, indikator fokus terlihat.
+    9. Zoom 200%: tidak ada teks/notice terpotong. Aktifkan "reduce motion" di OS ->
+       gulir menjadi tanpa animasi (tidak meluncur).
+
+====================================================================
+5. ASUMSI
+====================================================================
+1. Kontrak props (§7.6/§7.8) hanya memuat daftar field + aturan server; tidak ada tabel aturan
+   validasi klien tersendiri. Karena itu pesan dan aturan klien disalin dari
+   app/Http/Requests/CheckoutRequest.php (satu-satunya sumber aturan yang ada di repo) dan
+   server tetap penentu akhir. Tidak ada kontrak baru yang dibuat.
+2. `note` tidak dapat melewati 500 karakter lewat UI (atribut maxLength pada Textarea), tetapi
+   validate() tetap memeriksanya agar pesan server tercermin lengkap.
+3. Pola email klien sengaja dilonggarkan (tanpa syarat TLD >= 2 huruf) supaya tidak lebih ketat
+   dari aturan `email` server.
+4. Tidak ada paket atau pustaka uji baru yang dipasang; harness memakai React + stub yang sudah
+   ada di tmp/ dari kartu sebelumnya.
+
+====================================================================
+6. HANDOFF
+====================================================================
+- QA: jalankan skenario a–d di atas pada keranjang berisi dan keranjang kosong; periksa juga
+  bahwa /checkout tidak menampilkan NaN/undefined saat props `keranjang` null (CTA mati,
+  notice "Keranjang masih kosong" tampil — sudah diuji di harness A1).
+- Tech Lead: tidak ada ketidakcocokan kontrak. Satu catatan desain: pada state `error-field`
+  fokus tidak direbut saat galat datang dari server (hanya digulirkan); fokus dipindahkan hanya
+  saat pembeli menekan "Perbaiki kolom" — sesuai semangat design §5.7/§6, mohon dikonfirmasi
+  bila QA mengharapkan fokus otomatis.
+- Berkas harness: tmp/uji-aksi-checkout-t_a98f17d4.mjs (sumber) dan .bundle.mjs (hasil build).

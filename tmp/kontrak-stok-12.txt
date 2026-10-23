@@ -1,0 +1,65 @@
+### 12.12 GET `/admin/stok` — `admin.stocks.index` — `Admin/Stocks/Index`
+
+Query: `q` (nama produk/SKU varian), `status` ∈ `semua`(bawaan)|`habis`|`kritis` (`kritis`
+berarti stok < 5, termasuk habis), `kategori` (id), `urut` ∈ `nama`(bawaan)|`stok_terkecil`|
+`stok_terbesar`, `page`. Baris = **varian**.
+
+```json
+{
+  "stok": {"data": [{
+    "id": 12, "product": {"id": 3, "name": "…", "slug": "…"},
+    "size": "L", "color": "Hitam", "label": "L / Hitam", "sku": "DSR-BTK-01-L-HITAM",
+    "stock": 3, "is_active": true, "status": "kritis",
+    "updated_at": "…"
+  }], "links": ["…"], "meta": {"current_page": 1, "last_page": 1, "per_page": 15, "total": 36}},
+  "filter": {"q": null, "status": "semua", "kategori": null, "urut": "nama"},
+  "kategori": [{"id": 1, "name": "Daster", "slug": "daster"}],
+  "ringkasan": {"varian": 36, "habis": 2, "kritis": 5}
+}
+```
+
+`status` baris: `habis` (0), `kritis` (1–4), `aman` (≥ 5). `kategori` = daftar ringkas
+kategori untuk dropdown filter (urut `sort_order`, lalu `name`).
+Aksi stok masuk/keluar — galat: `errors.qty` (`Jumlah wajib diisi.`, `Jumlah minimal 1.`,
+`Stok tidak cukup — stok saat ini 3.`), `errors.note`. Sukses: kembali ke halaman asal +
+`flash.success` = `Stok masuk dicatat.` / `Stok keluar dicatat.`
+
+### 12.13 POST `/admin/stok/{variant}/masuk` — `admin.stocks.in`
+### 12.14 POST `/admin/stok/{variant}/keluar` — `admin.stocks.out`
+
+Field: `qty` (wajib, integer 1–100000), `note` (opsional, maks 255). Menulis satu
+`stock_movements` (`in`/`out`) dengan `admin_id` petugas; stok varian naik/turun dalam
+transaksi dengan kunci baris.
+
+### 12.15 GET `/admin/stok/riwayat` — `admin.stocks.history` — `Admin/Stocks/History`
+
+Query: `q` (nama produk/SKU/catatan), `tipe` ∈ `semua`(bawaan)|`in`|`out`|`adjust`|`sale`,
+`varian` (id varian), `page`.
+
+```json
+{
+  "riwayat": {"data": [{
+    "id": 91, "product_name": "…", "variant_label": "L / Hitam", "variant_sku": "…",
+    "type": "in", "tipe_label": "Stok masuk", "qty": 10, "signed_qty": 10, "note": "Restock",
+    "admin": {"id": 1, "name": "Owner"}, "created_at": "…"
+  }], "links": ["…"], "meta": {"current_page": 1, "last_page": 1, "per_page": 15, "total": 120}},
+  "filter": {"q": null, "tipe": "semua", "varian": null},
+  "varian": [{"id": 12, "label": "L / Hitam", "product_name": "…"}],
+  "ringkasan": {"masuk": 120, "keluar": 8, "adjust": 2, "sale": 41}
+}
+```
+
+`signed_qty` = `qty` bertanda (`in` positif; `out`/`sale` negatif; `adjust` mengikuti selisih).
+`varian` untuk dropdown filter, maks 200 varian urut nama produk.
+
+### 12.16 GET `/admin/pesanan` — `admin.orders.index` — `Admin/Orders/Index`
+
+Query: `q` (kode/nama/telepon/email), `status` ∈ `semua`(bawaan)|`pending`|`dibayar`|
+`diproses`|`dikirim`|`selesai`|`batal`, `bayar` ∈ `semua`(bawaan)|`pending`|`settlement`|
+`expire`|`deny`|`cancel`, `dari`, `sampai` (`YYYY-MM-DD`), `page`. Urut `created_at` turun.
+
+```json
+{
+  "pesanan": {"data": [{
+    "id": 5, "code": "TK-20261020-0001", "status": "dibayar", "status_label": "Dibayar",
+    "payment_status": "settlement", "payment_label": "Lunas",

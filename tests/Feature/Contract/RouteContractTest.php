@@ -68,6 +68,8 @@ class RouteContractTest extends TestCase
         'admin.orders.index',
         'admin.orders.show',
         'admin.orders.status',
+        'admin.orders.resi',
+        'admin.orders.sinkron-pembayaran',
         'admin.messages.index',
         'admin.messages.read',
         'admin.messages.reply',

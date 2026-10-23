@@ -1,0 +1,114 @@
+BUKTI BACKEND — kartu t_3bfe3165 (B4)
+QRIS asli: normalisasi respons SDK Midtrans (stdClass → array)
+Tanggal: 22 Oktober 2026 · Mesin: Windows 11, PHP 8.3.32 (Laragon), git-bash
+Workspace: C:/Users/LENOVO/Downloads/toko-kulot (dir, sama dengan kartu gerbang t_fcfc3687)
+
+Ringkas
+------
+- Akar (docs/review-2.md §6 G1): SDK `midtrans/midtrans-php` mengembalikan stdClass bersarang
+  (vendor/midtrans/midtrans-php/Midtrans/ApiRequestor.php:159 — json_decode tanpa `true`), sedangkan
+  adapter hanya membuang tingkat teratas. `MidtransService::qrUrl()` (:540) membaca `$action['name']`
+  → "Cannot use object of type stdClass as array".
+- Perbaikan: `app/Services/Midtrans/SdkMidtransApi.php` menormalkan respons REKURSIF untuk `charge()`
+  dan `status()`; panggilan SDK mentah dipisah ke `requestCharge()`/`requestStatus()` (protected)
+  supaya test bisa memakai bentuk respons SDK tanpa jaringan. `MidtransService::qrUrl()` TIDAK diubah.
+- Test baru: `tests/Feature/Checkout/MidtransSdkShapeTest.php` (4 test) memakai `json_decode()` tanpa
+  `true` — bentuk persis SDK.
+- Tanpa migrasi/kolom baru; `.env` tidak disentuh; tidak ada panggilan sungguhan ke Midtrans.
+
+1. RED — test baru vs adapter LAMA (sebelum perbaikan)
+------------------------------------------------------
+Perintah (curl dimatikan khusus RUN INI agar adapter lama tidak menghubungi Midtrans sungguhan;
+tidak ada perubahan kode/config proyek):
+
+  php -d extension=pdo_sqlite -d disable_functions=curl_init vendor/bin/phpunit --filter MidtransSdkShapeTest
+
+Keluaran (ringkas, verbatim):
+
+  EEFF                                                                4 / 4 (100%)
+  There were 2 errors:
+  1) ...::test_charge_menormalkan_bentuk_respons_sdk_jadi_array_bersarang
+  App\Exceptions\CheckoutException: Gagal membuat pembayaran QRIS. Coba lagi.
+  C:\...\app\Services\Midtrans\SdkMidtransApi.php:27
+  Caused by
+  Error: Call to undefined function Midtrans\curl_init()
+  C:\...\vendor\midtrans\midtrans-php\Midtrans\ApiRequestor.php:68
+  C:\...\app\Services\Midtrans\SdkMidtransApi.php:25
+  ...
+  There were 2 failures:
+  3) ...::test_checkout_mode_asli_menyimpan_qr_url_dari_respons_sdk
+  Session is missing expected key [success].      (POST /checkout gagal: charge melempar CheckoutException)
+  4) ...::test_halaman_bayar_menampilkan_qr_asli_dari_respons_sdk
+  Session is missing expected key [success].
+  ERRORS!
+  Tests: 4, Assertions: 4, Errors: 2, Failures: 2.
+
+Makna: adapter lama tetap memanggil `\Midtrans\CoreApi::charge()` / `Transaction::status()` langsung —
+tidak ada titik normalisasi yang bisa dipakai test — dan alur checkout mode asli tidak pernah sampai
+menyimpan `qris_url`.
+
+2. Reproduksi mekanis galat pemilik (skrip scratch, bukan bagian repo)
+---------------------------------------------------------------------
+Berkas: C:/Users/LENOVO/AppData/Local/hermes/profiles/backenddeveloper/cache/scratch/b4-repro.php
+Isi bagian 1 memakai `(array) json_decode($json)` (adapter lama) lalu `$action['url']` (baris yang sama
+dengan MidtransService.php:540); bagian 2 memakai normalisasi rekursif (adapter baru).
+
+  php .../scratch/b4-repro.php
+
+Keluaran (verbatim):
+
+  == 1. Adapter lama: (array) json_decode(...) ==
+  Error: Cannot use object of type stdClass as array
+
+  == 2. Adapter baru: normalisasi rekursif ==
+  qr_url = https://api.sandbox.midtrans.com/v2/qris/DS-1/qr-code
+  nested = IDN
+
+3. GREEN — test baru sesudah perbaikan
+--------------------------------------
+  php -d extension=pdo_sqlite vendor/bin/phpunit --filter MidtransSdkShapeTest
+
+  ....                                                                4 / 4 (100%)
+  Time: 00:00.817, Memory: 50.00 MB
+  OK (4 tests, 49 assertions)
+
+Test yang lulus:
+- charge() menormalkan stdClass bersarang: `actions[0]['name']`, `actions[0]['url']`,
+  `customer_details.shipping_address`, `custom_expiry` semuanya array.
+- status() menormalkan stdClass bersarang (termasuk `va_numbers[0]['bank']`).
+- POST /checkout mode asli menyimpan `payments.qris_url` dari `actions.generate-qr-code`,
+  `transaction_id`, `qr_string`, status `pending`.
+- GET /checkout/{order}/bayar → 200, props `pembayaran.qris_url` terisi, `pembayaran.galat` null.
+
+4. Uji terkait Midtrans + suite penuh
+-------------------------------------
+  php -d extension=pdo_sqlite vendor/bin/phpunit --filter
+      'MidtransSdkShapeTest|PaymentModeTest|MidtransServiceTest|QrisExpiryTest|AdminSyncPaymentTest|CheckoutTest'
+  OK (57 tests, 555 assertions)
+
+  php -d extension=pdo_sqlite vendor/bin/phpunit
+  .... 242 / 242 (100%)
+  Time: 00:27.625, Memory: 70.00 MB
+  OK (242 tests, 1844 assertions)
+
+5. Gaya kode
+------------
+  vendor/bin/pint --test app/Services/Midtrans/SdkMidtransApi.php tests/Feature/Checkout/MidtransSdkShapeTest.php
+  {"tool":"pint","result":"passed"}
+
+6. `php artisan test` (DoD) — TIDAK bisa dipakai di mesin ini
+-------------------------------------------------------------
+  php -d extension=pdo_sqlite artisan test --filter MidtransSdkShapeTest
+  → Tests: 4 failed (0 assertions) ... "could not find driver"
+Sebab: proses PHPUnit anak tidak mewarisi flag `-d extension=pdo_sqlite`; `pdo_sqlite` masih nonaktif di
+`php.ini` (docs/langkah-pemilik.md:196-221). Karena itu suite dijalankan dengan
+`php -d extension=pdo_sqlite vendor/bin/phpunit ...` (cara sekali pakai yang didokumentasikan).
+DB uji = SQLite `:memory:` (phpunit.xml); DB MySQL pemilik tidak tersentuh.
+
+7. Yang belum diuji (jujur)
+---------------------------
+- Charge QRIS SUNGGUHAN ke Midtrans sandbox belum diuji: tidak ada kredensial di test dan kartu ini
+  dilarang menyentuh `.env`/menyalakan server. Bukti akhir butuh pemilik: `MIDTRANS_FAKE=false` +
+  server key terisi, lalu buat **pesanan uji BARU** (transaksi lama tidak bisa di-charge ulang dengan
+  `order_id` sama — usulan U8) dan cek QR tampil di `/checkout/{order}/bayar`.
+- Klik di browser tetap milik pemilik (R11: agent tidak menyalakan server).

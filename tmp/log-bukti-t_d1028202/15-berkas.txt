@@ -1,0 +1,32 @@
+### M. Fakta berkas kartu ini
+$ wc -l resources/js/Pages/Admin/Orders/partials/InfoResi.jsx resources/js/Pages/Admin/Orders/Show.jsx
+   91 resources/js/Pages/Admin/Orders/partials/InfoResi.jsx
+  245 resources/js/Pages/Admin/Orders/Show.jsx
+  336 total
+
+$ grep -n 'BATAS_RESI\|ID_INPUT\|router.patch\|preserveScroll\|errors\.\|loading=\|Tersimpan\|Belum ada nomor resi\|InlineNotice\|belum bisa diisi' resources/js/Pages/Admin/Orders/partials/InfoResi.jsx
+14: * `errors.tracking_number` tampil di bawah input. Tidak ada toast atau state halaman baru.
+18:const BATAS_RESI = 60;
+19:const ID_INPUT = 'resi-pesanan';
+49:        router.patch(
+53:                preserveScroll: true,
+64:                htmlFor={ID_INPUT}
+69:                    id={ID_INPUT}
+72:                    maxLength={BATAS_RESI}
+81:                {tersimpan === '' ? 'Belum ada nomor resi.' : `Tersimpan: ${tersimpan}`}
+85:                <Button variant="primary" type="submit" loading={proses}>
+
+$ grep -c 'InlineNotice\|belum bisa diisi' resources/js/Pages/Admin/Orders/partials/InfoResi.jsx  (harus 0)
+0
+
+$ grep -n 'InfoResi' resources/js/Pages/Admin/Orders/Show.jsx
+11:import InfoResi from './partials/InfoResi';
+185:                            <InfoResi pesanan={data} />
+
+$ git diff --stat -- resources/js/Components/ resources/views/ docs/kontrak-props.md docs/design.md
+ docs/design.md                        |   5 ++
+ docs/kontrak-props.md                 | 117 +++++++++++++++++++++++++++++++---
+ resources/js/Components/Countdown.jsx |  17 ++++-
+ resources/js/Components/QrisPanel.jsx |  14 +++-
+ 4 files changed, 140 insertions(+), 13 deletions(-)
+(kosong = tidak disentuh)

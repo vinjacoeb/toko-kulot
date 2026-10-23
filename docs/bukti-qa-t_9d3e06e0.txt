@@ -1,0 +1,127 @@
+BUKTI QA t_9d3e06e0 - verifikasi tombol "Sinkronkan status pembayaran" (langkah 1)
+Dijalankan: 2026-10-22 08:00:36 SEAST oleh profil qatesting
+Batas: tidak menyentuh .env, tidak mengubah kode aplikasi, tidak menulis data.
+
+=== 1. Rute terdaftar (read-only) ===
+[{"domain":null,"method":"PATCH","uri":"admin\/pesanan\/{order}\/sinkron-pembayaran","name":"admin.orders.sinkron-pembayaran","action":"App\\Http\\Controllers\\Admin\\OrderController@syncPayment","middleware":["web","admin","throttle:admin-write"],"path":null}]
+
+=== 2. Sumber tombol (potongan) ===
+
+                            {data.payment !== null && data.payment !== undefined && (
+                                <SyncPaymentButton pesananId={data.id} onHasilSinkron={setFlashSinkron} />
+                            )}
+                        </div>
+                    </KartuBagian>
+
+---
+    const sinkronkan = () => {
+        if (form.processing) {
+            return;
+        }
+
+        setHasil(null);
+
+        form.patch(`/admin/pesanan/${encodeURIComponent(id)}/sinkron-pembayaran`, {
+            preserveScroll: true,
+            preserveState: true,
+    return (
+        <div className="flex flex-col gap-4">
+            <div>
+                <Button
+                    variant="secondary"
+                    className="min-w-[16rem]"
+                    loading={form.processing}
+                    onClick={sinkronkan}
+                >
+                    Sinkronkan status pembayaran
+                </Button>
+            </div>
+
+=== 3. HTTP probe server 127.0.0.1:8000 (tanpa sesi) ===
+GET    /admin/pesanan/1 -> HTTP 302
+PATCH  /admin/pesanan/1/sinkron-pembayaran -> HTTP 419
+
+=== 4. Berkas build memuat komponen tombol ===
+manifest: 2026-10-22 06:37 public/build/manifest.json
+public/build/assets/SyncPaymentButton-TLkCqPKk.js
+Show chunk merujuk SyncPaymentButton: 1
+
+=== 5. Test fokus controller (phpunit, SQLite :memory:) ===
+
+............                                                      12 / 12 (100%)
+
+Time: 00:01.058, Memory: 50.00 MB
+
+OK (12 tests, 55 assertions)
+
+=== 6. Bukti DB pemilik (baca-saja): pesanan uji terakhir ===
+orders=10 payments=10
+order#13 code=TK-20261022-0001 order_status=batal payment_status=expire created_at=2026-10-22 07:40:09
+pay#10 midtrans_order_id=TK-20261022-0001-33182A transaction_id=a2487ad2-e963-4907-a8ff-bd1436b5fa61 payment_row_status=expire paid_at=null expires_at=2026-10-22 07:45:09 updated_at=2026-10-22 07:46:32
+qris_url_host=api.sandbox.midtrans.com qris_url_len=85 qr_string_len=246
+
+=== 7. Log: percobaan sinkron/charge nyata (non-testing) ===
+entri local 22 Okt 06-09: 1
+4135:[2026-10-21 21:44:55] local.ERROR: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'compare_price' in 'field list' (Connection: mysql, Host: 127.0.0
+4293:[2026-10-21 21:47:22] local.ERROR: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'tracking_number' in 'field list' (Connection: mysql, Host: 127.0
+4499:[2026-10-22 06:07:51] local.ERROR: Cannot use object of type stdClass as array {"userId":1,"exception":"[object] (Error(code: 0): Cannot use object of type
+--- 5 entri terakhir (semua channel) ---
+[2026-10-22 08:00:39] testing.INFO
+[2026-10-22 08:00:39] testing.INFO
+[2026-10-22 08:00:39] testing.INFO
+[2026-10-22 08:00:39] testing.INFO
+[2026-10-22 08:00:39] testing.INFO
+(entri testing.* 22 Okt 07:58 dan 08:00 berasal dari dua eksekusi test QA ini, bukan pemilik)
+
+=== PUTARAN 2 - bukti pemilik 22 Okt 2026 08:15 (baca-saja) ===
+Dijalankan: 2026-10-22 08:21 SEAST oleh profil qatesting.
+Sumber: log aplikasi + DB pemilik (SELECT via tinker) + route:list. Tidak menulis data, tidak menyentuh .env.
+Konteks: komentar dashboard di kartu t_9d3e06e0 - "TK-20261022-0003+3bc0d464-...+status sudah berubah jadi kadaluwarsa saat disinkronkan di /admin/pesanan/15".
+
+--- A. Log nyata tombol sinkron (channel local) ---
+[2026-10-22 08:15:01] local.INFO: Admin menyinkronkan status pembayaran dari Midtrans. {"order":"TK-20261022-0003","payment":"pending -> expire","order_status":"pending -> batal"}
+[2026-10-22 08:15:15] local.INFO: Admin menyinkronkan status pembayaran dari Midtrans. {"order":"TK-20261022-0002","payment":"pending -> expire","order_status":"pending -> batal"}
+Jumlah entri local 22 Okt 08:xx = 2 (keduanya di atas); tidak ada local.ERROR / "Sinkronisasi status Midtrans gagal" pada jam itu.
+Log ini ditulis SETELAH syncStatusOrFail() sukses (OrderController.php:186-200), jadi membuktikan tombol benar-benar dipanggil dengan sesi admin.
+
+--- B. Order + payment (baca-saja) ---
+order#13 code=TK-20261022-0001 status=batal payment_status=expire created=2026-10-22 07:40:09 updated=2026-10-22 07:46:32
+  pay#10 mid=TK-20261022-0001-33182A tx=a2487ad2-e963-4907-a8ff-bd1436b5fa61 status=expire paid_at=null expires_at=2026-10-22 07:45:09
+order#14 code=TK-20261022-0002 status=batal payment_status=expire created=2026-10-22 08:02:32 updated=2026-10-22 08:15:15
+  pay#11 mid=TK-20261022-0002-39C6B9 tx=b41ff031-bad3-4316-827b-284b2b9527f1 status=expire paid_at=null expires_at=2026-10-22 08:07:33
+order#15 code=TK-20261022-0003 status=batal payment_status=expire created=2026-10-22 08:09:19 updated=2026-10-22 08:15:01
+  pay#12 mid=TK-20261022-0003-FD903B tx=3bc0d464-4761-4724-a768-9081d1bb612a status=expire paid_at=null expires_at=2026-10-22 08:14:19
+  qris_host=api.sandbox.midtrans.com qris_len=85 qr_string_len=243
+order#16: TIDAK ADA
+(qris_url #14/#15 juga host api.sandbox.midtrans.com, len=85)
+
+--- C. Respons status Midtrans yang tersimpan (payments.payload, field terpilih) ---
+pay#12 (TK-20261022-0003): transaction_status="expire" status_code="407" status_message="Success, transaction is found" payment_type="qris" transaction_time="2026-10-22 08:09:20" expiry_time="2026-10-22 08:14:20" settlement_time=TIDAK ADA gross_amount="500.00" currency="IDR"
+pay#11 (TK-20261022-0002): transaction_status="expire" status_code="407" status_message="Success, transaction is found" payment_type="qris" transaction_time="2026-10-22 08:02:33" expiry_time="2026-10-22 08:07:33" settlement_time=TIDAK ADA gross_amount="189000.00" currency="IDR"
+(merchant_id dan signature_key sengaja tidak disalin ke bukti ini)
+
+--- D. Efek samping stok dari sinkron (stock_movements) ---
+mv#59 variant=35 qty=1 type=sale note=Penjualan TK-20261022-0002 at=2026-10-22 08:02:32
+mv#60 variant=35 qty=1 type=sale note=Penjualan TK-20261022-0003 at=2026-10-22 08:09:19
+mv#61 variant=35 qty=1 type=in note=Pengembalian stok - pembayaran expire (TK-20261022-0003) at=2026-10-22 08:15:01
+mv#62 variant=35 qty=1 type=in note=Pengembalian stok - pembayaran expire (TK-20261022-0002) at=2026-10-22 08:15:15
+
+--- E. Selisih waktu tombol vs kedaluwarsa ---
+#15: QR/charge 08:09:20 -> expiry_time 08:14:20 -> tombol 08:15:01 = 42 detik SETELAH kedaluwarsa.
+#14: QR/charge 08:02:33 -> expiry_time 08:07:33 -> tombol 08:15:15 = 7 menit 42 detik SETELAH kedaluwarsa.
+
+--- F. Rute (dicek ulang 22 Okt 08:21) ---
+[{"method":"PATCH","uri":"admin/pesanan/{order}/sinkron-pembayaran","name":"admin.orders.sinkron-pembayaran","action":"App\\Http\\Controllers\\Admin\\OrderController@syncPayment","middleware":["web","admin","throttle:admin-write"]}]
+
+--- G. Kesimpulan bukti ---
+1. Tombol + rute + controller terbukti bekerja live: dua entri log local, dua update status, dua pengembalian stok pada detik yang sama.
+2. Hasil sinkron = pending -> expire / order pending -> batal. Ini BENAR untuk transaksi expire; Midtrans sendiri mengembalikan transaction_status=expire tanpa settlement_time.
+3. Cabang settlement -> Lunas TIDAK terbukti: tidak ada paid_at, tidak ada settlement_time, dan kedua tombol ditekan setelah batas 5 menit.
+4. Bukan cacat kode: tidak ada galat charge/sinkron di log 08:xx; mapping settlement/expire di MidtransService.php:469-479 sudah benar dan diuji AdminSyncPaymentTest.
+5. Pesanan #14/#15 tidak bisa diulang: applyStatus() berhenti bila status sudah expire (MidtransService.php:386-392) dan order_id Midtrans sudah terpakai.
+
+--- H. Cek ulang langsung ke Midtrans (Transaction::status, baca-saja, 22 Okt 08:24) ---
+TK-20261022-0003-FD903B -> transaction_id=3bc0d464-4761-4724-a768-9081d1bb612a transaction_status=expire status_code=407 transaction_time=2026-10-22 08:09:20 expiry_time=2026-10-22 08:14:20 settlement_time=TIDAK ADA gross_amount=500.00
+TK-20261022-0002-39C6B9 -> transaction_id=b41ff031-bad3-4316-827b-284b2b9527f1 transaction_status=expire status_code=407 transaction_time=2026-10-22 08:02:33 expiry_time=2026-10-22 08:07:33 settlement_time=TIDAK ADA gross_amount=189000.00
+Artinya: 10-22 menit setelah charge, Midtrans tetap melaporkan expire tanpa settlement. Jadi status Kedaluwarsa bukan efek samping aplikasi menutup transaksi lebih awal; transaksi memang tidak pernah dibayar.
+Catatan: transaction_id pay#12 yang benar adalah 3bc0d464-4761-4724-a768-9081d1bb612a (cocok dengan respons Midtrans).

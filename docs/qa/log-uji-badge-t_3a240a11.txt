@@ -1,0 +1,36 @@
+=== Harness badge keranjang — kartu t_3a240a11 (butir 1 laporan pemilik / F-1) ===
+node           : v26.7.0
+berkas diuji   : resources/js/Layouts/PublicLayout.jsx
+md5 berkas uji : b6802690381d5f76e13af5dffa4461ca
+
+--- 1. PublicLayout apa adanya (mode normal, 12 kasus) ---
+LULUS  S1  harap badge=3 | dapat badge=3  | aria-label "Keranjang, 3 item"  — Home.jsx (PublicLayout settings+cartCount=0+user)
+LULUS  S2  harap badge=3 | dapat badge=3  | aria-label "Keranjang, 3 item"  — Contact.jsx (cartCount default 0)
+LULUS  S3  harap badge=3 | dapat badge=3  | aria-label "Keranjang, 3 item"  — Products/Index.jsx (cartCount default 0)
+LULUS  S4  harap badge=3 | dapat badge=3  | aria-label "Keranjang, 3 item"  — Products/Show.jsx (cartCount default 0)
+LULUS  S5  harap badge=3 | dapat badge=3  | aria-label "Keranjang, 3 item"  — Cart.jsx (<PublicLayout> tanpa prop)
+LULUS  S6  harap badge=3 | dapat badge=3  | aria-label "Keranjang, 3 item"  — Checkout.jsx (<PublicLayout> tanpa prop)
+LULUS  S7  harap badge=3 | dapat badge=3  | aria-label "Keranjang, 3 item"  — CheckoutPay.jsx (<PublicLayout> tanpa prop)
+LULUS  S8  harap badge=3 | dapat badge=3  | aria-label "Keranjang, 3 item"  — CheckoutSuccess.jsx (<PublicLayout> tanpa prop)
+LULUS  S9  harap tanpa badge | dapat tanpa badge  | aria-label "Keranjang"  — keranjang kosong (cart.count = 0)
+LULUS  S10  harap badge=2 | dapat badge=2  | aria-label "Keranjang, 2 item"  — shared prop tidak ada -> jatuh ke prop halaman cartCount=2
+LULUS  S11  harap badge=5 | dapat badge=5  | aria-label "Keranjang, 5 item"  — prioritas shared prop (cart.count=5) di atas prop halaman cartCount=9
+LULUS  S12  harap badge=4 | dapat badge=4  | aria-label "Keranjang, 4 item"  — cart.count berupa teks "4" (sesi serialisasi)
+
+--- 2. Kontrol negatif (baris pra-perbaikan F-1, di memori) (mode kontrol-lama, 12 kasus) ---
+LULUS  S1  harap tanpa badge | dapat tanpa badge  | aria-label "Keranjang"  — Home.jsx (PublicLayout settings+cartCount=0+user)
+LULUS  S2  harap tanpa badge | dapat tanpa badge  | aria-label "Keranjang"  — Contact.jsx (cartCount default 0)
+LULUS  S3  harap tanpa badge | dapat tanpa badge  | aria-label "Keranjang"  — Products/Index.jsx (cartCount default 0)
+LULUS  S4  harap tanpa badge | dapat tanpa badge  | aria-label "Keranjang"  — Products/Show.jsx (cartCount default 0)
+LULUS  S5  harap tanpa badge | dapat tanpa badge  | aria-label "Keranjang"  — Cart.jsx (<PublicLayout> tanpa prop)
+LULUS  S6  harap tanpa badge | dapat tanpa badge  | aria-label "Keranjang"  — Checkout.jsx (<PublicLayout> tanpa prop)
+LULUS  S7  harap tanpa badge | dapat tanpa badge  | aria-label "Keranjang"  — CheckoutPay.jsx (<PublicLayout> tanpa prop)
+LULUS  S8  harap tanpa badge | dapat tanpa badge  | aria-label "Keranjang"  — CheckoutSuccess.jsx (<PublicLayout> tanpa prop)
+LULUS  S9  harap tanpa badge | dapat tanpa badge  | aria-label "Keranjang"  — keranjang kosong (cart.count = 0)
+LULUS  S10  harap badge=2 | dapat badge=2  | aria-label "Keranjang, 2 item"  — shared prop tidak ada -> jatuh ke prop halaman cartCount=2
+LULUS  S11  harap badge=9 | dapat badge=9  | aria-label "Keranjang, 9 item"  — prioritas shared prop (cart.count=5) di atas prop halaman cartCount=9
+LULUS  S12  harap tanpa badge | dapat tanpa badge  | aria-label "Keranjang"  — cart.count berupa teks "4" (sesi serialisasi)
+
+Kontrol negatif terlihat: YA — badge hilang di 8 komposisi halaman saat baris pra-F1 dipakai
+
+RINGKASAN: semua pemeriksaan badge LULUS

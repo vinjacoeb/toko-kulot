@@ -1,0 +1,14 @@
+### B. Harness interaksi: tmp/uji-aksi-resi-t_d1028202.mjs
+        B1: PATCH /admin/pesanan/5/resi {"tracking_number":"JX9988776655"}
+        B2: PATCH /admin/pesanan/5/resi {"tracking_number":""}
+        B4: PATCH /admin/pesanan/42/resi {"tracking_number":""}
+OK    | B1 kirim resi baru -> PATCH /admin/pesanan/{id}/resi payload tracking_number            | 
+OK    | B2 isian dikosongkan lalu dikirim -> tracking_number "" (hitung sebagai hapus, §12.18a) | 
+OK    | B3 kiriman ganda ditahan selama proses, tombol loading, lalu bisa kirim lagi            | 
+OK    | B4 url memakai id pesanan dari props, tanpa rute karangan lain                          | 
+OK    | B5 galat server dibaca dari props halaman dan tidak mengunci form                       | 
+OK    | B6 props server berubah -> isian mengikuti nilai tersimpan terbaru                      | 
+OK    | B7 kontrol isian sesuai kontrak: name, maxLength, dan tanpa nilai tersembunyi           | 
+
+RINGKASAN: 7/7 uji lulus
+$ echo $?  ->  0

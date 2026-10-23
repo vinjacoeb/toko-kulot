@@ -10,6 +10,8 @@ import Button from '../../../Components/Button';
 import Modal from '../../../Components/Modal';
 import Toast from '../../../Components/Toast';
 import InlineNotice from '../../../Components/InlineNotice';
+import StatusBadge from '../../../Components/StatusBadge';
+import { midtransMode } from '../../../lib/midtrans';
 import EmptyState from '../../../Components/EmptyState';
 import ErrorState from '../../../Components/ErrorState';
 import DataTable from '../../../Components/DataTable';
@@ -47,7 +49,7 @@ const TABS = [
 const TAB_KEYS = {
     umum: ['store_name', 'store_tagline', 'store_logo', 'store_favicon', 'hapus_store_logo'],
     header: ['header_nav'],
-    footer: ['footer_about', 'footer_links', 'footer_social'],
+    footer: ['footer_about', 'footer_copyright', 'footer_links', 'footer_social'],
     kontak: ['contact_email', 'contact_phone', 'contact_whatsapp', 'contact_address', 'contact_map_embed'],
     seo: ['seo_default_title', 'seo_default_description'],
     pembayaran: ['shipping_cost_default', 'midtrans_client_key', 'midtrans_is_production'],
@@ -356,7 +358,7 @@ function ConfirmDialog({ open, title, description, confirmLabel, processing, onC
     );
 }
 
-export default function SettingsIndex({ auth = null, pengaturan = null, carousels = [], faqs = [], flash = null }) {
+export default function SettingsIndex({ auth = null, pengaturan = null, carousels = [], faqs = [], flash = null, midtrans = null }) {
     const [tab, setTab] = useState(() => readTabFromUrl());
     const [pendingTab, setPendingTab] = useState(null);
     const [reloading, setReloading] = useState(false);
@@ -416,6 +418,7 @@ export default function SettingsIndex({ auth = null, pengaturan = null, carousel
             url: text(asObject(item).url),
         })),
         footer_about: text(groups.footer.footer_about),
+        footer_copyright: text(groups.footer.footer_copyright),
         footer_links:
             footerLinksMode === 'flat'
                 ? asList(groups.footer.footer_links).map((item) => ({
@@ -1661,6 +1664,32 @@ export default function SettingsIndex({ auth = null, pengaturan = null, carousel
             </SectionCard>
 
             <SectionCard
+                title="Copyright"
+                description="Teks hak cipta di baris paling bawah footer halaman pembeli."
+            >
+                <Field
+                    label="Copyright notice"
+                    htmlFor="footer_copyright"
+                    hint="Kosongkan agar otomatis menjadi © {tahun} {nama toko}. Placeholder {tahun} dan {toko} diisi otomatis."
+                    error={settingsForm.errors.footer_copyright}
+                >
+                    <Input
+                        id="footer_copyright"
+                        maxLength={200}
+                        placeholder="© {tahun} {toko}. Semua hak dilindungi."
+                        value={settingsForm.data.footer_copyright}
+                        error={settingsForm.errors.footer_copyright}
+                        aria-describedby={
+                            settingsForm.errors.footer_copyright
+                                ? 'footer_copyright-error'
+                                : 'footer_copyright-hint'
+                        }
+                        onChange={(event) => setField('footer_copyright', event.target.value)}
+                    />
+                </Field>
+            </SectionCard>
+
+            <SectionCard
                 title="Tautan footer"
                 description={footerLinksMode === 'nested' ? `Maksimal ${MAX_LINKS} kolom tautan.` : `Maksimal ${MAX_LINKS} tautan.`}
             >
@@ -1992,6 +2021,7 @@ export default function SettingsIndex({ auth = null, pengaturan = null, carousel
     const renderPembayaran = () => {
         const shipping = Number.parseInt(settingsForm.data.shipping_cost_default, 10);
         const shippingHint = Number.isNaN(shipping) ? 'Angka rupiah, contoh 20000.' : `Tampil sebagai ${rupiah(shipping)}.`;
+        const mode = midtransMode(midtrans);
 
         return (
             <form onSubmit={(event) => submitSettings('pembayaran', event)}>
@@ -2010,11 +2040,33 @@ export default function SettingsIndex({ auth = null, pengaturan = null, carousel
                     </Field>
                 </SectionCard>
 
-                <SectionCard title="Midtrans">
+                <SectionCard title="Midtrans" description={mode.catatan}>
+                    {mode.diketahui ? (
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                            <StatusBadge status={mode.uji ? 'pending' : null} label={mode.uji ? 'Mode uji' : 'Mode asli'} />
+                            {mode.sumberKredensial ? (
+                                <span className="text-meta text-slate-500">Kredensial dibaca dari {mode.sumberKredensial}.</span>
+                            ) : null}
+                        </div>
+                    ) : null}
+
+                    {mode.uji ? (
+                        <InlineNotice tone="warning" title="Pembayaran sedang dalam mode uji">
+                            <p>{mode.alasan ?? 'QRIS dibuat lokal (tanpa Midtrans) sehingga tidak bisa ditransfer.'}</p>
+                            {mode.langkah.length > 0 ? (
+                                <ol className="mt-2 list-decimal pl-4">
+                                    {mode.langkah.map((langkah, index) => (
+                                        <li key={index}>{langkah}</li>
+                                    ))}
+                                </ol>
+                            ) : null}
+                        </InlineNotice>
+                    ) : null}
+
                     <Field
                         label="Midtrans client key (diisi pemilik)"
                         htmlFor="midtrans_client_key"
-                        hint="Client key hanya dipakai untuk memuat halaman pembayaran."
+                        hint="Catatan saja: nilai ini tidak dibaca jalur pembayaran QRIS (lihat keterangan di atas)."
                         error={settingsForm.errors.midtrans_client_key}
                     >
                         <Input
@@ -2025,7 +2077,12 @@ export default function SettingsIndex({ auth = null, pengaturan = null, carousel
                             onChange={(event) => setField('midtrans_client_key', event.target.value)}
                         />
                     </Field>
-                    <Field label="Midtrans mode produksi (0/1)" htmlFor="midtrans_is_production" error={settingsForm.errors.midtrans_is_production}>
+                    <Field
+                        label="Midtrans mode produksi (0/1)"
+                        htmlFor="midtrans_is_production"
+                        hint="Catatan saja: nilai ini tidak dibaca jalur pembayaran QRIS (lihat keterangan di atas)."
+                        error={settingsForm.errors.midtrans_is_production}
+                    >
                         <Select
                             id="midtrans_is_production"
                             className="max-w-[240px]"

@@ -1,0 +1,15 @@
+OK    | 1. boleh=true, belum ada ulasan -> 2 form, tanpa notice alasan                   | 
+OK    | 2. boleh=true, 1 dari 2 sudah diulas -> 1 form + 1 kartu terkunci                | 
+OK    | 3. boleh=false (kuirk server: sudah diulas sebagian) -> sisa tetap bisa dinilai  | 
+OK    | 4. boleh=false, semua sudah diulas -> tanpa form + terima kasih + 2 kartu        | 
+GAGAL | 5. belum lunas (payment_status pending) -> tanpa form + alasan                   | form harus 0 saat belum lunas, dapat 2
+GAGAL | 6. settlement status=batal -> tanpa form + alasan                                | form harus 0 saat status batal, dapat 2
+GAGAL | 7. boleh=true padahal status belum boleh dinilai -> tanpa form + alasan          | form harus 0, dapat 2
+OK    | 8. flash.error dari server ditampilkan                                           | 
+OK    | 9. galat validasi ulasan (errors.ulasan) ditampilkan                             | 
+OK    | 10. angka dari server sebagai string -> tanpa NaN, rupiah benar                  | 
+OK    | 11. items kosong -> tidak ada form/notice, tidak crash                           | 
+OK    | 12. props `ulasan` tidak dikirim (null) -> form memakai syarat §9.1, tidak crash | 
+OK    | 13. sapu kotor (NaN/undefined/placeholder) di semua state di atas                | 
+
+RINGKASAN: 10/13 uji lulus

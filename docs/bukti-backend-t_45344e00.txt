@@ -1,0 +1,102 @@
+=== RUN t_45344e00 — bukti verifikasi `ulasan.boleh` §7.9 (hitung sisa produk belum diulas) ===
+Wed, Oct 21, 2026 ~19:12 (Asia/Jakarta)
+
+RINGKASAN
+- Perbaikan: `app/Http/Controllers/CheckoutController::success()` kini mengirim
+  `ulasan.boleh` = `$belumDiulas !== [] && $this->reviews->isEligible($order)`
+  (§7.9: server akan menerima minimal satu kiriman ulasan sekarang).
+- Satu-satunya sumber daftar status yang boleh dinilai: `ReviewService::isEligible`
+  (§9.1) — tidak ada daftar status yang disalin ke controller.
+- `ulasan.sudah` tidak berubah (daftar `product_id` yang sudah diulas).
+- Tanpa rute baru, tanpa kolom, tanpa migrasi, tanpa props baru, tanpa perubahan kontrak.
+- Test: 5 test regresi baru di `tests/Feature/Checkout/CheckoutTest.php`
+  (produk ke-2 + `isiKeranjangDuaProduk()` + `pesananDuaProdukLunas()` + `kirimUlasan()`).
+- Berkas frontend tidak disentuh; tidak ada commit (R8); `.env` dan dokumen acuan tidak disentuh.
+
+=== php -l berkas yang disentuh ===
+No syntax errors detected in app/Http/Controllers/CheckoutController.php
+No syntax errors detected in tests/Feature/Checkout/CheckoutTest.php
+
+=== php artisan test --filter=CheckoutTest (hijau, DoD) ===
+
+  PASS  Tests\Feature\Checkout\CheckoutTest
+  ✓ checkout membuat pesanan memotong stok dan tagihan qris                                                      2.82s
+  ✓ checkout dengan keranjang kosong kembali ke keranjang                                                        0.13s
+  ✓ checkout menolak stok yang sudah habis                                                                       0.26s
+  ✓ validasi formulir checkout mengembalikan galat                                                               0.23s
+  ✓ notifikasi settlement menandai pesanan dibayar                                                               0.30s
+  ✓ notifikasi settlement idempoten                                                                              0.29s
+  ✓ notifikasi expire mengembalikan stok dan membatalkan pesanan                                                 0.22s
+  ✓ notifikasi dengan signature salah ditolak                                                                    0.36s
+  ✓ notifikasi dengan nominal tidak cocok ditolak                                                                0.26s
+  ✓ pesanan orang lain tidak bisa dibuka                                                                         0.35s
+  ✓ tamu diarahkan ke login sebelum checkout                                                                     0.15s
+  ✓ halaman bayar menampilkan qr string dan batas waktu                                                          0.25s
+  ✓ halaman selesai menolak pesanan yang belum dibayar                                                           0.19s
+  ✓ halaman selesai tampil setelah dibayar                                                                       0.26s
+  ✓ ulasan boleh true bila belum ada ulasan                                                                      0.25s
+  ✓ ulasan boleh true bila baru sebagian produk diulas                                                           0.27s
+  ✓ ulasan boleh false bila semua produk sudah diulas                                                            0.30s
+  ✓ ulasan boleh false bila status pesanan batal                                                                 0.27s
+  ✓ ulasan boleh false bila pesanan satu produk sudah diulas                                                     0.25s
+
+  Tests:    19 passed (215 assertions)
+  Duration: 8.40s
+
+  Command: PHP_INI_SCAN_DIR=<scratch>/phpsqlite php artisan test --filter=CheckoutTest
+  (14 test lama + 5 test regresi baru = 19 test; sebelum kartu ini 14 test / 163 assertion)
+  Keluaran penuh tersimpan: <scratch>/artisan-test-t_45344e00.txt
+
+=== KONTROL NEGATIF — test regresi dijalankan terhadap ekspresi versi lama ===
+Ekspresi lama (HEAD) di `success()`: `'boleh' => $reviewedProductIds === [],`
+Dipasang sementara lewat `patch`, test dijalankan, lalu berkas dikembalikan dan
+diverifikasi identik (`diff -q` → RESTORED_IDENTICAL).
+
+  FAIL  Tests\Feature\Checkout\CheckoutTest
+  ✓ ulasan boleh true bila belum ada ulasan                                                                      0.26s
+  ⨯ ulasan boleh true bila baru sebagian produk diulas                                                           0.77s
+  ✓ ulasan boleh false bila semua produk sudah diulas                                                            0.40s
+  ⨯ ulasan boleh false bila status pesanan batal                                                                 0.36s
+  ✓ ulasan boleh false bila pesanan satu produk sudah diulas                                                     0.26s
+   FAILED  Tests\Feature\Checkout\CheckoutTest > ulasan boleh true bila baru sebagian produk diulas
+  Property [ulasan.boleh] does not match the expected value.
+Failed asserting that false is identical to true.
+  at tests\Feature\Checkout\CheckoutTest.php:475
+  ➜ 475▕                 ->where('ulasan.boleh', true)
+
+   FAILED  Tests\Feature\Checkout\CheckoutTest > ulasan boleh false bila status pesanan batal
+  Property [ulasan.boleh] does not match the expected value.
+Failed asserting that true is identical to false.
+  at tests\Feature\Checkout\CheckoutTest.php:545
+  ➜ 545▕                 ->where('ulasan.boleh', false)
+
+  Tests:    2 failed, 17 passed (211 assertions)
+  Duration: 7.18s
+
+  Artinya: test (2) dan (4) benar-benar mengunci §7.9 (bukan test kosong).
+  Test (1), (3), (5) hijau di kedua ekspresi — sesuai perilaku lama yang sudah benar.
+  Keluaran penuh tersimpan: <scratch>/artisan-test-OLDLOGIC-t_45344e00.txt
+
+=== php artisan test (suite penuh, sqlite :memory: dari phpunit.xml) ===
+  Tests:    218 passed (1492 assertions)
+  Duration: 75.05s
+  (tanpa regresi di suite lain: 213 test sebelum kartu ini → 218 test sekarang, +5 test regresi)
+  Keluaran penuh tersimpan: <scratch>/artisan-test-suite-t_45344e00.txt
+
+=== Catatan lingkungan (bukan masalah kode) ===
+- Driver sqlite tidak aktif di `C:\laragon\bin\php\php-8.3.32-Win32-vs16-x64\php.ini`
+  (baris `;extension=pdo_sqlite` dan `;extension=sqlite3` masih dikomentari). php.ini
+  milik pemilik: TIDAK diubah. Verifikasi dijalankan dengan membaca berkas ini:
+  `PHP_INI_SCAN_DIR=<scratch>/phpsqlite php artisan test ...`
+  (isi `<scratch>/phpsqlite/99-sqlite.ini`: `extension=pdo_sqlite` + `extension=sqlite3`).
+- `php artisan test` tanpa jalur scanner di atas gagal di 19 test dengan
+  `QueryException: could not find driver (Connection: sqlite, Database: :memory:)`
+  karena proses anak artisan tidak mewarisi flag `php -d`. Alternatif tanpa env:
+  `php -d extension=pdo_sqlite -d extension=sqlite3 vendor/bin/phpunit --filter=CheckoutTest`.
+- `php artisan test` yang dijalankan tanpa TTY (mode background) hanya mencetak
+  `stdin is not a tty`; jalankan di terminal biasa.
+- DB pengembangan tidak disentuh: tidak ada `migrate`, `migrate:fresh`, `db:seed`,
+  atau perintah destruktif yang dijalankan pada kartu ini. Tidak ada migrasi/seeder
+  baru (di luar lingkup kartu).
+
+EXIT=0

@@ -321,3 +321,215 @@ Syarat menuju GO:
 Setelah syarat 1–2 terpenuhi, QA akan melakukan verifikasi ulang (regresi area terkait + smoke browser + `php artisan test`) untuk mengeluarkan rekomendasi GO bersyarat.
 
 Kondisi yang **sudah** baik dan tidak perlu dikerjakan ulang: otorisasi panel admin untuk tamu/pembeli/admin lulus, seluruh rute publik §5.1 terdaftar dengan metode yang benar, perhitungan harga eceran/grosir dan pemetaan status Midtrans lulus beserta fail-closed saat kunci tidak tersedia, pengaturan memiliki daftar putih key + rollback, `migrate:fresh --seed` idempoten, halaman kontak bersih tanpa error, dan slug tak dikenal mengembalikan 404.
+
+---
+
+## 13. Verifikasi Nomor Resi Manual — Kartu `t_2c9f8b01` (21 Oktober 2026)
+
+- **Kartu**: `t_2c9f8b01` (assignee `qatesting`) — verifikasi butir kontrak §12.18a (fitur PRD **A15**, deviasi desain **D12**) terhadap kode nyata.
+- **Sumber acuan**: `docs/PRD.md:375` (A15), `docs/kontrak-props.md:1364` (§12.17) dan `:1391-1403` (§12.18a), `docs/design.md:869` (drift D12), `docs/keputusan-a15-resi.md` §1 (teks beku + pembagian pemilik).
+- **Bukti mentah**: `docs/bukti-qa-t_2c9f8b01.txt` (E1–E9: keluaran `route:list`, PHPUnit terfokus & penuh, curl tamu, potongan kode verbatim, md5 berkas yang direview, catatan harness).
+- **Batas kerja QA**: tidak mengubah kode, tidak membaca/mengubah `.env`, tidak menyalakan server, tidak memakai kredensial. Server `http://127.0.0.1:8000` milik pemilik hanya diperiksa sebagai tamu (GET/PATCH tanpa sesi).
+
+### 13.1 Hasil per aspek
+
+| Aspek | Hasil | Bukti |
+|---|---|---|
+| Rute terdaftar | **Lulus** — `PATCH admin/pesanan/{order}/resi` → `admin.orders.resi` → `Admin\OrderController@resi`, di dalam grup `middleware('admin')` (guard `admin`, prefix `/admin`) + `throttle:admin-write` | E1 (route:list, 4 rute); `routes/admin.php:41` (grup admin), `:139-141` (rute), `:140` (throttle); prefix/nama `admin` di `bootstrap/app.php:14-18` |
+| Rantai vertikal | **Lulus** — migrasi `2026_10_21_000019` (`string('tracking_number',60)->nullable()->after('paid_at')`, `up`/`down`) → `Order::$fillable` → request → controller → `Show.jsx:185` → `InfoResi.jsx` | E5; `database/migrations/2026_10_21_000019_*.php:13-24`; `app/Models/Order.php:135` |
+| Props §12.17 | **Lulus** — `pesanan.tracking_number` (string/`null`) terkirim di detail pesanan | uji `test_detail_pesanan_memuat_props_nomor_resi`; `OrderController::detail()` |
+| Validasi §12.18a | **Lulus** — `'tracking_number' => ['nullable','string','max:60']`; `''` → `null` lewat `prepareForValidation` | `app/Http/Requests/Admin/UpdateOrderTrackingRequest.php:23-28,41-50` |
+| Batas 60 + tipe | **Lulus** — 60 karakter diterima; 61 ditolak (`Nomor resi maksimal 60 karakter.`); array ditolak (`Nomor resi harus berupa teks.`); 61 → **HTTP 422** `errors.tracking_number.0` untuk klien JSON | uji `test_nomor_resi_lebih_dari_60_karakter_ditolak`, `test_nomor_resi_terlalu_panjang_membalas_422_untuk_klien_json` |
+| Simpan | **Lulus** — hanya `orders.tracking_number` yang berubah; `back()->with('success','Nomor resi pesanan diperbarui.')` | `OrderController.php:142-147`; uji `test_simpan_nomor_resi_hanya_mengubah_kolom_resi` |
+| Kosong = hapus | **Lulus** — kosong/`null` menghapus resi; status, stok, dan pembayaran tidak tersentuh | uji `test_nomor_resi_kosong_menghapus_nomor_resi` |
+| Otorisasi | **Lulus** — tamu dan pembeli (`guard web`) diarahkan ke `/admin/login`, resi tetap `null`. HTTP nyata: `GET /admin/pesanan/1` → **302** → `/admin/login`; `PATCH .../resi` tamu tanpa CSRF → **419** (CSRF dievaluasi lebih dulu — normal, bukan defect) | uji `test_bukan_admin_tidak_bisa_menyimpan_nomor_resi`; E4 |
+| Migrasi reversible | **Lulus** — `down()` membuang kolom, `up()` membuat ulang, di dalam test | uji `test_migrasi_nomor_resi_punya_up_dan_down` |
+| UI sesuai teks beku D12 | **Lulus (inspeksi kode + bundel)** — label `Nomor resi`; bantuan `Isi nomor resi dari ekspedisi setelah paket dikirim. Kosongkan untuk menghapus.`; status `Belum ada nomor resi.` / `Tersimpan: <nomor>`; tombol `Simpan resi` dengan `Button loading` (`Memproses…`); galat `errors.tracking_number` di bawah input; `preserveScroll`; tanpa toast/state baru | `InfoResi.jsx:9-14,18,61-88`; bundel `public/build/assets/InfoResi-DZ0JiCIB.js` (grep string, E7/E7b) |
+| Suite penuh (regresi) | **Lulus** — `OK (218 tests, 1492 assertions)`, exit 0; terfokus `AdminSalesTest` **14 passed (113 assertions)** | E2, E3 |
+
+### 13.2 Traceability §12.18a → test case
+
+| Butir §12.18a | Test/sumber | Status |
+|---|---|---|
+| Field opsional, teks, maks 60 | `test_nomor_resi_lebih_dari_60_karakter_ditolak` (60 ok / 61 tolak / array tolak) | Lulus |
+| Kosong/`null` = menghapus | `test_nomor_resi_kosong_menghapus_nomor_resi`; `UpdateOrderTrackingRequest.php:45-49` | Lulus |
+| Galat `errors.tracking_number` (2 pesan) | `test_nomor_resi_lebih_dari_60_karakter_ditolak`; `test_nomor_resi_terlalu_panjang_membalas_422_untuk_klien_json` | Lulus |
+| Hanya `orders.tracking_number` yang berubah | `test_simpan_nomor_resi_hanya_mengubah_kolom_resi` | Lulus |
+| Sukses: kembali ke halaman asal + `flash.success` (teks beku) | `test_...` (`assertSessionHas('success','Nomor resi pesanan diperbarui.')`); `OrderController.php:146` | Lulus |
+| Tanpa email/notifikasi | inspeksi `resi()`: hanya `update()` + flash, tanpa Mail/Notification/event | Lulus (inspeksi) |
+| `pesanan.tracking_number` di props (§12.17) | `test_detail_pesanan_memuat_props_nomor_resi` | Lulus |
+| Akses non-admin ditolak | `test_bukan_admin_tidak_bisa_menyimpan_nomor_resi`; E4 | Lulus |
+
+### 13.3 Observasi (non-blocking; tidak dibuatkan kartu perbaikan)
+
+- **O-1 (P3, jalur hapus tak sengaja)**: karena `tracking_number` `nullable` dan `prepareForValidation` hanya menormalkan bila isinya string (`UpdateOrderTrackingRequest.php:45`), permintaan yang **tidak mengirim field sama sekali** (mis. body `{}`) menghasilkan `validated('tracking_number') === null` sehingga resi **terhapus tanpa galat**. Ini masih sesuai bunyi §12.18a (“kosong/`null` = menghapus”) dan klien saat ini selalu mengirim field, jadi **bukan defect** — tetapi bila nanti ada pemanggil lain yang mengirim body parsial, ini jalur penghapusan diam-diam. Saran opsional (bukan wajib): tambah aturan `sometimes` bila semantiknya ingin diperketat, atau pastikan setiap klien mengirim field eksplisit.
+- **O-2 (P3, dokumentasi)**: pointer baris A15 tidak konsisten — `docs/keputusan-a15-resi.md:29` menulis `docs/PRD.md:391`, sedangkan A15 ada di `docs/PRD.md:375` (dan itu yang dipakai `docs/design.md` baris D12). Tidak memengaruhi perilaku; cukup disunting pemilik dokumen keputusan pada penyuntingan berikutnya.
+
+### 13.4 Belum diuji (batas eksplisit, bukan klaim lulus)
+
+1. **Klik nyata di browser dengan sesi admin** (PATCH end-to-end + render galat/sukses + pemeriksaan visual/state `loading`): QA tidak memakai kredensial dan tidak menjalankan browser pada kartu ini. Jalur yang sama sudah tertutup di level HTTP oleh feature test. Ini juga tercatat sebagai “yang belum dicek” di `docs/keputusan-a15-resi.md` §4.
+2. **Penulisan nyata ke MySQL milik pemilik setelah migrasi dijalankan**: QA tidak menjalankan migrasi (aturan kartu); test memakai SQLite sementara di scratch QA.
+3. **Rate limit `throttle:admin-write` pada rute resi**: terpasang (`routes/admin.php:140`), tetapi perilakunya belum diuji (butuh banyak request terautentikasi).
+4. **Aksesibilitas terukur (screen reader/axe) dan LCP/Lighthouse**: di luar cakupan kartu ini.
+
+### 13.5 Kesimpulan kartu `t_2c9f8b01`
+
+Fitur nomor resi manual (A15 / §12.17 / §12.18a / deviasi D12) **LULUS** pada seluruh butir yang dapat diperiksa tanpa kredensial dan tanpa browser: rute + middleware, rantai migrasi→model→request→controller→props, validasi & batas 60, efek-ubah-hanya-kolom-resi, kosong-menghapus, otorisasi, teks UI, dan kehadirannya di bundel rilis. **Tidak ada defect baru** dan **tidak ada kartu perbaikan** yang dibuat dari kartu ini; dua observasi P3 (O-1, O-2) tidak menghalangi. Risiko sisa: butir §13.4 (1) dan (2), serta bundel rilis yang terus berubah karena build paralel (E7b) — build akhir tetap tanggung jawab gerbang rilis. Bagian ini **tidak mengubah §12**: rekomendasi GO/NO-GO rilis tetap mengikuti syarat §12 dan hasil kartu rilis/frontend terkait.
+
+**Self-review kartu ini**: seluruh acceptance criteria §12.18a dipetakan (13.2); area risiko tinggi (otorisasi, batas panjang, hapus) diuji; tidak ada klaim pengujian yang tidak dieksekusi (E1–E9 hanya berisi keluaran nyata); berkas yang ditulis hanya `docs/bukti-qa-t_2c9f8b01.txt` dan bagian ini; `.env` tidak disentuh.
+
+### 13.6 Verifikasi ulang oleh run penyelesaian (§E10)
+
+Percobaan pertama kartu ini menyelesaikan pengujian tetapi berhenti tanpa penutupan papan, sehingga bukti E1–E9 sudah ada saat run penyelesaian dimulai. Run penyelesaian **tidak menyalin klaim**: seluruh berkas diukur ulang md5-nya (identik dengan kepala bukti), setiap titik acuan `path:baris` dibaca ulang, dan perintahnya dijalankan ulang — `route:list` (4 rute), `AdminSalesTest` **OK (14 tests, 113 assertions)**, suite penuh **OK (218 tests, 1492 assertions, exit 0)**, curl tamu (`GET /` 200; `GET /admin/pesanan/1` 302 → `/admin/login`; `PATCH resi` dan `PATCH status` tamu 419). Hasil dan status butir tidak berubah; **tidak ada temuan baru dan tidak ada kartu perbaikan** yang dibuat. Satu koreksi dilakukan pada tabel 13.1: sitasi grup middleware diperbaiki dari `routes/admin.php:34` (baris itu rute `GET /login`) menjadi `:41`, ditambah `bootstrap/app.php:14-18` untuk prefix/nama `admin`. Detail mentah di `docs/bukti-qa-t_2c9f8b01.txt` bagian **E10**.
+
+---
+
+## 14. Verifikasi `ulasan.boleh` §7.9 — Kartu `t_4ef6e8bd` (21 Oktober 2026)
+
+- **Kartu**: `t_4ef6e8bd` (assignee `qatesting`) — verifikasi props server `ulasan.boleh` + gate klien di halaman `/checkout/{order}/selesai` setelah rangkaian perbaikan `t_45344e00` (backend) → `t_02c3d20c` (frontend).
+- **Sumber acuan**: `docs/kontrak-props.md` §7.9 (dibekukan 21 Okt 2026) + baris status §7.11, `docs/kontrak-props.md` §9.1; keputusan `docs/keputusan-f6-ulasan-boleh.md` §1–§3; `docs/brief-qa.md`; aturan R1–R15 `docs/PRD.md`.
+- **Bukti mentah**: `docs/bukti-qa-t_4ef6e8bd.txt` (acuan baris, keluaran mentah PHPUnit & harness, daftar perintah, md5 berkas). Log mentah terpisah di `docs/qa/log-*.txt`.
+- **Jalur uji**: dua jalur independen — (a) feature test PHP baru `tests/Feature/Checkout/UlasanBolehVerifikasiQaTest.php` (7 kasus / 244 assertion) lewat HTTP kernel; (b) harness SSR node `docs/qa/uji-gate-boleh-t_4ef6e8bd.mjs` + driver `docs/qa/jalankan-uji-gate-t_4ef6e8bd.mjs` yang merender komponen asli `renderToStaticMarkup` dengan stub `@inertiajs/react` (12 kasus) **plus kontrol negatif**.
+- **Batas kerja QA**: tidak mengubah kode aplikasi (hanya `docs/` dan `tests/`, sesuai izin kartu), tidak menyalakan server, tanpa kredensial, database pemilik tidak disentuh (`phpunit.xml` memakai SQLite `:memory:`), pembayaran lewat mode fake yang sudah ada.
+
+### 14.1 Hasil per aspek
+
+| Aspek | Hasil | Bukti |
+|---|---|---|
+| Rumus server `boleh` = masih ada produk belum diulas **dan** syarat §9.1 | **Lulus** — `$belumDiulas !== [] && $this->reviews->isEligible($order)` | `app/Http/Controllers/CheckoutController.php:180-193` |
+| Satu sumber aturan §9.1 (tidak ada daftar status salinan di controller) | **Lulus** — daftar status hanya di `REVIEWABLE_STATUSES`; perbandingan otomatis status PHP vs JSX identik | `app/Services/ReviewService.php:32-37,39-43`; FG-09 |
+| **Butir wajib (1)**: 2 produk & 1 ulasan → `boleh=true` + `sudah` berisi 1 id | **Lulus** — props `{boleh: true, sudah: [<1 id>]}` untuk produk kedua yang belum diulas; kiriman produk sisa **diterima** | VB-02 (`test_dua_produk_satu_ulasan_boleh_true_dan_sisa_produk_masih_diterima`) |
+| **Butir wajib (2)**: semua produk diulas → `boleh=false` | **Lulus** — `belumDiulas === []` ⇒ `boleh=false`; kiriman produk yang sudah diulas tetap ditolak | VB-01 (matriks 6 status), VB-05 |
+| **Butir wajib (3)**: `settlement` + status `batal` → `boleh=false` | **Lulus** — `batal` tidak ada di `REVIEWABLE_STATUSES`, jadi `isEligible()` false walau `payment_status = settlement`; kiriman ulasan ditolak | VB-03; `ReviewService.php:32-37,39-43` |
+| **Butir wajib (4)**: bentuk `ulasan.sudah` tidak berubah | **Lulus** — array `product_id` bulat (`->map(fn ($id) => (int) $id)`), kunci `ulasan` hanya `boleh` + `sudah`, `boleh` bertipe boolean sungguhan | VB-04 (`test_bentuk_props_ulasan_tidak_berubah`); `CheckoutController.php:169-173,190-193` |
+| Produk sama pada dua item (beda varian) dihitung sekali | **Lulus** — `unique()` + `reject(in_array(..., true))`; klien `sudahAda` memfilter per `product_id` | VB-06; `CheckoutController.php:180-186`; `CheckoutSuccess.jsx:40-43` |
+| Ulasan ganda untuk produk yang sama tetap ditolak walau `boleh` sempat `true` | **Lulus** — kiriman kedua ditolak, jumlah baris `reviews` tidak bertambah | VB-05 (`test_ulasan_ganda_produk_sama_ditolak_walau_boleh_sempat_true`) |
+| **Gate klien menuruti `boleh`** — tidak menampilkan form saat `boleh=false` | **Lulus** — `const tampilkanForm = boleh && pending.length > 0;` dan 9 keadaan render diperiksa (form hilang saat `boleh=false`; muncul 1 form per produk belum dinilai saat `boleh=true`; `boleh='true'` string tidak dianggap true; props `ulasan` hilang ⇒ gagal tertutup) | FG-01…FG-07, FG-11; `resources/js/Pages/Public/CheckoutSuccess.jsx:52` |
+| Notice §9.1 sebagai penjelas, bukan gerbang | **Lulus** — notice alasan hanya saat syarat §9.1 belum terpenuhi dan masih ada sisa produk; saling eksklusif dengan form | FG-03, FG-04, FG-06b; `CheckoutSuccess.jsx:59` |
+| Cabang "kontradiksi" lama (`kontradiksiBoleh`) tidak kembali | **Lulus** — tidak ada di sumber; `tampilkanForm` tidak lagi menghitung `syaratDinilai`; hanya `CheckoutSuccess.jsx` yang membaca `ulasan.boleh` di seluruh `resources/js` | FG-08, FG-10 |
+| Kontrol negatif harness (temuan T1 tidak bisa terulang tanpa terdeteksi) | **Lulus** — dengan gerbang lama ditanam **di memori** (berkas aplikasi tidak disentuh), form **muncul** saat `boleh=false`; komponen apa adanya **tidak**. Menukar satu baris gerbang membuat harness gagal, jadi pemeriksaan di atas bergigi | FG-12 (bagian 5 bukti) |
+| Regresi | **Lulus** — suite penuh `OK (225 tests, 1736 assertions)`, exit 0 (termasuk 7 kasus baru); `CheckoutTest` kartu `t_45344e00` hijau | bagian 3–4 `docs/bukti-qa-t_4ef6e8bd.txt` |
+
+### 14.2 Traceability §7.9 / §9.1 → test case
+
+| Butir acuan | Test case | Jenis | Status |
+|---|---|---|---|
+| §7.9 `boleh` true ⇒ server menerima kiriman (dan sebaliknya) | VB-01 `test_boleh_sama_persis_dengan_kemampuan_server_menerima_ulasan` (matriks `settlement` × 6 status: `dibayar`/`diproses`/`dikirim`/`selesai` ⇒ `true`, `batal`/`pending` ⇒ `false`; tiap status diverifikasi silang lewat kiriman ulasan yang diterima/ditolak) | Fungsional/HTTP, invarian dua arah | Lulus |
+| §7.9 "masih ada produk belum diulas" (pesanan sebagian diulas) | VB-02 | Fungsional (butir wajib 1) | Lulus |
+| §7.9 + §9.1 `settlement` × status `batal` ⇒ `false` | VB-03 | Fungsional negatif (butir wajib 3) | Lulus |
+| §7.9 bentuk `ulasan` (`boleh` boolean, `sudah` id bulat, tanpa kunci baru) | VB-04 | Kontrak props | Lulus |
+| §7.9 "semua produk diulas" ⇒ `false` + kiriman kedua ditolak | VB-05 | Fungsional negatif/state | Lulus |
+| §7.9 perhitungan per `product_id` (bukan per item/varian) | VB-06 | Boundary/logika bisnis | Lulus |
+| Pembatasan laju kiriman ulasan (§9.1 praktik aman) | VB-07 `test_batas_laju_kiriman_ulasan_dibatasi_per_menit` (kiriman ke-6 → 429, baris `reviews` tetap 1) | Negatif/keamanan dasar | Lulus |
+| Gate klien menuruti `boleh` (tanpa syarat lokal sebagai gerbang) | FG-01…FG-08, FG-11 | UI state (SSR string, bukan browser) | Lulus |
+| Daftar status PHP ↔ JSX tetap sinkron | FG-09 | Statis-silang | Lulus |
+| Cakupan pembaca `ulasan.boleh` | FG-10 | Statis | Lulus |
+| Kedalaman harness (kontrol negatif) | FG-12 | Meta-verifikasi | Lulus |
+
+Catatan pemetaan: `VB-*` = feature test PHP, `FG-*` = kasus harness SSR. Keduanya memakai data uji terkontrol (pesanan + item dibuat di test), bukan data pemilik.
+
+### 14.3 Observasi (non-blocking; tidak dibuatkan kartu perbaikan)
+
+- **O-3 (P3, pembatas laju)**: `throttle:review` = **5 kiriman/menit per pembeli + IP**; kiriman ke-6 dibalas **429** (`VB-07`). Ini perilaku yang diinginkan, tetapi berdampak pada cara menguji: matriks status (6 kiriman) harus melepas middleware `ThrottleRequests` supaya tidak mengukur rate limit; test batas laju dijalankan terpisah. Cukup sebagai catatan untuk QA berikutnya.
+- **O-4 (P3, risiko perawatan)**: daftar status boleh-dinilai ada di dua tempat — `app/Services/ReviewService.php:32-37` (`REVIEWABLE_STATUSES`) dan `resources/js/Pages/Public/CheckoutSuccess.jsx` (`STATUS_BOLEH_DINILAI`). Saat ini **identik** (diperiksa otomatis oleh FG-09) dan hanya dipakai untuk notice, bukan gerbang. Bila kelak gate kembali memakai daftar itu, jadikan satu sumber agar tidak bisa menyimpang tanpa terdeteksi.
+- **O-5 (P3, penajaman catatan)**: pada keadaan **kontradiktif** (`boleh=false` padahal syarat §9.1 lokal sudah terpenuhi) halaman memang tidak menampilkan form maupun notice (`FG-01`, `FG-03`) — sesuai maksud catatan frontend, karena keadaan itu tidak lagi diproduksi server. Keadaan `boleh=false` yang **nyata produsen server** (syarat §9.1 belum terpenuhi) tetap menampilkan notice alasan (`FG-04`, `FG-06b`). Tidak ada celah yang menyembunyikan alasan dari pembeli.
+
+### 14.4 Belum diuji (batas eksplisit, bukan klaim lulus)
+
+1. **Alur end-to-end di browser dengan sesi pembeli + CSRF** (mengisi bintang & komentar lalu mengirim dari halaman selesai; munculnya kartu "sudah dinilai" setelah kiriman): **belum diuji, butuh browser.** Harness hanya merender markup; `router.post` tidak pernah benar-benar dikirim.
+2. **Tampilan visual & interaksi nyata**: lebar 360/768/1024/1280 px, urutan tab & fokus bintang/textarea, zoom 200%, kontras terukur, area sentuh: **belum diuji, butuh browser** (SSR string tidak membawa layout).
+3. **Rate limit multi-pengguna** (banyak pembeli berbagi IP) dan waktu tunggu jendela pembatas: hanya diuji sampai kiriman ke-6 pada satu sesi test.
+4. **Aksesibilitas terukur (axe/screen reader)** dan **LCP/Lighthouse**: di luar cakupan kartu ini.
+
+### 14.5 Kesimpulan kartu `t_4ef6e8bd`
+
+Empat butir wajib kartu — (1) 2 produk & 1 ulasan ⇒ `boleh=true` + `sudah` 1 id, (2) semua diulas ⇒ `false`, (3) `settlement` + `batal` ⇒ `false`, (4) bentuk `ulasan.sudah` tidak berubah — beserta gate klien `false` saat `boleh=false` **LULUS**, semuanya dengan bukti `path:baris` dan dua jalur eksekusi berbeda. Temuan T1 (gate setara melepas `boleh`) **tidak terulang**: kontrol negatif membuktikan harness akan menggigit bila gerbang lama dikembalikan, sedangkan komponen apa adanya mematuhi `boleh`. **Tidak ada defect baru** dan **tidak ada kartu perbaikan** yang dibuat dari kartu ini; tiga observasi P3 (O-3, O-4, O-5) tidak menghalangi. Risiko sisa: butir §14.4 (1)–(2) yang memerlukan browser, dan O-4 bila gate kelak berubah. Bagian ini **tidak mengubah §12**: rekomendasi GO/NO-GO rilis tetap mengikuti syarat §12 dan hasil kartu rilis/frontend terkait.
+
+**Self-review kartu ini**: seluruh butir wajib kartu dipetakan ke test case (14.2); area risiko tinggi (kesesuaian props–kemampuan server, otorisasi kiriman, batas laju) diuji positif + negatif; tidak ada klaim pengujian yang tidak dieksekusi (semua angka dari keluaran perintah nyata di `docs/bukti-qa-t_4ef6e8bd.txt`); berkas yang ditulis hanya `docs/bukti-qa-t_4ef6e8bd.txt`, `docs/qa/*`, bagian ini, dan satu berkas test baru di `tests/`; `.env` dan `.env.*` tidak disentuh; kode aplikasi tidak diubah (md5 `CheckoutSuccess.jsx` `2e4df85a082cae829efecc0580ce373a` identik sebelum & sesudah harness).
+
+---
+
+## 15. Verifikasi laporan pemilik 21 Okt 2026 — Kartu `t_3a240a11` (21 Oktober 2026)
+
+Sasaran: lima butir kartu `t_3a240a11` — (1) badge keranjang di semua halaman publik, (2) halaman bayar (penanda mode uji, hitung mundur 5 menit, tagihan fake lama dibuat ulang saat mode nyata), (3) `/admin/produk`, `/admin/stok`, `/admin/pesanan` (CRUD, search, pagination, filter, gambar), (4) halaman selesai checkout menghormati `ulasan.boleh`, (5) suite `php artisan test`. Butir (4) dinilai **setelah** perbaikan berantai `t_45344e00` → `t_02c3d20c` → `t_4ef6e8bd` (komentar 67 techlead). Ketentuan kartu: tidak mengubah kode aplikasi (hanya menulis `docs/`), tidak menyalakan server, temuan wajib punya bukti `path:baris`, dan yang butuh browser/login pemilik ditulis "belum diuji, butuh browser".
+
+### 15.1 Cara uji, perintah, dan artefak bukti
+
+Server tidak dinyalakan oleh kartu ini; pengujian HTTP memakai server pemilik yang sudah hidup di `http://127.0.0.1:8000` dengan **GET baca-saja** (tanpa login, tanpa POST/PUT/PATCH/DELETE, tanpa kredensial). PHP yang dipakai 8.3.32 (Laragon) + PHPUnit 11.5.57; ekstensi `pdo_sqlite`/`sqlite3` diaktifkan lewat `PHP_INI_SCAN_DIR` ke scratch (`99-sqlite.ini`) sehingga `php.ini` pemilik tidak disentuh, dan `phpunit.xml` memakai SQLite `:memory:` — DB MySQL pemilik tidak tersentuh. `php artisan test` tidak dipakai karena menuntut tty di shell ini; padanannya `php vendor/phpunit/phpunit/phpunit < /dev/null` dengan berkas `phpunit.xml` proyek yang sama.
+
+| Jenis | Perintah | Artefak | Hasil |
+|---|---|---|---|
+| Suite penuh | `php vendor/phpunit/phpunit/phpunit < /dev/null` | `docs/qa/log-phpunit-penuh-t_3a240a11.txt` | **OK (225 tests, 1736 assertions)**, 58,679 s |
+| Suite terarah (Checkout + Admin + Unit/Services) | `phpunit --testdox tests/Feature/Checkout tests/Feature/Admin tests/Unit/Services` | `docs/qa/log-phpunit-terarah-t_3a240a11.txt` | **OK (127 tests, 1116 assertions)** |
+| Harness SSR badge keranjang | `node docs/qa/jalankan-uji-badge-t_3a240a11.mjs` | `docs/qa/log-uji-badge-t_3a240a11.txt` | 12/12 LULUS + kontrol negatif menggigit |
+| Harness SSR daftar admin | `node docs/qa/jalankan-uji-admin-t_3a240a11.mjs` | `docs/qa/log-uji-admin-t_3a240a11.txt` | 12/12 check LULUS |
+| HTTP baca-saja | `python docs/qa/uji-http-t_3a240a11.py http://127.0.0.1:8000` | `docs/qa/log-http-t_3a240a11.txt` | 4 halaman publik 200; 5 rute admin 302 → `/admin/login`; 2 rute bayar/selesai 302 → `/login` |
+
+Berkas harness (semuanya di `docs/qa/`, tidak menyentuh berkas aplikasi): `stub-inertia-badge-t_3a240a11.mjs` (stub `@inertiajs/react` untuk alias esbuild), `uji-badge-keranjang-t_3a240a11.mjs`, `jalankan-uji-badge-t_3a240a11.mjs`, `uji-admin-index-t_3a240a11.mjs`, `jalankan-uji-admin-t_3a240a11.mjs`, `uji-http-t_3a240a11.py`. Data uji seluruhnya fiktif (bertanda "Uji"/`[CONTOH]`); bundle sementara dibangun di `docs/qa/` lalu dihapus.
+
+### 15.2 Hasil per butir
+
+| Butir | Status | Ringkas bukti |
+|---|---|---|
+| (1) Badge keranjang semua halaman publik | **Lulus** | 12/12 kasus SSR + kontrol negatif F-1 |
+| (2) Halaman bayar: penanda mode uji, hitung mundur 5 menit, tagihan fake lama dibuat ulang | **Lulus** (uji lewat test/mock, tanpa jaringan) | 7 test PaymentMode + 4 test QrisExpiry + 4 test MidtransExpiry |
+| (3) `/admin/produk`, `/admin/stok`, `/admin/pesanan`: CRUD, search, pagination, filter, gambar | **Lulus (server + render)**; interaksi browser: **belum diuji, butuh browser** | 12/12 check SSR + 28 test admin + rute |
+| (4) Halaman selesai menghormati `ulasan.boleh` | **Lulus** | gate `CheckoutSuccess.jsx:52` + 7 test `UlasanBolehVerifikasiQaTest` + rumus server `:191` |
+| (5) Suite `php artisan test` | **Lulus** | `OK (225 tests, 1736 assertions)` |
+
+**(1) Badge keranjang di semua halaman publik — Lulus.**
+
+- Sumber data nyata: shared prop `cart.count` di `app/Http/Middleware/HandleInertiaRequests.php:39-40`; terbukti benar-benar terkirim pada empat halaman publik (`docs/qa/log-http-t_3a240a11.txt`: `/`, `/produk`, `/kontak-kami`, `/keranjang` → status 200, `cart.count=0`).
+- Perhitungan badge: `resources/js/Layouts/PublicLayout.jsx:57` (prioritas shared prop → prop halaman → `settings.cart_count`, dinormalkan `toCount`); badge + label di `resources/js/Components/Header.jsx:80` (`Keranjang, N item`).
+- Harness merender `PublicLayout` apa adanya dengan komposisi props persis dari delapan halaman publik (Home, Contact, Products/Index, Products/Show, Cart, Checkout, CheckoutPay, CheckoutSuccess): kedelapan komposisi menampilkan `badge=3` dan `aria-label="Keranjang, 3 item"`; `cart.count=0` → tanpa badge dan label tetap `Keranjang` (S9); prop halaman dipakai bila shared prop absen (S10 → 2); shared prop menang atas prop halaman (S11 → 5, bukan 9); nilai teks `"4"` tetap terbaca (S12 → 4).
+- Kontrol negatif: baris pra-perbaikan F-1 (`toCount(cartCount) ?? …`) ditanam **di memori** lewat plugin esbuild pada berkas yang sama → badge hilang di kedelapan komposisi halaman (log: "Kontrol negatif terlihat: YA"), lalu muncul kembali saat berkas asli dipakai. Harness karena itu terbukti melihat badge yang benar-benar dirender, bukan selalu lulus. Log mencatat **12/12 LULUS di mode normal** dan **12/12 LULUS di mode kontrol** (ringkasan `semua pemeriksaan badge LULUS`). md5 `PublicLayout.jsx` saat uji: `b6802690381d5f76e13af5dffa4461ca`.
+
+**(2) Halaman bayar — Lulus (semua lewat test/mock, tanpa jaringan).**
+
+- *Penanda mode uji:* `resources/js/Components/QrisPanel.jsx:144-146` (`InlineNotice` "Mode uji" + `alasan`, dengan teks bawaan "tagihan QRIS dibuat lokal (tanpa Midtrans)"); normalisasi prop `resources/js/lib/midtrans.js:12-29` (`mode` "uji"/"asli", `fake` boolean/teks, aman saat prop kosong); `midtrans` diteruskan dari `resources/js/Pages/Public/CheckoutPay.jsx:145`; sisi admin `resources/js/Pages/Admin/Settings/Index.jsx:2027` ("Pembayaran sedang dalam mode uji"). Diuji: "Halaman checkout menampilkan mode uji", "Mode uji terlihat pada props halaman bayar", "Tab pembayaran admin menjelaskan mode uji".
+- *Hitung mundur 5 menit:* bawaan `config/midtrans.php:20-21,41` (`$expiryDefault = 5`, `MIDTRANS_EXPIRY_MINUTES` hanya sebagai override, nilai tidak sah jatuh ke 5); `Countdown` dirender `resources/js/Components/QrisPanel.jsx:126-128` (`label="Sisa waktu pembayaran"`). Diuji: `tests/Feature/Checkout/QrisExpiryTest.php` (4 kasus: bawaan 5 menit di props `expires_at`/`custom_expiry`, override config dipakai semua tempat, nilai tidak sah → 5 menit, tagihan dibuat ulang memakai masa berlaku terbaru) dan `tests/Unit/Services/MidtransExpiryTest.php` (4 kasus).
+- *Tagihan fake lama dibuat ulang saat mode nyata:* `app/Http/Controllers/CheckoutController.php:98` dan `:128-140` (pembuatan ulang ke baris `payments` yang sama, kegagalan → `errors` + `Log::warning`, tampilan tetap punya tombol coba lagi); `app/Services/MidtransService.php:169,182,446`. Diuji `tests/Feature/Checkout/PaymentModeTest.php` (7 kasus): "Tagihan mode uji dibuat ulang ke baris yang sama", "Pembuatan ulang gagal menampilkan galat dan tidak mengubah tagihan", "Status membuat ulang tagihan lalu menanyakan midtrans", "Status mode uji tidak menghubungi midtrans".
+- *Tanpa jaringan/kredensial:* `tests/Feature/Checkout/PaymentModeTest.php:42-43` mengganti implementasi `App\Services\Midtrans\MidtransApi` dengan `Tests\Support\FakeMidtransApi` melalui container, jadi tidak ada panggilan Midtrans nyata dan tidak butuh server key.
+
+**(3) Halaman admin daftar produk/stok/pesanan — Lulus untuk server + render; interaksi browser belum diuji.**
+
+- Rute lengkap dan terlindungi: `routes/admin.php:33-41` (`guest:admin` untuk login, grup `admin` untuk sisanya), `:96-108` produk (index, create, store, edit, update, destroy, show), `:123-129` stok (index, riwayat, masuk, keluar), `:133-140` pesanan (index, show, status, resi). Semua aksi tulis memakai `throttle:admin-write`.
+- Otorisasi nyata: tanpa sesi, `/admin`, `/admin/produk`, `/admin/stok`, `/admin/pesanan` membalas **302 → `http://127.0.0.1:8000/admin/login`** (log HTTP di atas), sedangkan `/admin/login` 200. Diperkuat `tests/Feature/Admin/AdminRouteAccessTest.php` (6 kasus, termasuk "Pembeli tidak bisa menembus panel admin" dan "Admin aktif dapat membuka seluruh rute get admin").
+- Pagination + filter di server: `app/Http/Controllers/Admin/ProductController.php:86`, `app/Http/Controllers/Admin/StockController.php:68,153`, `app/Http/Controllers/Admin/OrderController.php:81` — semuanya `paginate(15)->withQueryString()` (parameter `page`/`q`/filter ikut terbawa). Diuji "Daftar produk memakai paginator dan membaca filter".
+- Render daftar (SSR harness, 12/12 check lulus): baris produk + nama/SKU (`A1.1`) dan gambar benar-benar dirender sebagai `<img src="/storage/produk/uji.jpg" alt="Daster batik uji">` (`A1.2`, sumber `resources/js/Pages/Admin/Products/Index.jsx:132-139`; galeri di `Products/Show.jsx:142-148`); KPI ringkasan (`A1.3`); baris varian + slug produk + SKU + badge status + `aria-label` aksi "Catat stok masuk/keluar/Setel stok" (`A2.1–A2.3`, sumber `Stocks/Index.jsx:176-292`); baris pesanan + kode/pelanggan + label status + kolom pencarian (`A3.1–A3.3`, sumber `Orders/Index.jsx:246-247`); ditambah check `A1.4–A3.4` "tidak ada `[object Object]`" (prop salah bentuk) — lulus, artinya bentuk props yang dipakai halaman cocok dengan data server.
+- Unggah gambar: `resources/js/Pages/Admin/Products/partials/DropzoneGalery.jsx:108` membatasi `accept="image/jpeg,image/png,image/webp"`; validasi "Unggahan bukan gambar ditolak" terbukti lulus di `tests/Feature/Admin/AdminSettingTest.php`.
+- CRUD & stok: `tests/Feature/Admin/AdminMasterDataTest.php` (8 kasus: tambah produk membuat varian + riwayat stok awal, menolak input tidak valid, menolak SKU ganda, kategori terpakai tidak bisa dihapus, stok masuk/keluar mencatat pergerakan, stok keluar ditolak bila melebihi stok, riwayat menampilkan pergerakan) dan `AdminSalesTest.php` (14 kasus: transisi status pesanan, pembatalan mengembalikan stok, pesanan final tidak bisa diubah, nomor resi 60 karakter, dsb.) — semuanya lulus di suite penuh.
+- Keputusan F4 `/admin/stok` (komentar 61 techlead) **dihormati dan bukan temuan**: UI memang tidak menyediakan kolom "nilai minimum", aksi set stok absolut lewat rute baru, kolom "stok sebelum → sesudah", atau filter tanggal riwayat. Sebagai gantinya tombol **Setel** membuka penjelasan + tautan ke form produk (`resources/js/Pages/Admin/Stocks/Index.jsx:40,463-487`) dan penyesuaian absolut dicatat server sebagai pergerakan `adjust` (`app/Services/StockService.php:138`, tipe `adjust` juga muncul di filter riwayat `app/Http/Controllers/Admin/StockController.php:121,172`) — konsisten dengan `docs/kontrak-props.md` §12.12–§12.15 (baris = varian; `q`/`status`/`kategori`/`urut`; `ringkasan {varian,habis,kritis}`) yang bentuk props-nya persis dipakai harness. Perbandingan langsung UI vs §12.12–§12.15 (acuan komentar 61 techlead) juga bersih: filter daftar `q`/`status`(semua|habis|kritis)/`kategori`/`urut`(nama|stok_terkecil|stok_terbesar) ada di `resources/js/Pages/Admin/Stocks/Index.jsx:51-63,354-398`; filter riwayat `q`/`tipe`(semua|in|out|adjust|sale)/`varian` ada di `resources/js/Pages/Admin/Stocks/History.jsx:43-51,75,248-274` dengan kolom waktu/produk/SKU/tipe/jumlah/catatan/petugas (`:136-210`); aksi stok masuk/keluar memakai rute kontrak §12.13–§12.14 (`resources/js/Pages/Admin/Stocks/partials/StokAksiModal.jsx:58`). Tidak ada kolom/aksi/filter kontrak yang hilang maupun tambahan di luar kontrak.
+
+**(4) Halaman selesai checkout menghormati `ulasan.boleh` — Lulus.**
+
+- Gate klien memakai `boleh` dari server tanpa menambal: `resources/js/Pages/Public/CheckoutSuccess.jsx:52` (`const tampilkanForm = boleh && pending.length > 0;`), alasan tidak tampil bersamaan dengan form (`:55-58`).
+- Rumus server satu sumber aturan: `app/Http/Controllers/CheckoutController.php:191` (`'boleh' => $belumDiulas !== [] && $this->reviews->isEligible($order)`) dengan `$belumDiulas` = `product_id` unik pesanan yang belum diulas (`:178-186`), dan `app/Services/ReviewService.php:39-44` (`isEligible`, baris 39, berisi `payment_status` settlement **dan** status ∈ {dibayar, diproses, dikirim, selesai}).
+- Pengujian saya sendiri (bukan menyalin klaim parent): `tests/Feature/Checkout/UlasanBolehVerifikasiQaTest.php` — 7 kasus lulus di suite penuh: `boleh=true` saat 2 produk & 1 sudah diulas; `false` saat semua diulas; `false` saat settlement + status `batal`; bentuk `ulasan.sudah` tidak berubah; dua varian produk sama dihitung sekali; ulasan ganda ditolak walau `boleh` sempat `true`; kiriman ke-6 kena batas laju 429. Harness SSR parent `docs/qa/uji-gate-boleh-t_4ef6e8bd.mjs` (12/12 + kontrol negatif) dipakai sebagai **pembanding**, bukan sebagai ganti eksekusi.
+
+**(5) Suite `php artisan test` — Lulus.** `OK (225 tests, 1736 assertions)` dalam 58,679 detik (`docs/qa/log-phpunit-penuh-t_3a240a11.txt`); suite terarah 127 test juga `OK` (`docs/qa/log-phpunit-terarah-t_3a240a11.txt`). Perintah `php artisan test` sendiri tidak dapat dipakai di shell ini (membalas `stdin is not a tty`); itu keterbatasan pemanggilan, bukan kegagalan test.
+
+### 15.3 Belum diuji (batas eksplisit, bukan klaim lulus)
+
+1. **Login admin pemilik + seluruh interaksi di browser** (membuka modal setel stok, mengirim form tambah/ubah/hapus produk, mengunggah foto, mengklik pagination/filter, mengubah status pesanan): **belum diuji, butuh browser.** Kartu ini tidak memakai kredensial pemilik; yang diuji adalah rute, controller, bentuk props, dan render SSR.
+2. **Tampilan visual & aksesibilitas terukur** pada halaman publik maupun admin (lebar 360–1280 px, kontras, fokus keyboard, zoom, area sentuh) serta **kenampakan nyata gambar produk**: **belum diuji, butuh browser** — harness hanya memeriksa markup (`src`, `alt`), bukan piksel.
+3. **Alur pembayaran sungguhan ke Midtrans** (sandbox/produksi, webhook nyata, notifikasi asli) dan **pembuatan ulang tagihan pada API nyata**: tidak diuji karena harus bebas jaringan; yang diuji hanya mode uji + mock `FakeMidtransApi`.
+4. **Belum ada test otomatis untuk hapus produk** (`products.destroy`, `routes/admin.php:105`; tombol hapus ada di `Products/Index.jsx:70`) dan untuk **unggah foto produk** — rute dan validasi ada, tetapi jalur hapus/unggah dari UI belum dieksekusi (butuh login/admin di browser).
+5. **LCP < 2,5 s / Lighthouse mobile ≥ 85**, load test, penetration test, dan aksesibilitas screen reader: di luar cakupan kartu ini.
+
+### 15.4 Observasi non-blocking (tidak dibuatkan kartu)
+
+- **O-6** — `PublicLayout.jsx:57` menyediakan fallback `settings.cart_count`, tetapi `HandleInertiaRequests.php:39-40` hanya mengirim `cart.count`; jalur fallback itu praktis tidak pernah terpakai di produksi. Tidak berbahaya (badge tetap benar), tetapi jangan diandalkan sebagai sumber cadangan saat menambah halaman publik baru.
+- **O-7** — cakupan test admin belum menyentuh hapus produk dan unggah foto produk (§15.3 butir 4); bila kelak diotomasi, tambahkan di `tests/Feature/Admin/AdminMasterDataTest.php`.
+
+### 15.5 Kesimpulan kartu `t_3a240a11`
+
+Lima butir laporan pemilik: **(1) lulus, (2) lulus, (3) lulus untuk server + render (sisa interaksi browser belum diuji), (4) lulus, (5) lulus** — setiap status disertai bukti `path:baris`, log perintah nyata, dan (untuk butir 1) kontrol negatif yang membuktikan harness menggigit. **Tidak ada defect baru**, jadi **tidak ada kartu perbaikan** yang dibuat dari kartu ini; keputusan F4 `/admin/stok` dihormati sebagai keputusan, bukan cacat. Risiko sisa: butir (3) bagian interaksi, tampilan visual, dan pembayaran nyata (§15.3) yang memerlukan browser/kredensial pemilik. Bagian ini **tidak mengubah §12**: rekomendasi GO/NO-GO rilis tetap mengikuti syarat §12.
+
+**Self-review kartu ini**: kelima butir dipetakan ke bukti (15.2) dan sisa cakupan dinyatakan eksplisit (15.3); area risiko tinggi (otorisasi admin, tagihan pembayaran, gate ulasan, badge pada halaman yang berbeda komposisi props) diuji positif/negatif/boundary; tidak ada klaim pengujian yang tidak dieksekusi (semua angka dari log yang tercantum); berkas yang ditulis hanya di `docs/` (`docs/qa/*`, bagian ini, kartu komentar) — kode aplikasi, `tests/`, dan `.env` tidak disentuh.
+
+### 15.6 Verifikasi ulang butir laporan pemilik — kartu `t_18650721`
+
+Verifikasi browser + data nyata untuk enam butir laporan pemilik (pemilihan ukuran/warna, dugaan saling kunci, warna asli, sinkronisasi dashboard, mode Midtrans, tabel admin) ada di dokumen terpisah: **`docs/verifikasi-pemilik-t_18650721.md`**.
+
+Ringkas: **keenam butir lulus**; suite penuh `OK (258 tests, 2041 assertions)` (`docs/qa/log-phpunit-t_18650721.txt`). Tidak ada defect Critical/High/Medium baru. Catatan non-blocking: header tabel admin belum `sticky` meski didokumentasikan (O-1), nama warna di luar palet tampil netral (O-2), gap KPI PRD §9 tetap di luar cakupan (O-4).

@@ -2,7 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\Setting;
+use App\Services\SettingService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -12,6 +12,23 @@ class HandleInertiaRequests extends Middleware
      * Root template.
      */
     protected $rootView = 'app';
+
+    /**
+     * Key `settings` yang harus selalu ada di props bersama (kontrak §1,
+     * kartu t_101b9145). Nilainya `null` bila belum diisi, supaya frontend
+     * selalu menerima kunci yang sama di semua halaman.
+     *
+     * @var array<int, string>
+     */
+    private const REQUIRED_PUBLIC_KEYS = ['store_name', 'store_logo', 'store_favicon', 'footer_copyright'];
+
+    /**
+     * Key yang hanya catatan panel admin dan tidak boleh masuk props publik
+     * (kontrak §1: jalur bayar membaca `.env`, bukan `settings`).
+     *
+     * @var array<int, string>
+     */
+    private const ADMIN_ONLY_KEYS = ['midtrans_client_key', 'midtrans_is_production'];
 
     /**
      * Props yang dibagikan ke semua halaman.
@@ -59,23 +76,23 @@ class HandleInertiaRequests extends Middleware
     private function publicSettings(): array
     {
         try {
-            return Setting::query()
-                ->get(['key', 'value', 'type'])
-                ->mapWithKeys(function (Setting $setting) {
-                    $value = $setting->value;
-
-                    if ($setting->type === 'json') {
-                        $decoded = json_decode((string) $value, true);
-                        $value = json_last_error() === JSON_ERROR_NONE ? $decoded : null;
-                    }
-
-                    return [$setting->key => $value];
-                })
-                ->all();
+            $values = app(SettingService::class)->all();
         } catch (\Throwable) {
             // Tabel belum dimigrasi (mis. saat `php artisan migrate` pertama):
             // halaman tetap boleh dirender dengan nilai bawaan frontend.
-            return [];
+            $values = [];
         }
+
+        $values = array_diff_key($values, array_flip(self::ADMIN_ONLY_KEYS));
+
+        foreach (self::REQUIRED_PUBLIC_KEYS as $key) {
+            // String kosong diperlakukan sama dengan belum diisi agar frontend
+            // cukup memeriksa `null` untuk memakai nilai bawaan.
+            if (! array_key_exists($key, $values) || $values[$key] === '') {
+                $values[$key] = null;
+            }
+        }
+
+        return $values;
     }
 }

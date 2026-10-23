@@ -1,0 +1,31 @@
+### F. Regresi harness kartu F5 (uji S6 & H7 diperbarui) : tmp/uji-ssr-pesanan-t_018b2723.mjs
+=== UJI SSR + STATIK kartu t_018b2723 (F5 Admin Pesanan) ===
+[OK] S1 tidak ada fetch/axios/SPA client di berkas Orders
+[OK] S2 tidak ada route()/Ziggy, storage, atau dangerouslySetInnerHTML
+[OK] S3 semua impor relatif ada di disk (kedalaman path benar)
+[OK] S4 props halaman ⊆ props yang dikirim OrderController (kontrak §12.16/§12.17)
+[OK] S5 URL literal halaman cocok dengan rute admin.php
+[OK] S6 tidak ada placeholder; isian resi memakai rute simpan yang ada (F5b t_d1028202)
+[OK] S7 state galat Index punya pesan konkret + tombol Coba lagi
+[OK] I1 daftar terisi: kode, pembeli, status, ringkasan, hitung, pager
+[OK] I2 kosong tanpa filter: ajakan, bukan galat
+[OK] I3 kosong karena filter: pesan "tidak cocok" + aksi tampilkan semua
+[OK] I4 props hilang/null: halaman tetap render aman
+[OK] I5 angka string & nilai null: "-" bukan NaN/undefined
+[OK] I6 filter terpilih mengikuti props (q, status, bayar, tanggal)
+[OK] I7 ringkasan hilang: kartu "-" (bukan 0 karangan); meta hilang: "-"
+[OK] I8 penanganan flash server ada (toast, bukan efek SSR)
+[OK] H1 detail terisi: pembeli, alamat, item, total, status
+[OK] H2 status final: tombol nonaktif + penjelasan, tanpa modal terbuka
+[OK] H3 status tidak final: tombol aktif, modal tetap tertutup
+[OK] H4 bukti pembayaran: ada -> detail, null -> pesan jelas (bukan galat)
+[OK] H5 items kosong & catatan kosong punya pesan sendiri
+[OK] H6 props hilang/null: halaman tetap render aman
+[OK] H7 isian resi tampil dengan nilai dari props server (F5b t_d1028202)
+[OK] H8 flash sukses ditangani halaman detail (toast, bukan efek SSR)
+[OK] M1 modal terbuka: label server, opsi status, tombol simpan
+[OK] M2 galat server per kolom terhubung aria-describedby
+[OK] M3 bukti pembayaran tanpa QR: peringatan, bukan galat mati
+
+TOTAL: 26 uji, 0 gagal
+$ echo $?  ->  0

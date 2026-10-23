@@ -1,0 +1,2 @@
+sisa_tiruan=0
+md5_setelah_pulih=fe5ad888c3091869a7a8339b38703361

@@ -1,0 +1,135 @@
+BUKTI PENGERJAAN — kartu t_f39eba9d
+P3: Pesan validasi `customer_city.max` belum ada di CheckoutRequest
+Tanggal: 22 Oktober 2026 (WIB) — workspace C:\Users\LENOVO\Downloads\toko-kulot
+
+--------------------------------------------------------------------------
+SECTION 0 — RENCANA (maks 10 baris)
+--------------------------------------------------------------------------
+1. Sumber: `docs/laporan-qa-2.md` OBS-1 (bukti `docs/bukti-qa-t_43d8bcd7.txt` §4B).
+2. Hanya menambah satu entri `'customer_city.max'` di `CheckoutRequest::messages()`;
+   aturan validasi (`rules()`), pesan lain, `attributes()`, dan frontend tidak diubah.
+3. Pesan disalin dari `resources/js/Pages/Public/Checkout.jsx:69` yang sudah dibekukan:
+   "Kota/kecamatan maksimal 100 karakter."
+4. Tambah 1 test regresi HTTP di `tests/Feature/Checkout/CheckoutTest.php` yang
+   mem-POST `/checkout` dengan `customer_city` 101 karakter dan menuntut pesan itu.
+5. Bukti RED: test yang sama harus GAGAL bila baris pesan dicabut sementara.
+6. Bukti GREEN: test regresi + `php artisan test --filter=Checkout` + suite penuh.
+7. Ekstensi sqlite diaktifkan per-invokasi lewat `PHP_INI_SCAN_DIR` scratch (php.ini
+   global tidak diubah; `.env` tidak dibaca/diubah; tidak ada server dinyalakan).
+
+--------------------------------------------------------------------------
+SECTION 1 — PERUBAHAN BERKAS
+--------------------------------------------------------------------------
+`app/Http/Requests/CheckoutRequest.php` (+1 baris, satu-satunya perubahan produksi):
+
+    'customer_city.min' => 'Nama kota/kecamatan terlalu singkat.',
+  + 'customer_city.max' => 'Kota/kecamatan maksimal 100 karakter.',
+    'customer_postal_code.required' => 'Kode pos wajib diisi.',
+
+`tests/Feature/Checkout/CheckoutTest.php` (+14 baris, test baru):
+
+    public function test_validasi_kota_lebih_dari_100_karakter_memakai_pesan_indonesia(): void
+    {
+        $this->isiKeranjang(1);
+
+        $data = $this->dataCheckout();
+        $data['customer_city'] = str_repeat('A', 101);
+
+        $this->post('/checkout', $data)->assertSessionHasErrors([
+            'customer_city' => 'Kota/kecamatan maksimal 100 karakter.',
+        ]);
+
+        $this->assertDatabaseCount('orders', 0);
+    }
+
+Tidak disentuh: `resources/js/Pages/Public/Checkout.jsx` (mtime 2026-10-21 23:31,
+sebelum sesi ini), `rules()`, `attributes()`, pesan field lain, rute, controller,
+migrasi, seeder, `composer.json`/`package.json` (tidak ada paket baru).
+
+--------------------------------------------------------------------------
+SECTION 2 — KESAMAAN PESAN SERVER vs KLIEN
+--------------------------------------------------------------------------
+Klien  `resources/js/Pages/Public/Checkout.jsx:69`:
+  else if (kota.length > 100) errors.customer_city = 'Kota/kecamatan maksimal 100 karakter.';
+Server `app/Http/Requests/CheckoutRequest.php` (messages()):
+  'customer_city.max' => 'Kota/kecamatan maksimal 100 karakter.',
+Aturan sama-sama `max:100` (`rules()` tidak diubah) → teks identik karakter per karakter.
+
+--------------------------------------------------------------------------
+SECTION 3 — CARA MENJALANKAN TEST DI MESIN INI
+--------------------------------------------------------------------------
+`php.ini` global Laragon tidak memuat `pdo_sqlite` (hanya pdo_mysql). Ekstensi dimuat
+per-invokasi, tanpa menyentuh php.ini global maupun `.env`:
+
+    mkdir -p "$TMPDIR/be-ini"
+    printf 'extension=pdo_sqlite\nextension=sqlite3\n' > "$TMPDIR/be-ini/99-sqlite.ini"
+    export PHP_INI_SCAN_DIR="C:/Users/LENOVO/AppData/Local/Temp/be-ini"
+    php -m | grep -i sqlite   ->  pdo_sqlite, sqlite3
+
+`phpunit.xml` proyek: APP_ENV=testing, DB_CONNECTION=sqlite, DB_DATABASE=:memory:
+→ database MySQL pemilik tidak tersentuh.
+
+--------------------------------------------------------------------------
+SECTION 4 — BUKTI RED (test benar-benar menjaga pesan)
+--------------------------------------------------------------------------
+Baris `'customer_city.max' => ...` dicabut sementara, lalu:
+
+    php artisan test --filter=test_validasi_kota_lebih_dari_100_karakter_memakai_pesan_indonesia
+
+    FAIL  Tests\Feature\Checkout\CheckoutTest
+      FAILED  Tests\Feature\Checkout\CheckoutTest > validasi kota lebih dari 100 karakter memakai pesan indonesia
+      Failed asserting that an array contains 'Kota/kecamatan maksimal 100 karakter.'.
+    The kota/kabupaten field must not be greater than 100 characters.
+      Tests:    1 failed (3 assertions)
+    EXIT=1
+
+Artinya tanpa perbaikan, klien non-JS menerima pesan bawaan framework berbahasa Inggris
+("The kota/kabupaten field must not be greater than 100 characters.") — sesuai OBS-1.
+Baris pesan kemudian dipasang kembali (isi akhir berkas = lihat SECTION 1).
+
+--------------------------------------------------------------------------
+SECTION 5 — BUKTI GREEN
+--------------------------------------------------------------------------
+5A. Test regresi saja (sesudah perbaikan):
+
+    php artisan test --filter=test_validasi_kota_lebih_dari_100_karakter_memakai_pesan_indonesia
+
+    PASS  Tests\Feature\Checkout\CheckoutTest
+      ✓ validasi kota lebih dari 100 karakter memakai pesan indonesia   0.61s
+      Tests:    1 passed (4 assertions)
+      Duration: 0.88s
+    EXIT=0
+
+5B. Seluruh test checkout (diminta kartu):
+
+    php artisan test --filter=Checkout
+
+    PASS  Tests\Feature\Checkout\CheckoutTest
+    PASS  Tests\Feature\Checkout\PaymentModeTest
+    PASS  Tests\Feature\Checkout\QrisExpiryTest
+    PASS  Tests\Feature\Checkout\UlasanBolehVerifikasiQaTest
+      Tests:    49 passed (730 assertions)
+      Duration: 3.92s
+    EXIT=0
+
+5C. Suite penuh proyek (memastikan tidak ada perilaku lain yang bergeser):
+
+    php artisan test
+
+      Tests:    242 passed (1844 assertions)
+      Duration: 29.84s
+    EXIT=0
+
+Pembanding: QA t_43d8bcd7 mencatat 237 passed / 1791 assertions. Selisih +5 test /
++53 assertions berasal dari bertambahnya test di kartu-kartu sesudahnya (termasuk 1 test
+regresi di kartu ini) — tidak ada test lama yang hilang.
+
+--------------------------------------------------------------------------
+SECTION 6 — BATAS & YANG BELUM DIPERIKSA
+--------------------------------------------------------------------------
+- Tidak menyalakan server HTTP nyata; jalur `POST /checkout` diuji in-process lewat feature
+  test Laravel (pola yang sama dengan kartu QA t_43d8bcd7).
+- Tidak ada verifikasi browser/visual (di luar lingkup kartu; pesan klien sudah ada dan
+  tidak diubah).
+- Tidak ada migrasi/seeder dijalankan pada kartu ini; DB pemilik tidak disentuh.
+- `.env` tidak dibaca, ditulis, atau disalin.

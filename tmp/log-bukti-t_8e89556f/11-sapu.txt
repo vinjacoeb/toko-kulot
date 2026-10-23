@@ -1,0 +1,9 @@
+### H. Sapu regresi impor & bundel
+$ python tmp/cek-komponen-tanpa-import.py .
+file diperiksa: 96
+resources\js\app.jsx: App
+$ python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build
+chunk .js diperiksa: 71
+DropzoneGalery-CR5cU0GV.js -> FREE: P  (import: B, D, a, p, w)
+$ grep -n 'dangerouslySetInnerHTML\|localStorage\|route(' resources/js/Pages/Admin/Orders/partials/SyncPaymentButton.jsx resources/js/Pages/Admin/Orders/Show.jsx
+(tidak ada)

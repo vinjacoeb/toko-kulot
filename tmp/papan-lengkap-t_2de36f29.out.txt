@@ -1,0 +1,72 @@
+kolom tasks: assignee, block_kind, block_recurrences, body, branch_name, claim_expires, claim_lock, completed_at, completion_contract, consecutive_failures, created_at, created_by, current_run_id, current_step_key, goal_max_turns, goal_mode, id, idempotency_key, last_failure_error, last_heartbeat_at, max_retries, max_runtime_seconds, model_override, priority, project_id, provider_override, reasoning_effort, result, session_id, skills, started_at, status, tenant, title, worker_pid, worker_started_at, workflow_template_id, workspace_kind, workspace_path
+t_4888a920  [archived/backenddeveloper]  Kontrak props halaman beranda (/) belum ada di docs/kontrak-props.md
+t_70c96acd  [archived/backenddeveloper]  Backend: rute + controller admin produk, kategori, stok, pesanan, akun (PRD §5.2, 22 rute belum terdaftar)
+t_73fa894a  [archived/frontenddeveloper]  QA-007: aktifkan tautan sidebar admin untuk modul yang rutenya sudah terdaftar (AdminLayout)
+t_9efe040c  [archived/backenddeveloper]  Backend: rute GET /produk, /produk/{slug}, /kontak-kami + props detail produk
+t_d98cf23d  [archived/techlead]  Keputusan dokumen: PRD §5.2 (PATCH) vs kontrak-props §10.2 (POST) untuk admin.messages.read
+t_92fcaafd  [blocked/techlead]  Kontrak + backend: nomor resi manual pesanan (PRD A15) — kolom, field §12.17, rute simpan
+t_018b2723  [done/frontenddeveloper]  F5: /admin/pesanan - daftar pesanan + detail pesanan
+t_0729c67f  [done/uiux]  UIUX1b: catat deviasi D12 isian nomor resi
+t_099c813c  [done/frontenddeveloper]  Frontend: Dashboard admin — empty state grafik penjualan belum punya CTA "Tambah produk" (design §5.11)
+t_12a19591  [done/backenddeveloper]  Katalog publik: controller filter, sort, pagination, detail produk, kontak
+t_14cad9e2  [done/uiux]  UIUX: keputusan token teks meta di atas bg-surface (slate-500 = 4,40:1, gagal AA) — temuan t_90759be9
+t_15531332  [done/techlead]  laporan dari pemilik untuk dikerjakan
+t_321bf03c  [done/frontenddeveloper]  F4: /admin/stok - daftar stok + riwayat pergerakan
+t_394b40ba  [done/techlead]  Kontrak + backend: nomor resi manual pesanan (PRD A15) — kolom, field §12.17, rute simpan
+t_3ce04d50  [done/frontenddeveloper]  Layout publik dan landing page
+t_3eef7749  [done/frontenddeveloper]  Halaman admin: produk, kategori, stok, pesanan, pesan, penilaian, pengaturan, akun
+t_4dd28407  [done/frontenddeveloper]  Frontend: 5 halaman Inertia yang dirender controller belum ada — /keranjang, /checkout, /checkout/{order}/bayar, /checkout/{order}/sukses, /admin/login blank (Critical)
+t_4f753735  [done/devops]  Fondasi proyek: Laravel 11 + Inertia + React + MySQL + .env.example
+t_54bfee4e  [done/techlead]  Keputusan dokumen: PRD §5.2 (PATCH) vs kontrak-props §10.2 (POST) untuk admin.messages.read
+t_56a2d29c  [done/devops]  Build produksi, verifikasi E2E, dokumentasi deploy, checklist rilis
+t_5988a39e  [done/frontenddeveloper]  F3: /admin/produk - daftar (search/filter/pagination/gambar) + Create/Edit/Show
+t_5a330224  [done/devops]  DevOps: build penutup + smoke 3 viewport + suite, lalu perbarui checklist rilis (verifikasi gerbang GO/NO-GO)
+t_5b128681  [done/backenddeveloper]  Backend: rute GET /produk, /produk/{slug}, /kontak-kami + props detail produk
+t_5f75f779  [done/devops]  DevOps: bekukan build rilis (build + 3 penyapu + smoke 9 rute x 3 viewport + suite) setelah semua penulis berhenti
+t_5fcdbae3  [done/uiux]  UIUX: catat deviasi D8 di design.md — kolom cari topbar admin tidak dibangun (keputusan t_b5de72e3)
+t_67576fb2  [done/frontenddeveloper]  Frontend: terapkan aturan tone badge §4.21 v2.1 (`-strong`) + badge diskon solid
+t_6b722a49  [done/frontenddeveloper]  Frontend: render harga coret + badge potongan (compare_price) di kartu & detail produk
+t_6ee422f2  [done/frontenddeveloper]  QA-007: aktifkan tautan sidebar admin untuk modul yang rutenya sudah terdaftar (AdminLayout)
+t_6f70cbe7  [done/frontenddeveloper]  Halaman /produk, /produk/{slug}, /kontak-kami
+t_768819a7  [done/backenddeveloper]  Backend: metode admin.messages.read POST jadi PATCH (selaras PRD §5.2)
+t_7c685183  [done/techlead]  Gerbang pemilik 1: persetujuan hasil K1 sebelum K2/K3
+t_7cbe34dc  [done/frontenddeveloper]  Frontend: ProductCard memakai <PriceBlock> tanpa import — /, /produk, /produk/{slug} blank (Critical)
+t_7ebfca05  [done/frontenddeveloper]  F1: Badge keranjang menampilkan jumlah item (semua halaman publik)
+t_8bca0661  [done/frontenddeveloper]  Frontend: ChartCard dashboard tidak menerima prop error — blok grafik tampil sebagai empty state + CTA saat halaman galat
+t_8cd61512  [done/uiux]  Kontras badge StatusBadge di bawah AA (temuan t_fc2c5b98)
+t_90759be9  [done/frontenddeveloper]  Frontend: perbaiki kontras teks non-badge (slate-400 → slate-500, teks state → `-strong`) per §11.4 T1–T4
+t_944aea1e  [done/frontenddeveloper]  Frontend: catat keputusan kolom cari topbar admin (opsi c) — perbarui known issue + komentar AdminLayout
+t_950a38ca  [done/frontenddeveloper]  Frontend: Dashboard admin — blok stok kritis/pesanan/ulasan tetap tampil empty state saat prop error halaman terisi (design §5.11 "error per blok")
+t_954abfe8  [done/frontenddeveloper]  Frontend: terapkan 29 titik teks meta → `text-slate-600` (design §2.1 v2.2 / §11.4 T7)
+t_99424f19  [done/uiux]  U1: Catat deviasi design.md (mode uji, masa berlaku 5 menit, kolom pembayaran)
+t_9f4b6aee  [done/backenddeveloper]  B1: Mode uji Midtrans terlihat + tagihan fake lama dibuat ulang
+t_a24a79d0  [done/techlead]  Keputusan: F4 /admin/stok — nilai minimum, set stok, stok sebelum→sesudah, filter tanggal
+t_a3c308d2  [done/qatesting]  Unit + feature test, QA iterasi bug
+t_a696f5c6  [done/backenddeveloper]  Kontrak props halaman beranda (/) belum ada di docs/kontrak-props.md
+t_a785093e  [done/backenddeveloper]  Migrasi dan model seluruh domain
+t_a7f18638  [done/backenddeveloper]  Ulasan bintang 1-5, pesan masuk + balasan, CRUD pengaturan/carousel/FAQ
+t_acd5fc8e  [done/frontenddeveloper]  Frontend: /login blank — `route is not defined` (helper Ziggy tanpa Ziggy) di 4 halaman auth
+t_b078318d  [done/backenddeveloper]  B1b: kolom + rute nomor resi pesanan (kontrak §12.18a)
+t_b5de72e3  [done/techlead]  Keputusan: pencarian global topbar admin (design §5.10) belum bisa dibangun — tidak ada rute pencarian di PRD §5.2
+t_bae93e32  [done/frontenddeveloper]  Layout admin dan dashboard monitoring penjualan
+t_be9df826  [done/uiux]  docs/design.md hasil REA erigostore + design token + inventaris komponen
+t_d21ef249  [done/qatesting]  QA: tutup konflik metode admin.messages.read di test + re-run suite (QA-005)
+t_e0ab9215  [done/devops]  Kebersihan repo: hapus folder agent/skill dari git dan commit
+t_e16ab638  [done/techlead]  Gerbang pemilik 2: persetujuan design.md (K3) sebelum slicing frontend
+t_e35050e8  [done/backenddeveloper]  B2: Masa berlaku QRIS 5 menit (MIDTRANS_EXPIRY_MINUTES) + dokumen
+t_e3752060  [done/backenddeveloper]  Keranjang, checkout, Midtrans QRIS, webhook, halaman status bayar
+t_e5149746  [done/frontenddeveloper]  Frontend: halaman Admin/Kategori + Admin/Akun masih placeholder — tautan /admin/kategori/tambah & /admin/akun/tambah tanpa rute (404) dan belum ada Modal tambah/ubah
+t_ec877062  [done/backenddeveloper]  Seeder lengkap semua domain
+t_ecd07ae5  [done/techlead]  Pelajari PRD + design, tulis ringkasan tim dan brief per peran
+t_ed8bd8e4  [done/backenddeveloper]  Backend: rute + controller admin produk, kategori, stok, pesanan, akun (PRD §5.2, 22 rute belum terdaftar)
+t_f0708cd1  [done/backenddeveloper]  Autentikasi dua tier: guard web + guard admin
+t_f4e537df  [done/frontenddeveloper]  Halaman auth, keranjang, checkout QRIS, sukses + form rating
+t_fc2c5b98  [done/frontenddeveloper]  Frontend: halaman Admin/Messages pakai kontrak §10.1-10.3 + aksi PATCH admin.messages.read
+t_fc49ee38  [done/frontenddeveloper]  Frontend: halaman Admin/Reviews + Admin/Settings pakai props kontrak §10 (placeholder saat ini)
+t_2de36f29  [running/frontenddeveloper]  F6: Halaman selesai checkout menghormati `ulasan.boleh`
+t_d1028202  [running/frontenddeveloper]  F5b: isian nomor resi aktif di /admin/pesanan/{order}
+t_2c9f8b01  [todo/qatesting]  QA2: verifikasi nomor resi pesanan (kontrak §12.17/§12.18a)
+t_3a240a11  [todo/qatesting]  QA1: Verifikasi perbaikan laporan pemilik 21 Okt 2026
+t_e60e7733  [todo/frontenddeveloper]  F2: Penanda mode uji Midtrans di halaman bayar + status mode di tab Pembayaran admin
+t_e83922f2  [todo/devops]  D1: Bekukan build rilis + checklist Midtrans nyata
+total: 70

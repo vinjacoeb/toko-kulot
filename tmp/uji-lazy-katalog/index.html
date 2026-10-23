@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="id">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Uji lazy scroll katalog (harness)</title>
+        <link rel="stylesheet" href="../../public/build/assets/app-D9lQjX7G.css" />
+    </head>
+    <body>
+        <div id="app"></div>
+        <script>
+            window.__errors = [];
+            window.addEventListener('error', function (event) {
+                window.__errors.push(String(event.message));
+            });
+            window.addEventListener('unhandledrejection', function (event) {
+                window.__errors.push('unhandled: ' + String(event.reason));
+            });
+        </script>
+        <script src="./bundle.js"></script>
+    </body>
+</html>

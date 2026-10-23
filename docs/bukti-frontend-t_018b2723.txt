@@ -1,0 +1,191 @@
+BUKTI FRONTEND — kartu t_018b2723 (F5: /admin/pesanan daftar + detail)
+Tanggal: 21 Okt 2026. Semua keluaran di bawah adalah keluaran perintah yang benar-benar dijalankan di repo ini.
+
+=== 1. Harness SSR + statik (26 uji, tanpa server) ===
+Perintah:
+  ./node_modules/@esbuild/win32-x64/esbuild.exe tmp/uji-ssr-pesanan-t_018b2723.mjs --bundle --platform=node --format=esm --jsx=automatic --packages=external --outfile=tmp/uji-ssr-pesanan-t_018b2723.bundle.mjs --alias:@inertiajs/react=./tmp/stub-inertia-t_321bf03c.mjs
+  node tmp/uji-ssr-pesanan-t_018b2723.bundle.mjs
+
+=== UJI SSR + STATIK kartu t_018b2723 (F5 Admin Pesanan) ===
+[OK] S1 tidak ada fetch/axios/SPA client di berkas Orders
+[OK] S2 tidak ada route()/Ziggy, storage, atau dangerouslySetInnerHTML
+[OK] S3 semua impor relatif ada di disk (kedalaman path benar)
+[OK] S4 props halaman ⊆ props yang dikirim OrderController (kontrak §12.16/§12.17)
+[OK] S5 URL literal halaman cocok dengan rute admin.php
+[OK] S6 tidak ada placeholder & tidak ada isian resi tanpa rute (temuan F5 dicatat)
+[OK] S7 state galat Index punya pesan konkret + tombol Coba lagi
+[OK] I1 daftar terisi: kode, pembeli, status, ringkasan, hitung, pager
+[OK] I2 kosong tanpa filter: ajakan, bukan galat
+[OK] I3 kosong karena filter: pesan "tidak cocok" + aksi tampilkan semua
+[OK] I4 props hilang/null: halaman tetap render aman
+[OK] I5 angka string & nilai null: "-" bukan NaN/undefined
+[OK] I6 filter terpilih mengikuti props (q, status, bayar, tanggal)
+[OK] I7 ringkasan hilang: kartu "-" (bukan 0 karangan); meta hilang: "-"
+[OK] I8 penanganan flash server ada (toast, bukan efek SSR)
+[OK] H1 detail terisi: pembeli, alamat, item, total, status
+[OK] H2 status final: tombol nonaktif + penjelasan, tanpa modal terbuka
+[OK] H3 status tidak final: tombol aktif, modal tetap tertutup
+[OK] H4 bukti pembayaran: ada -> detail, null -> pesan jelas (bukan galat)
+[OK] H5 items kosong & catatan kosong punya pesan sendiri
+[OK] H6 props hilang/null: halaman tetap render aman
+[OK] H7 temuan F5: notice resi tampil sebagai peringatan
+[OK] H8 flash sukses ditangani halaman detail (toast, bukan efek SSR)
+[OK] M1 modal terbuka: label server, opsi status, tombol simpan
+[OK] M2 galat server per kolom terhubung aria-describedby
+[OK] M3 bukti pembayaran tanpa QR: peringatan, bukan galat mati
+
+TOTAL: 26 uji, 0 gagal
+
+=== 2. Kontrol negatif (assert dibuktikan hidup) ===
+Sabotase sementara: (a) Index.jsx emptyTitle dijadikan konstan, (b) judul notice InfoResi dipendekkan.
+Keluaran yang diharapkan: tepat I3 + H7 gagal, exit 1.
+
+=== UJI SSR + STATIK kartu t_018b2723 (F5 Admin Pesanan) ===
+[OK] S1 tidak ada fetch/axios/SPA client di berkas Orders
+[OK] S2 tidak ada route()/Ziggy, storage, atau dangerouslySetInnerHTML
+[OK] S3 semua impor relatif ada di disk (kedalaman path benar)
+[OK] S4 props halaman ⊆ props yang dikirim OrderController (kontrak §12.16/§12.17)
+[OK] S5 URL literal halaman cocok dengan rute admin.php
+[OK] S6 tidak ada placeholder & tidak ada isian resi tanpa rute (temuan F5 dicatat)
+[OK] S7 state galat Index punya pesan konkret + tombol Coba lagi
+[OK] I1 daftar terisi: kode, pembeli, status, ringkasan, hitung, pager
+[OK] I2 kosong tanpa filter: ajakan, bukan galat
+[GAGAL] I3 kosong karena filter: pesan "tidak cocok" + aksi tampilkan semua -> judul kosong-terfilter hilang
+[OK] I4 props hilang/null: halaman tetap render aman
+[OK] I5 angka string & nilai null: "-" bukan NaN/undefined
+[OK] I6 filter terpilih mengikuti props (q, status, bayar, tanggal)
+[OK] I7 ringkasan hilang: kartu "-" (bukan 0 karangan); meta hilang: "-"
+[OK] I8 penanganan flash server ada (toast, bukan efek SSR)
+[OK] H1 detail terisi: pembeli, alamat, item, total, status
+[OK] H2 status final: tombol nonaktif + penjelasan, tanpa modal terbuka
+[OK] H3 status tidak final: tombol aktif, modal tetap tertutup
+[OK] H4 bukti pembayaran: ada -> detail, null -> pesan jelas (bukan galat)
+[OK] H5 items kosong & catatan kosong punya pesan sendiri
+[OK] H6 props hilang/null: halaman tetap render aman
+[GAGAL] H7 temuan F5: notice resi tampil sebagai peringatan -> notice temuan resi hilang
+[OK] H8 flash sukses ditangani halaman detail (toast, bukan efek SSR)
+[OK] M1 modal terbuka: label server, opsi status, tombol simpan
+[OK] M2 galat server per kolom terhubung aria-describedby
+[OK] M3 bukti pembayaran tanpa QR: peringatan, bukan galat mati
+
+TOTAL: 26 uji, 2 gagal
+
+=== 3. Uji statik tambahan ===
+--- rute admin.php (prefix group) ---
+133:    Route::get('/pesanan', [OrderController::class, 'index'])->name('orders.index');
+134:    Route::get('/pesanan/{order}', [OrderController::class, 'show'])->name('orders.show');
+135:    Route::patch('/pesanan/{order}/status', [OrderController::class, 'status'])
+--- kontrak §12.16-12.18 (tanpa field resi) ---
+0
+(jumlah kemunculan "resi" pada kontrak §12.16-§12.18 di atas = 0)
+--- pencarian dukungan resi di backend (harus kosong) ---
+0
+
+=== 4. Build produksi ===
+npm run build -> exit 0; cuplikan akhir:
+
+[2mpublic/build/[22m[36massets/Home-Jf-lRyAO.js             [39m[1m[2m 13.50 kB[22m[1m[22m[2m │ gzip:   4.39 kB[22m
+[2mpublic/build/[22m[36massets/Show-GjJ0oBXH.js             [39m[1m[2m 14.04 kB[22m[1m[22m[2m │ gzip:   4.83 kB[22m
+[2mpublic/build/[22m[36massets/ProdukForm-Cn3XDtom.js       [39m[1m[2m 14.70 kB[22m[1m[22m[2m │ gzip:   4.28 kB[22m
+[2mpublic/build/[22m[36massets/Index-DH9fHr4J.js            [39m[1m[2m 49.86 kB[22m[1m[22m[2m │ gzip:  11.83 kB[22m
+[2mpublic/build/[22m[36massets/app-BQSH_XUO.js              [39m[1m[2m364.45 kB[22m[1m[22m[2m │ gzip: 114.28 kB[22m
+[32m✓ built in 2.82s[39m
+
+=== 5. Git status (berkas tersentuh) ===
+ M .env.example
+ M README.md
+ M app/Http/Controllers/Admin/SettingController.php
+ M app/Http/Controllers/CheckoutController.php
+ M app/Providers/AppServiceProvider.php
+ M app/Services/MidtransService.php
+ M config/midtrans.php
+ M database/seeders/FaqSeeder.php
+ M docs/asumsi.md
+ M docs/catatan-backend.md
+ M docs/catatan-frontend.md
+ M docs/catatan-techlead.md
+ M docs/design.md
+ M docs/kontrak-props.md
+ M docs/langkah-pemilik.md
+ M docs/pertanyaan-pemilik.md
+ M docs/traceability.md
+ M resources/js/Layouts/PublicLayout.jsx
+ M resources/js/Pages/Admin/Orders/Index.jsx
+ M resources/js/Pages/Admin/Products/Index.jsx
+ M resources/js/Pages/Admin/Stocks/Index.jsx
+ M tests/Feature/Checkout/CheckoutTest.php
+ M tests/Unit/Services/MidtransServiceTest.php
+?? app/Services/Midtrans/
+?? docs/bukti-baseline-t_9f4b6aee.txt
+?? docs/bukti-frontend-t_321bf03c.txt
+?? docs/bukti-frontend-t_5988a39e.txt
+?? docs/bukti-frontend-t_7ebfca05.txt
+?? docs/bukti-suite-t_9f4b6aee.txt
+?? docs/bukti-suite-t_e35050e8.txt
+?? docs/bukti-t_9f4b6aee.txt
+?? docs/bukti-t_e35050e8-test.txt
+?? docs/bukti-uiux-t_99424f19.txt
+?? docs/keputusan-f4-stok.md
+?? docs/review.md
+?? docs/usulan.md
+?? resources/js/Pages/Admin/Orders/Show.jsx
+?? resources/js/Pages/Admin/Orders/partials/
+?? resources/js/Pages/Admin/Products/Create.jsx
+?? resources/js/Pages/Admin/Products/Edit.jsx
+?? resources/js/Pages/Admin/Products/Show.jsx
+?? resources/js/Pages/Admin/Products/partials/
+?? resources/js/Pages/Admin/Stocks/History.jsx
+?? resources/js/Pages/Admin/Stocks/partials/
+?? tests/Feature/Checkout/PaymentModeTest.php
+?? tests/Feature/Checkout/QrisExpiryTest.php
+?? tests/Support/
+?? tests/Unit/Services/MidtransExpiryTest.php
+?? tmp/anak-t_321bf03c.py
+?? tmp/b-baru-t_321bf03c.txt
+?? tmp/build-final-t_7ebfca05.txt
+?? tmp/build-t_321bf03c.txt
+?? tmp/build-t_5988a39e.txt
+?? tmp/build-t_7ebfca05.txt
+?? tmp/cek-badge-keranjang-t_7ebfca05.mjs
+?? tmp/dump-kartu-baca-t_321bf03c.py
+?? tmp/dump-kartu-t_321bf03c.py
+?? tmp/esbuild-aksi-t_321bf03c.txt
+?? tmp/esbuild-ssr-t_321bf03c.txt
+?? tmp/gate-t_321bf03c.txt
+?? tmp/gate-t_5988a39e.txt
+?? tmp/harness-t_5988a39e.txt
+?? tmp/hasil-aksi-t_321bf03c.txt
+?? tmp/hasil-ssr-t_321bf03c.txt
+?? tmp/kartu-t_321bf03c.txt
+?? tmp/kartu-t_5988a39e.py
+?? tmp/komentar-t_321bf03c.py
+?? tmp/konteks-P-dropzone-t_5988a39e.py
+?? tmp/kontrak-stok-12.txt
+?? tmp/manifest-produk-t_5988a39e.py
+?? tmp/papan-321bf03c.txt
+?? tmp/papan-jalan-t_321bf03c.py
+?? tmp/papan-stok-t_321bf03c.py
+?? tmp/papan-t_5988a39e.py
+?? tmp/papan2-t_5988a39e.py
+?? tmp/perbaiki-harness-t_321bf03c.py
+?? tmp/perbaiki-harness2-t_321bf03c.py
+?? tmp/perbaiki-harness3-t_321bf03c.py
+?? tmp/perbaiki-harness4-t_321bf03c.py
+?? tmp/rantai-t_5988a39e.py
+?? tmp/render-produk-t_5988a39e.bundle.mjs
+?? tmp/render-produk-t_5988a39e.mjs
+?? tmp/render-produk-v2-t_5988a39e.bundle.mjs
+?? tmp/render-produk-v2-t_5988a39e.mjs
+?? tmp/shim-jsx-runtime-t_321bf03c.mjs
+?? tmp/shim-react-t_321bf03c.mjs
+?? tmp/splice-b-t_321bf03c.py
+?? tmp/stitch-inertia-t_5988a39e.mjs
+?? tmp/stub-inertia-t_321bf03c.mjs
+?? tmp/tulis-bukti-t_321bf03c.py
+?? tmp/uji-aksi-stok-t_321bf03c.bundle.mjs
+?? tmp/uji-aksi-stok-t_321bf03c.mjs
+?? tmp/uji-ssr-pesanan-t_018b2723.bundle.mjs
+?? tmp/uji-ssr-pesanan-t_018b2723.mjs
+?? tmp/uji-ssr-stok-t_321bf03c.bundle.mjs
+?? tmp/uji-ssr-stok-t_321bf03c.mjs
+?? tmp/ws-t_321bf03c.py

@@ -1,0 +1,365 @@
+BUKTI FRONTEND — kartu t_d1028202 (F5b: isian nomor resi aktif di /admin/pesanan/{order})
+Tanggal kerja: 21 Okt 2026 (UTC+7). Workspace: C:\Users\LENOVO\Downloads\toko-kulot (dir)
+Lingkup: 2 berkas kode diubah (resources/js/Pages/Admin/Orders/partials/InfoResi.jsx,
+resources/js/Pages/Admin/Orders/Show.jsx) + dokumen kerja (docs/catatan-frontend.md, berkas ini).
+Tidak ada berkas backend, rute, migrasi, seeder, .env, package.json, tailwind.config.js,
+resources/js/Components/**, resources/views/**, atau dokumen acuan yang disentuh oleh kartu ini.
+Skrip pengumpul bukti: tmp/jalankan-uji-t_d1028202.sh (menulis tmp/log-bukti-t_d1028202/*.txt);
+berkas ini dibangun dari log tersebut lewat tmp/bangun-bukti-t_d1028202.py — jadi semua keluaran
+di bawah adalah salinan apa adanya, bukan tulis tangan.
+
+Ringkas hasil (semua dijalankan pada 21 Okt 2026):
+  A. Harness SSR/statik tmp/uji-ssr-resi-t_d1028202.mjs ................ exit 0, 11/11 lulus
+  B. Harness interaksi tmp/uji-aksi-resi-t_d1028202.mjs ................ exit 0, 7/7 lulus
+  C. Kontrol negatif A (label beku dirusak) ........................... exit 1, 9/11 (R1, R9 gagal)
+  D. Kontrol negatif B (URL simpan dirusak) ........................... exit 1, 3/7 (B1-B4 gagal)
+  E. Ulang setelah dipulihkan ......................................... SSR exit 0, AKSI exit 0
+  F. Regresi harness kartu F5 (S6 & H7 diperbarui) .................... exit 0, 26 uji / 0 gagal
+  G. npm run build ..................................................... exit 0 ("✓ built in 14.07s")
+  L. Kode kartu ini ada di bundel rilis public/build/assets/InfoResi-DX6_iCnZ.js
+Kode komponen tidak diubah di resources/js/Components/**; label "Memproses…" disediakan
+Button.jsx:51 (design §4.1) dan kartu ini hanya mengirim prop `loading`.
+
+==============================================================================
+1) Berkas yang diubah & fakta kode
+==============================================================================
+   ### M. Fakta berkas kartu ini
+   $ wc -l resources/js/Pages/Admin/Orders/partials/InfoResi.jsx resources/js/Pages/Admin/Orders/Show.jsx
+      91 resources/js/Pages/Admin/Orders/partials/InfoResi.jsx
+     245 resources/js/Pages/Admin/Orders/Show.jsx
+     336 total
+
+   $ grep -n 'BATAS_RESI\|ID_INPUT\|router.patch\|preserveScroll\|errors\.\|loading=\|Tersimpan\|Belum ada nomor resi\|InlineNotice\|belum bisa diisi' resources/js/Pages/Admin/Orders/partials/InfoResi.jsx
+   14: * `errors.tracking_number` tampil di bawah input. Tidak ada toast atau state halaman baru.
+   18:const BATAS_RESI = 60;
+   19:const ID_INPUT = 'resi-pesanan';
+   49:        router.patch(
+   53:                preserveScroll: true,
+   64:                htmlFor={ID_INPUT}
+   69:                    id={ID_INPUT}
+   72:                    maxLength={BATAS_RESI}
+   81:                {tersimpan === '' ? 'Belum ada nomor resi.' : `Tersimpan: ${tersimpan}`}
+   85:                <Button variant="primary" type="submit" loading={proses}>
+
+   $ grep -c 'InlineNotice\|belum bisa diisi' resources/js/Pages/Admin/Orders/partials/InfoResi.jsx  (harus 0)
+   0
+
+   $ grep -n 'InfoResi' resources/js/Pages/Admin/Orders/Show.jsx
+   11:import InfoResi from './partials/InfoResi';
+   185:                            <InfoResi pesanan={data} />
+
+   $ git diff --stat -- resources/js/Components/ resources/views/ docs/kontrak-props.md docs/design.md
+    docs/design.md                        |   5 ++
+    docs/kontrak-props.md                 | 117 +++++++++++++++++++++++++++++++---
+    resources/js/Components/Countdown.jsx |  17 ++++-
+    resources/js/Components/QrisPanel.jsx |  14 +++-
+    4 files changed, 140 insertions(+), 13 deletions(-)
+   (kosong = tidak disentuh)
+
+==============================================================================
+2) Harness SSR/statik (kasus positif)
+==============================================================================
+   ### A. Harness SSR/statik: tmp/uji-ssr-resi-t_d1028202.mjs
+   $ md5sum InfoResi.jsx  (sebelum)
+   fe5ad888c3091869a7a8339b38703361
+   OK    | R1 resi terisi: nilai awal isian + baris status `Tersimpan:` + teks beku D12    | 
+   OK    | R2 `tracking_number` null -> input kosong + `Belum ada nomor resi.` (DoD)       | 
+   OK    | R3 `tracking_number` string kosong -> sama seperti null, tanpa `Tersimpan:`     | 
+   OK    | R4 galat server `errors.tracking_number` tampil di bawah input + aria terhubung | 
+   OK    | R5 galat field lain tidak menempel di isian resi                                | 
+   OK    | R6 pesanan tanpa id / props hilang -> aman, tanpa kontrol mati                  | 
+   OK    | R7 notice lama F5 hilang dan tidak ada teks karangan                            | 
+   OK    | R8 nilai janggal dari server (angka, spasi) tidak menghasilkan NaN/undefined    | 
+   OK    | R9 Show mengirim props `pesanan` ke InfoResi (nilai resi dari props server)     | 
+   OK    | R10 Show dengan tracking_number null -> isian kosong + status kosong            | 
+   OK    | R11 sapu kotor di semua markup yang sudah diambil                               | 
+
+   RINGKASAN: 11/11 uji lulus
+   $ echo $?  ->  0
+
+==============================================================================
+3) Harness interaksi (kontrak pemanggilan router)
+==============================================================================
+   ### B. Harness interaksi: tmp/uji-aksi-resi-t_d1028202.mjs
+           B1: PATCH /admin/pesanan/5/resi {"tracking_number":"JX9988776655"}
+           B2: PATCH /admin/pesanan/5/resi {"tracking_number":""}
+           B4: PATCH /admin/pesanan/42/resi {"tracking_number":""}
+   OK    | B1 kirim resi baru -> PATCH /admin/pesanan/{id}/resi payload tracking_number            | 
+   OK    | B2 isian dikosongkan lalu dikirim -> tracking_number "" (hitung sebagai hapus, §12.18a) | 
+   OK    | B3 kiriman ganda ditahan selama proses, tombol loading, lalu bisa kirim lagi            | 
+   OK    | B4 url memakai id pesanan dari props, tanpa rute karangan lain                          | 
+   OK    | B5 galat server dibaca dari props halaman dan tidak mengunci form                       | 
+   OK    | B6 props server berubah -> isian mengikuti nilai tersimpan terbaru                      | 
+   OK    | B7 kontrol isian sesuai kontrak: name, maxLength, dan tanpa nilai tersembunyi           | 
+
+   RINGKASAN: 7/7 uji lulus
+   $ echo $?  ->  0
+
+==============================================================================
+4) Kontrol negatif A — label beku dirusak sementara
+==============================================================================
+   ### C. Kontrol negatif A (sabotase sementara: label 'Nomor resi' -> 'Nomor Resi Paket')
+   $ sed -i 's/Nomor resi/Nomor Resi Paket/' resources/js/Pages/Admin/Orders/partials/InfoResi.jsx
+   GAGAL | R1 resi terisi: nilai awal isian + baris status `Tersimpan:` + teks beku D12    | label hilang: Nomor resi
+   OK    | R2 `tracking_number` null -> input kosong + `Belum ada nomor resi.` (DoD)       | 
+   OK    | R3 `tracking_number` string kosong -> sama seperti null, tanpa `Tersimpan:`     | 
+   OK    | R4 galat server `errors.tracking_number` tampil di bawah input + aria terhubung | 
+   OK    | R5 galat field lain tidak menempel di isian resi                                | 
+   OK    | R6 pesanan tanpa id / props hilang -> aman, tanpa kontrol mati                  | 
+   OK    | R7 notice lama F5 hilang dan tidak ada teks karangan                            | 
+   OK    | R8 nilai janggal dari server (angka, spasi) tidak menghasilkan NaN/undefined    | 
+   GAGAL | R9 Show mengirim props `pesanan` ke InfoResi (nilai resi dari props server)     | label resi hilang di halaman detail
+   OK    | R10 Show dengan tracking_number null -> isian kosong + status kosong            | 
+   OK    | R11 sapu kotor di semua markup yang sudah diambil                               | 
+
+   RINGKASAN: 9/11 uji lulus
+   $ echo $?  ->  1
+
+==============================================================================
+5) Pemulihan setelah kontrol negatif A
+==============================================================================
+   sisa_tiruan=0
+   md5_setelah_pulih=fe5ad888c3091869a7a8339b38703361
+
+==============================================================================
+6) Kontrol negatif B — URL simpan dirusak sementara
+==============================================================================
+   ### D. Kontrol negatif B (sabotase sementara: URL simpan -> /resi-tiruan)
+   $ sed -i 's|/admin/pesanan/${id}/resi|/admin/pesanan/${id}/resi-tiruan|' resources/js/Pages/Admin/Orders/partials/InfoResi.jsx
+           B1: PATCH /admin/pesanan/5/resi-tiruan {"tracking_number":"JX9988776655"}
+           B2: PATCH /admin/pesanan/5/resi-tiruan {"tracking_number":""}
+           B4: PATCH /admin/pesanan/42/resi-tiruan {"tracking_number":""}
+   GAGAL | B1 kirim resi baru -> PATCH /admin/pesanan/{id}/resi payload tracking_number            | url salah: /admin/pesanan/5/resi-tiruan
+   GAGAL | B2 isian dikosongkan lalu dikirim -> tracking_number "" (hitung sebagai hapus, §12.18a) | url salah: /admin/pesanan/5/resi-tiruan
+   GAGAL | B3 kiriman ganda ditahan selama proses, tombol loading, lalu bisa kirim lagi            | semua kiriman harus ke rute resi yang sama
+   GAGAL | B4 url memakai id pesanan dari props, tanpa rute karangan lain                          | url salah: /admin/pesanan/42/resi-tiruan
+   OK    | B5 galat server dibaca dari props halaman dan tidak mengunci form                       | 
+   OK    | B6 props server berubah -> isian mengikuti nilai tersimpan terbaru                      | 
+   OK    | B7 kontrol isian sesuai kontrak: name, maxLength, dan tanpa nilai tersembunyi           | 
+
+   RINGKASAN: 3/7 uji lulus
+   $ echo $?  ->  1
+
+==============================================================================
+7) Pemulihan setelah kontrol negatif B
+==============================================================================
+   sisa_tiruan=0
+   md5_setelah_pulih=fe5ad888c3091869a7a8339b38703361
+
+==============================================================================
+8) Uji ulang setelah pemulihan
+==============================================================================
+   ### E. Ulang setelah dipulihkan
+   SSR: exit 0
+   AKSI: exit 0
+
+==============================================================================
+9) Regresi harness kartu F5 (uji S6 & H7 diperbarui oleh kartu ini)
+==============================================================================
+   ### F. Regresi harness kartu F5 (uji S6 & H7 diperbarui) : tmp/uji-ssr-pesanan-t_018b2723.mjs
+   === UJI SSR + STATIK kartu t_018b2723 (F5 Admin Pesanan) ===
+   [OK] S1 tidak ada fetch/axios/SPA client di berkas Orders
+   [OK] S2 tidak ada route()/Ziggy, storage, atau dangerouslySetInnerHTML
+   [OK] S3 semua impor relatif ada di disk (kedalaman path benar)
+   [OK] S4 props halaman ⊆ props yang dikirim OrderController (kontrak §12.16/§12.17)
+   [OK] S5 URL literal halaman cocok dengan rute admin.php
+   [OK] S6 tidak ada placeholder; isian resi memakai rute simpan yang ada (F5b t_d1028202)
+   [OK] S7 state galat Index punya pesan konkret + tombol Coba lagi
+   [OK] I1 daftar terisi: kode, pembeli, status, ringkasan, hitung, pager
+   [OK] I2 kosong tanpa filter: ajakan, bukan galat
+   [OK] I3 kosong karena filter: pesan "tidak cocok" + aksi tampilkan semua
+   [OK] I4 props hilang/null: halaman tetap render aman
+   [OK] I5 angka string & nilai null: "-" bukan NaN/undefined
+   [OK] I6 filter terpilih mengikuti props (q, status, bayar, tanggal)
+   [OK] I7 ringkasan hilang: kartu "-" (bukan 0 karangan); meta hilang: "-"
+   [OK] I8 penanganan flash server ada (toast, bukan efek SSR)
+   [OK] H1 detail terisi: pembeli, alamat, item, total, status
+   [OK] H2 status final: tombol nonaktif + penjelasan, tanpa modal terbuka
+   [OK] H3 status tidak final: tombol aktif, modal tetap tertutup
+   [OK] H4 bukti pembayaran: ada -> detail, null -> pesan jelas (bukan galat)
+   [OK] H5 items kosong & catatan kosong punya pesan sendiri
+   [OK] H6 props hilang/null: halaman tetap render aman
+   [OK] H7 isian resi tampil dengan nilai dari props server (F5b t_d1028202)
+   [OK] H8 flash sukses ditangani halaman detail (toast, bukan efek SSR)
+   [OK] M1 modal terbuka: label server, opsi status, tombol simpan
+   [OK] M2 galat server per kolom terhubung aria-describedby
+   [OK] M3 bukti pembayaran tanpa QR: peringatan, bukan galat mati
+
+   TOTAL: 26 uji, 0 gagal
+   $ echo $?  ->  0
+
+==============================================================================
+10) npm run build
+==============================================================================
+   ### G. npm run build
+   [2mpublic/build/[22m[36massets/Index-C5SFKFMO.js            [39m[1m[2m  9.84 kB[22m[1m[22m[2m │ gzip:   3.61 kB[22m
+   [2mpublic/build/[22m[36massets/Dashboard-De8g9Cm9.js        [39m[1m[2m 10.52 kB[22m[1m[22m[2m │ gzip:   3.80 kB[22m
+   [2mpublic/build/[22m[36massets/Index-upoyv10m.js            [39m[1m[2m 11.46 kB[22m[1m[22m[2m │ gzip:   4.12 kB[22m
+   [2mpublic/build/[22m[36massets/CheckoutPay-Dg0neSi4.js      [39m[1m[2m 11.61 kB[22m[1m[22m[2m │ gzip:   3.93 kB[22m
+   [2mpublic/build/[22m[36massets/Index-DJ2P0tTV.js            [39m[1m[2m 11.85 kB[22m[1m[22m[2m │ gzip:   4.12 kB[22m
+   [2mpublic/build/[22m[36massets/Index-QTBVGFcf.js            [39m[1m[2m 11.95 kB[22m[1m[22m[2m │ gzip:   4.33 kB[22m
+   [2mpublic/build/[22m[36massets/Home-BtrdeR97.js             [39m[1m[2m 13.50 kB[22m[1m[22m[2m │ gzip:   4.38 kB[22m
+   [2mpublic/build/[22m[36massets/Show-BMyVOu7Z.js             [39m[1m[2m 14.04 kB[22m[1m[22m[2m │ gzip:   4.82 kB[22m
+   [2mpublic/build/[22m[36massets/ProdukForm-DIk_Owlb.js       [39m[1m[2m 14.70 kB[22m[1m[22m[2m │ gzip:   4.28 kB[22m
+   [2mpublic/build/[22m[36massets/Index-DWMU-q9b.js            [39m[1m[2m 49.86 kB[22m[1m[22m[2m │ gzip:  11.82 kB[22m
+   [2mpublic/build/[22m[36massets/app-B-OUK3pm.js              [39m[1m[2m364.45 kB[22m[1m[22m[2m │ gzip: 114.28 kB[22m
+   [32m✓ built in 14.07s[39m
+   $ echo ${PIPESTATUS[0]}  ->  0
+
+==============================================================================
+11) Bukti kode masuk bundel rilis
+==============================================================================
+   ### L. Kode kartu ini terbukti ada di bundel rilis (public/build)
+   $ grep -rl 'Simpan resi' public/build/assets/
+   public/build/assets/InfoResi-DX6_iCnZ.js
+   $ grep -c '<teks beku>' public/build/assets/InfoResi-DX6_iCnZ.js
+     Simpan resi = 1
+     Belum ada nomor resi. = 1
+     Tersimpan: = 1
+     Isi nomor resi dari ekspedisi setelah paket dikirim. = 1
+     Memproses = 0
+   $ grep -n 'preserveScroll' resources/js/Pages/Admin/Orders/partials/InfoResi.jsx
+   53:                preserveScroll: true,
+   $ ls -la public/build/assets/InfoResi-DX6_iCnZ.js
+   -rw-r--r-- 1 LENOVO 197121 1383 Oct 21 19:05 public/build/assets/InfoResi-DX6_iCnZ.js
+
+==============================================================================
+12) Rute & kontrak backend yang dipakai (tanpa endpoint karangan)
+==============================================================================
+   ### H. Rute & kontrak (backend kartu t_b078318d)
+   $ grep -n 'resi' routes/admin.php
+   138:    // Nomor resi manual (PRD A15, kontrak props §12.18a).
+   139:    Route::patch('/pesanan/{order}/resi', [OrderController::class, 'resi'])
+   141:        ->name('orders.resi');
+   $ grep -n 'function resi' -A 5 app/Http/Controllers/Admin/OrderController.php
+   142:    public function resi(UpdateOrderTrackingRequest $request, Order $order): RedirectResponse
+   143-    {
+   144-        $order->update(['tracking_number' => $request->validated('tracking_number')]);
+   145-
+   146-        return back()->with('success', 'Nomor resi pesanan diperbarui.');
+   147-    }
+   $ grep -n 'rules\|messages\|nullable' app/Http/Requests/Admin/UpdateOrderTrackingRequest.php
+   26:            'tracking_number' => ['nullable', 'string', 'max:60'],
+   36:            'tracking_number.string' => 'Nomor resi harus berupa teks.',
+   37:            'tracking_number.max' => 'Nomor resi maksimal 60 karakter.',
+   $ grep -n 'tracking_number' docs/kontrak-props.md | head -5
+   1373:    "tracking_number": "JX1234567890",
+   1389:`tracking_number` = nomor resi kurir yang diisi manual admin (PRD A15); `null` bila belum diisi.
+   1402:Field: `tracking_number` (opsional, teks, maks 60; kosong/`null` = menghapus nomor resi).
+   1403:Galat: `errors.tracking_number` (`Nomor resi maksimal 60 karakter.` /
+   1404:`Nomor resi harus berupa teks.`). Efek: hanya `orders.tracking_number` yang berubah — status
+
+==============================================================================
+13) Teks beku D12 / keputusan A15 vs implementasi
+==============================================================================
+   ### I. Teks beku D12 (docs/design.md:687 & 869) vs docs/keputusan-a15-resi.md
+   $ grep -n 'Nomor resi\|Simpan resi\|ekspedisi\|Memproses' docs/design.md docs/keputusan-a15-resi.md | head -12
+   docs/design.md:276:State: `hover` (primary → `accent-600`; secondary → `bg-surface`), `active` (`translate-y-px`), `focus-visible` (ring 2px `brand` offset 2px), `disabled` (opacity .45 + `cursor-not-allowed`), `loading` (spinner 16px + label "Memproses…", **lebar dikunci** agar layout tidak melompat).
+   docs/design.md:687:- Isian nomor resi pada kartu **"Pengiriman"** halaman detail pesanan (`InfoResi` di dalam `KartuBagian`, PRD A15; deviasi **D12** §11.3): `Field` + `Input` §4.5 — label `Nomor resi`, nilai awal `pesanan.tracking_number`, maks 60, bantuan `Isi nomor resi dari ekspedisi setelah paket dikirim. Kosongkan untuk menghapus.` (`text-meta text-slate-500` di latar putih kartu), galat server `errors.tracking_number` di bawah input; tombol `Simpan resi` §4.1 `primary` (`disabled` + label "Memproses…" selama proses); baris status `text-meta text-slate-500` — `Belum ada nomor resi.` bila kosong, `Tersimpan: <nomor>` bila terisi; sukses = `flash.success` server. Tanpa komponen, token, atau warna baru; state mengikuti `saving` / `validation-error` baku halaman ini.
+   docs/design.md:869:| D12 | Kartu **"Pengiriman"** pada halaman detail pesanan `/admin/pesanan/{order}` (§5.12) mendapat **isian nomor resi** (PRD A15) yang belum digambar di spesifikasi desain — elemen baru, bukan penyimpangan dari elemen lama | Keputusan techlead kartu `t_394b40ba` (`docs/keputusan-a15-resi.md` §1): kolom `orders.tracking_number` string(60) dengan `null` = belum diisi, rute `PATCH /admin/pesanan/{order}/resi` (`admin.orders.resi`) + `Admin\OrderController@resi`; kontrak `docs/kontrak-props.md` §12.17 (`pesanan.tracking_number`: string atau `null`) dan §12.18a (validasi `nullable` `string` `max:60`, `''` → `null` = menghapus, galat `errors.tracking_number` = `Nomor resi maksimal 60 karakter.` / `Nomor resi harus berupa teks.`); dasar PRD A15 (`docs/PRD.md:375`: "Tidak ada integrasi kurir; nomor resi diisi manual di detail pesanan"); F5 `t_018b2723` hanya bisa merender notice "Nomor resi belum bisa diisi" (`resources/js/Pages/Admin/Orders/partials/InfoResi.jsx:18-21`), jadi bentuk isian belum punya acuan | **Diterima sebagai deviasi — asal PRD A15; keputusan + teks beku kartu `t_394b40ba`; pengerjaan tampilan kartu `t_d1028202` (F5b).** Alasan: A15 adalah permintaan PRD yang belum punya gambaran tampilan, sedangkan F5b sudah menulis kode; tanpa baris ini frontend menulis isian tanpa acuan. Batas: **tanpa token, warna, atau komponen baru** — hanya komponen yang sudah ada: §4.5 `Field` + `Input` (label `Nomor resi`, bantuan `text-meta text-slate-500` di latar putih kartu, galat server `errors.tracking_number` `text-meta text-danger-strong` di bawah input) dan §4.1 `Button` `primary` (`Simpan resi`; `disabled` + label "Memproses…" selama menyimpan); baris status `text-meta text-slate-500` = `Belum ada nomor resi.` (kosong) / `Tersimpan: <nomor>` (terisi). Teks beku tambahan: bantuan `Isi nomor resi dari ekspedisi setelah paket dikirim. Kosongkan untuk menghapus.`. Sukses mengikuti `flash.success` server (§12.18a `Nomor resi pesanan diperbarui.`) — tanpa toast atau state halaman baru; `InlineNotice` lama di `InfoResi.jsx` **dihapus**. Di luar baris ini (belum digambar, usulan `docs/usulan.md` U5): resi tampil di halaman pembeli, tautan lacak kurir, integrasi ekspedisi, riwayat resi |
+   docs/keputusan-a15-resi.md:1:# Keputusan Techlead — Nomor resi manual (PRD A15) — kartu `t_394b40ba`, 21 Okt 2026
+   docs/keputusan-a15-resi.md:19:| Controller | `Admin\OrderController@resi` → hanya `tracking_number` yang diubah; `back()->with('success', 'Nomor resi pesanan diperbarui.')` |
+   docs/keputusan-a15-resi.md:21:| Teks UI (bebas karangan) | label `Nomor resi`; bantuan `Isi nomor resi dari ekspedisi setelah paket dikirim. Kosongkan untuk menghapus.`; baris status `Belum ada nomor resi.` / `Tersimpan: <nomor>`; tombol `Simpan resi`; galat dari server apa adanya |
+   docs/keputusan-a15-resi.md:24:tautan lacak kurir, integrasi API ekspedisi, riwayat perubahan resi. Semuanya menuntut
+   docs/keputusan-a15-resi.md:56:- Tekan "Simpan resi" di browser dengan sesi admin nyata (PATCH end-to-end, toast, galat 422):
+
+==============================================================================
+14) Sapu regresi impor komponen & bundel
+==============================================================================
+   ### J. Sapu regresi impor & bundel
+   $ python tmp/cek-komponen-tanpa-import.py .
+   file diperiksa: 95
+   resources\js\app.jsx: App
+   $ python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build
+   chunk .js diperiksa: 69
+   DropzoneGalery-f9hg_dmT.js -> FREE: P  (import: B, D, a, p, w)
+
+==============================================================================
+15) git status berkas yang disentuh kartu ini
+==============================================================================
+   ### K. Berkas tersentuh kartu ini
+   $ git status --short resources/js/Pages/Admin/Orders/ docs/ tmp/uji-ssr-resi-t_d1028202.mjs tmp/uji-aksi-resi-t_d1028202.mjs
+    M docs/catatan-frontend.md
+    M resources/js/Pages/Admin/Orders/Index.jsx
+   ?? resources/js/Pages/Admin/Orders/Show.jsx
+   ?? resources/js/Pages/Admin/Orders/partials/
+   ?? tmp/akhir-t_2de36f29.txt
+   ?? tmp/anak-t_321bf03c.py
+   ?? tmp/append-f2.py
+   ?? tmp/b-baru-t_321bf03c.txt
+   ?? tmp/baca-kartu-t_2de36f29.py
+   ?? tmp/build-final-t_7ebfca05.txt
+   ?? tmp/build-t_2de36f29.txt
+   ?? tmp/build-t_321bf03c.txt
+   ?? tmp/build-t_5988a39e.txt
+   ?? tmp/build-t_7ebfca05.txt
+   ?? tmp/cek-badge-keranjang-t_7ebfca05.mjs
+   ?? tmp/cek-jam-t_2de36f29.py
+   ?? tmp/daftar-kartu-t_2de36f29.out.txt
+   ?? tmp/daftar-kartu-t_2de36f29.py
+   ?? tmp/dump-kartu-baca-t_321bf03c.py
+   ?? tmp/dump-kartu-t_321bf03c.py
+
+==============================================================================
+16) Bukti berkas lain (Components/kontrak/design) bukan keluaran kartu ini
+==============================================================================
+   ### N. Bukti berkas lain tidak disentuh kartu ini (mtime + konvensi form)
+   $ ls -la --time-style=full-iso (mtime berkas yang muncul di git diff vs berkas kartu ini)
+   -rw-r--r-- 1 LENOVO 197121 79064 2026-10-21 18:39:00.627911800 +0700 docs/design.md
+   -rw-r--r-- 1 LENOVO 197121 68741 2026-10-21 18:59:07.353209700 +0700 docs/kontrak-props.md
+   -rw-r--r-- 1 LENOVO 197121  2496 2026-10-21 19:03:03.789413800 +0700 resources/js/Components/Countdown.jsx
+   -rw-r--r-- 1 LENOVO 197121  8254 2026-10-21 19:06:09.591017600 +0700 resources/js/Components/QrisPanel.jsx
+   -rw-r--r-- 1 LENOVO 197121  3230 2026-10-21 19:04:56.793350400 +0700 resources/js/Pages/Admin/Orders/partials/InfoResi.jsx
+   -rw-r--r-- 1 LENOVO 197121 11050 2026-10-21 18:56:49.089729100 +0700 resources/js/Pages/Admin/Orders/Show.jsx
+
+   Kartu ini (F5b) mulai running 21 Okt 2026 18:48:54 (event kanban run_id 86).
+   Perubahan Components/Countdown.jsx + QrisPanel.jsx + kontrak + design berasal dari kartu lain
+   (F2 t_e60e7733 midtrans, backend t_b078318d, uiux t_0729c67f) — bukan keluaran kartu ini.
+
+   $ git diff -- resources/js/Components/QrisPanel.jsx | head -8
+   diff --git a/resources/js/Components/QrisPanel.jsx b/resources/js/Components/QrisPanel.jsx
+   index 04c34e1..ca567b9 100644
+   --- a/resources/js/Components/QrisPanel.jsx
+   +++ b/resources/js/Components/QrisPanel.jsx
+   @@ -1,5 +1,6 @@
+    import React, { useState } from 'react';
+    import { cn, formatDateTime, rupiah } from '../lib/format';
+   +import { midtransMode } from '../lib/midtrans';
+
+   $ grep -rn 'noValidate' resources/js/Pages/Admin/ | wc -l   (konvensi form admin: noValidate)
+   7
+   $ grep -rn 'noValidate' resources/js/Pages/Admin/Orders/partials/InfoResi.jsx
+   61:        <form className="flex flex-col gap-4" onSubmit={kirim} noValidate>
+
+==============================================================================
+17) Perintah yang dijalankan (keluaran mentah ada di tmp/log-bukti-t_d1028202/)
+==============================================================================
+   $ bash tmp/jalankan-uji-t_d1028202.sh          # pengumpul seluruh bukti di bawah
+   $ ./node_modules/@esbuild/win32-x64/esbuild.exe tmp/uji-ssr-resi-t_d1028202.mjs --bundle \
+       --platform=node --format=esm --jsx=automatic --packages=external \
+       --outfile=tmp/uji-ssr-resi-t_d1028202.bundle.mjs \
+       --alias:@inertiajs/react=./tmp/stub-inertia-t_321bf03c.mjs
+   $ node tmp/uji-ssr-resi-t_d1028202.bundle.mjs
+   $ ./node_modules/@esbuild/win32-x64/esbuild.exe tmp/uji-aksi-resi-t_d1028202.mjs --bundle \
+       --platform=node --format=esm --jsx=automatic --packages=external \
+       --outfile=tmp/uji-aksi-resi-t_d1028202.bundle.mjs \
+       --alias:react/jsx-runtime=./tmp/shim-jsx-runtime-t_321bf03c.mjs \
+       --alias:react=./tmp/shim-react-t_321bf03c.mjs \
+       --alias:@inertiajs/react=./tmp/stub-inertia-t_321bf03c.mjs
+   $ node tmp/uji-aksi-resi-t_d1028202.bundle.mjs
+   $ npm run build
+   $ python tmp/cek-komponen-tanpa-import.py .
+   $ python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build
+
+==============================================================================
+18) Yang belum diuji (butuh browser / sesi admin nyata)
+==============================================================================
+   - Tata letak nyata 360/768/1024/1280 px, urutan tab & fokus keyboard, zoom 200%,
+     kontras terukur di layar pada kartu "Pengiriman".
+   - Kiriman resi end-to-end dari UI ke DB (butuh sesi admin + CSRF + migrasi kolom
+     `orders.tracking_number` yang masih Pending menurut docs/langkah-pemilik.md).
+     Harness membuktikan kontrak pemanggilan (URL, payload, preserveScroll) dan tampilan;
+     bukan integrasi server.
+   - Bundel rilis di atas dibangun 19:0x saat kartu frontend lain (F2 t_e60e7733) juga
+     menulis resources/js/Components/**; build bersih terakhir sebaiknya diulang setelah
+     semua penulis berhenti.

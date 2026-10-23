@@ -1,0 +1,4 @@
+{'id': 't_2de36f29', 'assignee': 'frontenddeveloper', 'status': 'running', 'started_at': 1792581878, 'last_heartbeat_at': 1792583425, 'workspace_kind': 'dir', 'workspace_path': 'C:\\Users\\LENOVO\\Downloads\\toko-kulot'}
+{'id': 't_d1028202', 'assignee': 'frontenddeveloper', 'status': 'running', 'started_at': 1792583334, 'last_heartbeat_at': 1792583434, 'workspace_kind': 'dir', 'workspace_path': 'C:\\Users\\LENOVO\\Downloads\\toko-kulot'}
+--- kartu F6 saya ---
+{'id': 't_2de36f29', 'status': 'running', 'started_at': 1792581878, 'last_heartbeat_at': 1792583425, 'workspace_kind': 'dir', 'workspace_path': 'C:\\Users\\LENOVO\\Downloads\\toko-kulot', 'branch_name': None}

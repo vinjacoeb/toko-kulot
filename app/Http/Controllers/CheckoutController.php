@@ -11,6 +11,7 @@ use App\Models\Review;
 use App\Services\CartService;
 use App\Services\MidtransService;
 use App\Services\OrderService;
+use App\Services\ReviewService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,6 +31,7 @@ class CheckoutController extends Controller
         private readonly CartService $carts,
         private readonly OrderService $orders,
         private readonly MidtransService $midtrans,
+        private readonly ReviewService $reviews,
     ) {}
 
     public function index(Request $request): Response|RedirectResponse
@@ -55,7 +57,7 @@ class CheckoutController extends Controller
                 'note' => null,
             ],
             'pembayaran' => $this->paymentMethodPayload(),
-            'midtrans' => $this->midtransClientPayload(),
+            'midtrans' => $this->midtrans->modeInfo(),
         ]);
     }
 
@@ -93,15 +95,28 @@ class CheckoutController extends Controller
             return redirect()->route('checkout.success', $order);
         }
 
+        // Tagihan mode uji yang tertinggal dibuat ulang ke baris `payments` yang
+        // sama sebelum halaman dirender (kontrak §7.7). Gagal menghubungi
+        // Midtrans → halaman tetap tampil, tagihan lama tidak diubah.
+        $galat = null;
+
+        if ($this->midtrans->needsRegeneration($payment)) {
+            try {
+                $payment = $this->midtrans->regenerateCharge($payment, $order);
+            } catch (CheckoutException $exception) {
+                $galat = $exception->getMessage();
+            }
+        }
+
         return Inertia::render('Public/CheckoutPay', [
             'pesanan' => $this->orderPayload($order),
-            'pembayaran' => $this->paymentPayload($payment),
-            'midtrans' => $this->midtransClientPayload(),
+            'pembayaran' => $this->paymentPayload($payment, $galat),
+            'midtrans' => $this->midtrans->modeInfo(),
         ]);
     }
 
     /**
-     * Polling status pembayaran oleh halaman bayar (kontrak §7.7).
+     * Polling status pembayaran oleh halaman bayar (kontrak §7.7, §7.8).
      */
     public function status(Request $request, Order $order): JsonResponse
     {
@@ -109,16 +124,26 @@ class CheckoutController extends Controller
 
         $payment = $order->payment;
 
-        if ($payment && $payment->status === Order::PAYMENT_PENDING && ! $this->midtrans->isFake()) {
-            try {
+        if ($payment && $payment->status === Order::PAYMENT_PENDING) {
+            // Tagihan mode uji dibuat ulang dulu (kontrak §7.8) supaya QRIS yang
+            // sedang ditampilkan benar-benar bisa dibayar.
+            if ($this->midtrans->needsRegeneration($payment)) {
+                try {
+                    $payment = $this->midtrans->regenerateCharge($payment, $order);
+                } catch (CheckoutException $exception) {
+                    Log::warning('Pembuatan ulang tagihan mode uji gagal', [
+                        'order' => $order->code,
+                        'error' => $exception->getMessage(),
+                    ]);
+                }
+            }
+
+            // Tagihan mode uji tidak ditanyakan ke Midtrans; kegagalan jaringan
+            // ditangani di dalam syncStatus (best effort, tanpa 500).
+            if (! $this->midtrans->isFake() && ! $this->midtrans->isFakeCharge($payment)) {
                 $this->midtrans->syncStatus($payment);
                 $payment->refresh();
                 $order->refresh();
-            } catch (\Throwable $exception) {
-                Log::warning('Sinkronisasi status Midtrans gagal', [
-                    'order' => $order->code,
-                    'error' => $exception->getMessage(),
-                ]);
             }
         }
 
@@ -147,10 +172,23 @@ class CheckoutController extends Controller
             ->map(fn ($id) => (int) $id)
             ->all();
 
+        // `boleh` = server akan menerima minimal satu kiriman ulasan sekarang
+        // (§7.9): syarat status yang boleh dinilai diambil dari satu sumber aturan
+        // §9.1 — ReviewService::isEligible, bukan daftar status yang disalin —
+        // dan masih ada `product_id` unik pesanan ini yang belum diulas; jadi
+        // pesanan multi-produk yang baru sebagian diulas tetap `boleh = true`.
+        $belumDiulas = $order->items
+            ->pluck('product_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->reject(fn (int $id): bool => in_array($id, $reviewedProductIds, true))
+            ->values()
+            ->all();
+
         return Inertia::render('Public/CheckoutSuccess', [
             'pesanan' => $this->orderPayload($order),
             'ulasan' => [
-                'boleh' => $reviewedProductIds === [],
+                'boleh' => $belumDiulas !== [] && $this->reviews->isEligible($order),
                 'sudah' => $reviewedProductIds,
             ],
         ]);
@@ -231,9 +269,10 @@ class CheckoutController extends Controller
     }
 
     /**
+     * @param  string|null  $galat  Pesan galat siap tampil bila pembuatan ulang tagihan gagal.
      * @return array<string, mixed>
      */
-    private function paymentPayload(?Payment $payment): array
+    private function paymentPayload(?Payment $payment, ?string $galat = null): array
     {
         return [
             'method' => 'qris',
@@ -245,7 +284,8 @@ class CheckoutController extends Controller
             'gross_amount' => (int) ($payment?->gross_amount ?? 0),
             'expires_at' => $payment?->expires_at?->toIso8601String(),
             'paid_at' => $payment?->paid_at?->toIso8601String(),
-            'fake' => $this->midtrans->isFake(),
+            'fake' => $this->midtrans->isFakeCharge($payment),
+            'galat' => $galat,
         ];
     }
 
@@ -257,22 +297,7 @@ class CheckoutController extends Controller
         return [
             'method' => 'qris',
             'label' => 'QRIS (semua e-wallet & m-banking)',
-            'expiry_minutes' => (int) config('midtrans.expiry_minutes', 15),
-        ];
-    }
-
-    /**
-     * Data untuk memuat snap.js di halaman bayar. Client key aman dipublikasikan;
-     * server key tidak pernah dikirim ke browser.
-     *
-     * @return array<string, mixed>
-     */
-    private function midtransClientPayload(): array
-    {
-        return [
-            'client_key' => $this->midtrans->isFake() ? null : (string) config('midtrans.client_key'),
-            'is_production' => (bool) config('midtrans.is_production'),
-            'fake' => $this->midtrans->isFake(),
+            'expiry_minutes' => $this->midtrans->expiryMinutes(),
         ];
     }
 }

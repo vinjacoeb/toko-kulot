@@ -2,29 +2,38 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exceptions\CheckoutException;
+use App\Exceptions\OrderStatusException;
 use App\Http\Controllers\Admin\Concerns\ListProps;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateOrderStatusRequest;
-use App\Exceptions\OrderStatusException;
+use App\Http\Requests\Admin\UpdateOrderTrackingRequest;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Services\MidtransService;
 use App\Services\OrderService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Pesanan admin — daftar, detail, dan perubahan status (PRD §5.2, §7, kontrak props §12.16–§12.18).
+ * Pesanan admin — daftar, detail, perubahan status, nomor resi (PRD §5.2, §7, A15;
+ * kontrak props §12.16–§12.18a), dan sinkronisasi status pembayaran (§12.24).
  *
- * Perubahan status (termasuk pengembalian stok saat batal) dikerjakan OrderService.
+ * Perubahan status (termasuk pengembalian stok saat batal) dikerjakan OrderService;
+ * penerapan status transaksi Midtrans dikerjakan MidtransService (satu jalur dengan webhook).
  */
 class OrderController extends Controller
 {
     use ListProps;
 
-    public function __construct(private readonly OrderService $orders) {}
+    public function __construct(
+        private readonly OrderService $orders,
+        private readonly MidtransService $midtrans,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -132,6 +141,72 @@ class OrderController extends Controller
     }
 
     /**
+     * Simpan nomor resi manual (PRD A15, kontrak props §12.18a).
+     *
+     * Hanya kolom `orders.tracking_number` yang berubah; status pesanan, stok, dan
+     * pembayaran tidak tersentuh. Kosong/`null` menghapus nomor resi.
+     */
+    public function resi(UpdateOrderTrackingRequest $request, Order $order): RedirectResponse
+    {
+        $order->update(['tracking_number' => $request->validated('tracking_number')]);
+
+        return back()->with('success', 'Nomor resi pesanan diperbarui.');
+    }
+
+    /**
+     * Sinkronkan status pembayaran langsung dari Midtrans (kontrak props §12.24).
+     *
+     * Dipakai saat webhook tidak bisa masuk (pengembangan lokal). Tidak menulis ke
+     * `payments`/`orders`/stok sendiri: penerapan status lewat `MidtransService`, jalur
+     * yang sama dengan webhook, sehingga idempoten dan status final tidak pernah mundur.
+     *
+     * Gagal menghubungi Midtrans → `flash.error`, bukan 500; status tersimpan tidak berubah.
+     */
+    public function syncPayment(Order $order): RedirectResponse
+    {
+        $order->loadMissing('payment');
+        $payment = $order->payment;
+
+        if ($payment === null) {
+            return back()->with('error', 'Pesanan ini belum punya tagihan pembayaran, jadi status tidak bisa disinkronkan.');
+        }
+
+        if ($order->payment_status === Order::PAYMENT_SETTLEMENT) {
+            return back()->with('success', 'Pembayaran sudah lunas, sinkronisasi tidak perlu dijalankan.');
+        }
+
+        if ($this->midtrans->isFake() || $this->midtrans->isFakeCharge($payment)) {
+            return back()->with('error', 'Mode uji Midtrans: status tidak bisa disinkronkan.');
+        }
+
+        $statusBefore = (string) $order->payment_status;
+        $orderStatusBefore = (string) $order->status;
+
+        try {
+            $this->midtrans->syncStatusOrFail($payment);
+        } catch (CheckoutException) {
+            return back()->with('error', 'Gagal memeriksa status pembayaran. Coba lagi.');
+        }
+
+        $order->refresh();
+
+        $statusAfter = (string) $order->payment_status;
+        $orderStatusAfter = (string) $order->status;
+
+        Log::info('Admin menyinkronkan status pembayaran dari Midtrans.', [
+            'order' => $order->code,
+            'payment' => $statusBefore.' -> '.$statusAfter,
+            'order_status' => $orderStatusBefore.' -> '.$orderStatusAfter,
+        ]);
+
+        if ($statusAfter !== $statusBefore) {
+            return back()->with('success', 'Status pembayaran diperbarui dari '.$this->paymentLabel($statusBefore).' ke '.$this->paymentLabel($statusAfter).'.');
+        }
+
+        return back()->with('success', 'Status pembayaran tidak berubah: '.$this->paymentLabel($statusAfter).'.');
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function row(Order $order): array
@@ -174,6 +249,7 @@ class OrderController extends Controller
             'total' => (int) $order->total,
             'payment_method' => $order->payment_method,
             'notes' => $order->notes,
+            'tracking_number' => $order->tracking_number,
             'customer' => [
                 'name' => $order->customer_name,
                 'phone' => $order->customer_phone,

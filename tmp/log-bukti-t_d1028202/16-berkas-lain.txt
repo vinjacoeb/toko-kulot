@@ -1,0 +1,27 @@
+### N. Bukti berkas lain tidak disentuh kartu ini (mtime + konvensi form)
+$ ls -la --time-style=full-iso (mtime berkas yang muncul di git diff vs berkas kartu ini)
+-rw-r--r-- 1 LENOVO 197121 79064 2026-10-21 18:39:00.627911800 +0700 docs/design.md
+-rw-r--r-- 1 LENOVO 197121 68741 2026-10-21 18:59:07.353209700 +0700 docs/kontrak-props.md
+-rw-r--r-- 1 LENOVO 197121  2496 2026-10-21 19:03:03.789413800 +0700 resources/js/Components/Countdown.jsx
+-rw-r--r-- 1 LENOVO 197121  8254 2026-10-21 19:06:09.591017600 +0700 resources/js/Components/QrisPanel.jsx
+-rw-r--r-- 1 LENOVO 197121  3230 2026-10-21 19:04:56.793350400 +0700 resources/js/Pages/Admin/Orders/partials/InfoResi.jsx
+-rw-r--r-- 1 LENOVO 197121 11050 2026-10-21 18:56:49.089729100 +0700 resources/js/Pages/Admin/Orders/Show.jsx
+
+Kartu ini (F5b) mulai running 21 Okt 2026 18:48:54 (event kanban run_id 86).
+Perubahan Components/Countdown.jsx + QrisPanel.jsx + kontrak + design berasal dari kartu lain
+(F2 t_e60e7733 midtrans, backend t_b078318d, uiux t_0729c67f) — bukan keluaran kartu ini.
+
+$ git diff -- resources/js/Components/QrisPanel.jsx | head -8
+diff --git a/resources/js/Components/QrisPanel.jsx b/resources/js/Components/QrisPanel.jsx
+index 04c34e1..ca567b9 100644
+--- a/resources/js/Components/QrisPanel.jsx
++++ b/resources/js/Components/QrisPanel.jsx
+@@ -1,5 +1,6 @@
+ import React, { useState } from 'react';
+ import { cn, formatDateTime, rupiah } from '../lib/format';
++import { midtransMode } from '../lib/midtrans';
+
+$ grep -rn 'noValidate' resources/js/Pages/Admin/ | wc -l   (konvensi form admin: noValidate)
+7
+$ grep -rn 'noValidate' resources/js/Pages/Admin/Orders/partials/InfoResi.jsx
+61:        <form className="flex flex-col gap-4" onSubmit={kirim} noValidate>

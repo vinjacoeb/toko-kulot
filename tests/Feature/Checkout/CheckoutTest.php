@@ -28,6 +28,10 @@ class CheckoutTest extends TestCase
 
     private int $variantId = 0;
 
+    private int $productId2 = 0;
+
+    private int $variantId2 = 0;
+
     private User $user;
 
     protected function setUp(): void
@@ -40,7 +44,7 @@ class CheckoutTest extends TestCase
         config([
             'midtrans.fake' => true,
             'midtrans.server_key' => 'test-server-key',
-            'midtrans.expiry_minutes' => 15,
+            'midtrans.expiry_minutes' => 5,
         ]);
 
         Setting::create([
@@ -81,8 +85,30 @@ class CheckoutTest extends TestCase
             'is_active' => true,
         ]);
 
+        // Produk kedua: dibutuhkan test regresi `ulasan.boleh` §7.9
+        // (pesanan multi-produk yang baru sebagian diulas).
+        $product2 = Product::create([
+            'category_id' => $category->id,
+            'name' => '[CONTOH] Daster Kulot Lengan Panjang',
+            'slug' => 'contoh-daster-kulot-lengan-panjang',
+            'base_price' => 95000,
+            'is_active' => true,
+        ]);
+
+        $variant2 = ProductVariant::create([
+            'product_id' => $product2->id,
+            'size' => 'M',
+            'color' => 'Biru',
+            'sku' => 'CONTOH-M-BIRU',
+            'price_delta' => 0,
+            'stock' => 10,
+            'is_active' => true,
+        ]);
+
         $this->productId = (int) $product->id;
         $this->variantId = (int) $variant->id;
+        $this->productId2 = (int) $product2->id;
+        $this->variantId2 = (int) $variant2->id;
     }
 
     private function isiKeranjang(int $qty = 2): void
@@ -92,6 +118,42 @@ class CheckoutTest extends TestCase
             'variant_id' => $this->variantId,
             'qty' => $qty,
         ])->assertSessionHas('success');
+    }
+
+    private function isiKeranjangDuaProduk(int $qty = 1): void
+    {
+        $this->isiKeranjang($qty);
+
+        $this->post('/keranjang', [
+            'product_id' => $this->productId2,
+            'variant_id' => $this->variantId2,
+            'qty' => $qty,
+        ])->assertSessionHas('success');
+    }
+
+    /**
+     * Pesanan dua produk yang sudah lunas (settlement → status `dibayar`).
+     */
+    private function pesananDuaProdukLunas(): Order
+    {
+        $this->isiKeranjangDuaProduk();
+        $this->post('/checkout', $this->dataCheckout());
+
+        $order = Order::query()->firstOrFail();
+
+        $this->kirimNotifikasi($order, 'settlement', '200')->assertOk();
+
+        return $order->refresh();
+    }
+
+    /**
+     * Kirim ulasan lewat rute pembeli (kontrak §9.1).
+     *
+     * @param  array<int, array{product_id: int, rating: int, comment?: string|null}>  $items
+     */
+    private function kirimUlasan(Order $order, array $items): \Illuminate\Testing\TestResponse
+    {
+        return $this->post('/checkout/'.$order->id.'/ulasan', ['ulasan' => $items]);
     }
 
     /**
@@ -196,6 +258,20 @@ class CheckoutTest extends TestCase
             'customer_address',
             'customer_city',
             'customer_postal_code',
+        ]);
+
+        $this->assertDatabaseCount('orders', 0);
+    }
+
+    public function test_validasi_kota_lebih_dari_100_karakter_memakai_pesan_indonesia(): void
+    {
+        $this->isiKeranjang(1);
+
+        $data = $this->dataCheckout();
+        $data['customer_city'] = str_repeat('A', 101);
+
+        $this->post('/checkout', $data)->assertSessionHasErrors([
+            'customer_city' => 'Kota/kecamatan maksimal 100 karakter.',
         ]);
 
         $this->assertDatabaseCount('orders', 0);
@@ -361,6 +437,151 @@ class CheckoutTest extends TestCase
                 ->where('pesanan.payment_status', Order::PAYMENT_SETTLEMENT)
                 ->where('ulasan.boleh', true)
                 ->where('ulasan.sudah', [])
+            );
+    }
+
+    // --- Regresi `ulasan.boleh` §7.9 (kartu `t_45344e00`) --------------------
+
+    /**
+     * (1) Belum ada ulasan → `boleh = true`.
+     */
+    public function test_ulasan_boleh_true_bila_belum_ada_ulasan(): void
+    {
+        $order = $this->pesananDuaProdukLunas();
+
+        $this->assertDatabaseCount('reviews', 0);
+
+        $this->get('/checkout/'.$order->id.'/selesai')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Public/CheckoutSuccess', false)
+                ->where('pesanan.payment_status', Order::PAYMENT_SETTLEMENT)
+                ->where('pesanan.status', Order::STATUS_PAID)
+                ->where('ulasan.boleh', true)
+                ->where('ulasan.sudah', [])
+            );
+    }
+
+    /**
+     * (2) 1 dari 2 produk diulas → `boleh = true` (kasus yang gagal sebelum perbaikan).
+     */
+    public function test_ulasan_boleh_true_bila_baru_sebagian_produk_diulas(): void
+    {
+        $order = $this->pesananDuaProdukLunas();
+
+        $this->kirimUlasan($order, [
+            ['product_id' => $this->productId, 'rating' => 5, 'comment' => 'Bahan adem, jahitan rapi.'],
+        ])
+            ->assertRedirect(route('checkout.success', $order))
+            ->assertSessionHas('success', 'Terima kasih, penilaian Anda sudah tersimpan.');
+
+        $this->assertDatabaseCount('reviews', 1);
+        $this->assertDatabaseHas('reviews', [
+            'order_id' => $order->id,
+            'product_id' => $this->productId,
+        ]);
+
+        // Produk kedua belum diulas dan server masih menerimanya (§9.1).
+        $this->get('/checkout/'.$order->id.'/selesai')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Public/CheckoutSuccess', false)
+                ->where('ulasan.boleh', true)
+                ->where('ulasan.sudah', [$this->productId])
+            );
+    }
+
+    /**
+     * (3) Semua produk sudah diulas → `boleh = false` + `sudah` lengkap.
+     */
+    public function test_ulasan_boleh_false_bila_semua_produk_sudah_diulas(): void
+    {
+        $order = $this->pesananDuaProdukLunas();
+
+        $this->kirimUlasan($order, [
+            ['product_id' => $this->productId, 'rating' => 4],
+        ])->assertSessionHas('success');
+
+        // Produk sisa tetap diterima server — dasar definisi `boleh` §7.9.
+        $this->kirimUlasan($order, [
+            ['product_id' => $this->productId2, 'rating' => 5, 'comment' => 'Sesuai foto.'],
+        ])->assertSessionHas('success');
+
+        $this->assertDatabaseCount('reviews', 2);
+
+        // Kontrol negatif: mengulas produk yang sudah dinilai ditolak (§9.1).
+        $this->kirimUlasan($order, [
+            ['product_id' => $this->productId, 'rating' => 3],
+        ])->assertSessionHasErrors(['ulasan.0.product_id']);
+
+        $this->assertDatabaseCount('reviews', 2);
+
+        $this->get('/checkout/'.$order->id.'/selesai')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Public/CheckoutSuccess', false)
+                ->where('ulasan.boleh', false)
+                ->where('ulasan.sudah', [$this->productId, $this->productId2])
+            );
+    }
+
+    /**
+     * (4) Order `settlement` + status pesanan `batal` → `boleh = false`.
+     */
+    public function test_ulasan_boleh_false_bila_status_pesanan_batal(): void
+    {
+        $order = $this->pesananDuaProdukLunas();
+
+        // Status pesanan bisa berpindah ke `batal` setelah lunas (Order::nextStatuses()
+        // selalu menawarkan `batal`) tanpa mengubah `payment_status`.
+        $order->update(['status' => Order::STATUS_CANCELLED]);
+        $order->refresh();
+
+        $this->assertSame(Order::PAYMENT_SETTLEMENT, $order->payment_status);
+        $this->assertSame(Order::STATUS_CANCELLED, $order->status);
+
+        // Kontrol negatif: server menolak kiriman ulasan pada status ini (§9.1),
+        // jadi props tidak boleh menjanjikan sebaliknya.
+        $this->kirimUlasan($order, [
+            ['product_id' => $this->productId, 'rating' => 5],
+        ])
+            ->assertRedirect(route('checkout.success', $order))
+            ->assertSessionHas('error', 'Ulasan bisa dikirim setelah pembayaran berhasil.');
+
+        $this->assertDatabaseCount('reviews', 0);
+
+        $this->get('/checkout/'.$order->id.'/selesai')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Public/CheckoutSuccess', false)
+                ->where('pesanan.payment_status', Order::PAYMENT_SETTLEMENT)
+                ->where('pesanan.status', Order::STATUS_CANCELLED)
+                ->where('ulasan.boleh', false)
+                ->where('ulasan.sudah', [])
+            );
+    }
+
+    /**
+     * (5) Pesanan satu produk yang sudah diulas → `boleh = false`.
+     */
+    public function test_ulasan_boleh_false_bila_pesanan_satu_produk_sudah_diulas(): void
+    {
+        $this->isiKeranjang(1);
+        $this->post('/checkout', $this->dataCheckout());
+        $order = Order::query()->firstOrFail();
+
+        $this->kirimNotifikasi($order, 'settlement', '200')->assertOk();
+
+        $this->kirimUlasan($order, [
+            ['product_id' => $this->productId, 'rating' => 5, 'comment' => 'Mantap.'],
+        ])->assertSessionHas('success');
+
+        $this->get('/checkout/'.$order->id.'/selesai')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Public/CheckoutSuccess', false)
+                ->where('ulasan.boleh', false)
+                ->where('ulasan.sudah', [$this->productId])
             );
     }
 

@@ -1,0 +1,113 @@
+DB C:\Users\LENOVO\AppData\Local\hermes\kanban\boards\toko-kulot\kanban.db
+  tabel: ['tasks', 'task_links', 'task_comments', 'sqlite_sequence', 'task_events', 'task_runs', 'task_attachments', 'kanban_notify_subs']
+DB C:\Users\LENOVO\AppData\Local\hermes\kanban.db
+  tabel: ['tasks', 'task_links', 'task_comments', 'sqlite_sequence', 'task_events', 'task_runs', 'task_attachments', 'kanban_notify_subs']
+DB C:\Users\LENOVO\AppData\Local\hermes\kanban\boards\toko-kulot\kanban.db
+  tabel: ['tasks', 'task_links', 'task_comments', 'sqlite_sequence', 'task_events', 'task_runs', 'task_attachments', 'kanban_notify_subs']
+======================================================================
+t_321bf03c | frontenddeveloper | running | F4: /admin/stok - daftar stok + riwayat pergerakan
+======================================================================
+BODY:
+Bug pemilik (butir 4): /admin/stok masih placeholder -> daftar stok + riwayat pergerakan belum ada.
+Bukti: docs/review.md F-4 (Stocks/Index.jsx 25 baris memakai prop `stok` lokal yang tidak ada; Admin/Stocks/History belum ada; StockController.php:71-81, kontrak §12.12-12.15).
+Kerjakan: Index (daftar varian + stok + nilai minimum + search + filter + pagination `stok{data,links,meta}`, aksi tambah/kurangi/set stok) dan History (riwayat pergerakan dengan filter tipe/tanggal + pagination, tampilkan stok sebelum -> sesudah).
+Baca docs/brief-frontenddeveloper.md, docs/review.md F-4, docs/kontrak-props.md §12.12-12.15, docs/design.md §5.8, aturan kerja agent di docs/PRD.md (R1-R15).
+Output: resources/js/Pages/Admin/Stocks/{Index,History}.jsx, docs/catatan-frontend.md.
+DoD: semua aksi memakai rute admin.stok.* yang sudah ada; pesan validasi server tampil; kolom rendah-stok mengikuti aturan kontrak §12.12; `npm run build` sukses.
+DoD-2: JANGAN mengubah resources/js/Components/* bersama (F3/F5 memakai berkas yang sama); komponen lokal bila perlu + catat di docs/catatan-frontend.md.
+Block bila: aturan bisnis stok (mis. boleh minus atau tidak) tidak jelas di PRD/kontrak -> catat asumsi di docs/catatan-frontend.md dan lanjut mengikuti perilaku server.
+Rantai: lanjutan F3 (F1->F3->F4->F5->F2->F6); jangan `npm run build` paralel dengan kartu frontend lain.
+
+KOLOM LAIN:
+  id = t_321bf03c
+  assignee = frontenddeveloper
+  status = running
+  priority = 0
+  created_by = techlead
+  created_at = 1792566468
+  started_at = 1792569520
+  completed_at = None
+  workspace_kind = dir
+  workspace_path = C:\Users\LENOVO\Downloads\toko-kulot
+  branch_name = None
+  project_id = None
+  claim_lock = DESKTOP-5MKFQIA:16704
+  claim_expires = 1792572999
+  tenant = None
+  result = None
+  idempotency_key = None
+  consecutive_failures = 0
+  worker_pid = 13944
+  worker_started_at = |179257147294
+  last_failure_error = None
+  max_runtime_seconds = None
+  last_heartbeat_at = 1792572099
+  current_run_id = 77
+  workflow_template_id = None
+  current_step_key = None
+  skills = None
+  model_override = None
+  provider_override = None
+  reasoning_effort = None
+  max_retries = None
+  goal_mode = 0
+  goal_max_turns = None
+  session_id = 20261021_135850_253d10
+  block_kind = None
+  block_recurrences = 0
+  completion_contract = local-only
+======================================================================
+(tabel comments tidak ada)
+--- task_comments (['id', 'task_id', 'author', 'body', 'created_at']) ---
+
+(tabel events tidak ada)
+--- task_events (['id', 'task_id', 'run_id', 'kind', 'payload', 'created_at']) ---
+{'id': 1292, 'task_id': 't_321bf03c', 'run_id': None, 'kind': 'created', 'payload': '{"assignee": "frontenddeveloper", "status": "todo", "parents": ["t_5988a39e"], "creator_task_id": "t_15531332", "tenant": null, "workspace_kind": "dir", "workspace_path": "C:\\\\Users\\\\LENOVO\\\\Downloads\\\\toko-kulot", "branch_name": null, "project_id": null, "skills": null, "goal_mode": null, "model_override": null, "provider_override": null}', 'created_at': 1792566468}
+{'id': 1293, 'task_id': 't_321bf03c', 'run_id': None, 'kind': 'dependency_wait', 'payload': '{"reason": "parent_not_done", "parent": "t_5988a39e"}', 'created_at': 1792566468}
+{'id': 1423, 'task_id': 't_321bf03c', 'run_id': None, 'kind': 'promoted', 'payload': None, 'created_at': 1792569467}
+{'id': 1424, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'claimed', 'payload': '{"lock": "DESKTOP-5MKFQIA:16704", "expires": 1792570420, "run_id": 74}', 'created_at': 1792569520}
+{'id': 1425, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'spawned', 'payload': '{"pid": 11520, "started_at": "|179256952231"}', 'created_at': 1792569522}
+{'id': 1426, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792569560}
+{'id': 1427, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792569621}
+{'id': 1428, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792569681}
+{'id': 1429, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792569741}
+{'id': 1430, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792569802}
+{'id': 1431, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792569862}
+{'id': 1432, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792569957}
+{'id': 1433, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792570017}
+{'id': 1434, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792570082}
+{'id': 1435, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792570157}
+{'id': 1436, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792570220}
+{'id': 1437, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792570281}
+{'id': 1438, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792570375}
+{'id': 1439, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792570437}
+{'id': 1440, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792570499}
+{'id': 1441, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792570559}
+{'id': 1442, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792570630}
+{'id': 1443, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792570706}
+{'id': 1444, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792570766}
+{'id': 1445, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792570827}
+{'id': 1446, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792570946}
+{'id': 1447, 'task_id': 't_321bf03c', 'run_id': 74, 'kind': 'protocol_violation', 'payload': '{"pid": 11520, "claimer": "DESKTOP-5MKFQIA:16704", "exit_code": 0, "protocol_violation": true, "worker_output": ";255;248;220mQuota: 0/1000000000 tokens (0.0%)\\u001b[0m \\u001b[38;2;255;248;220mexp_date: 2026-11-17T06:12:53.239Z\\u001b[0m \\u001b[1;38;2;255;215;0m\\u001b[0m ⚠️ Kanban worker tried to exit without a terminal board call (kanban_complete/kanban_request_review/kanban_block) — nudging to finish ⚠️ Kanban worker tried to exit without a terminal board call (kanban_complete/kanban_request_review/kanban_block) — nudging to finish", "retry_status": "ready"}', 'created_at': 1792571047}
+{'id': 1448, 'task_id': 't_321bf03c', 'run_id': 75, 'kind': 'claimed', 'payload': '{"lock": "DESKTOP-5MKFQIA:16704", "expires": 1792571947, "run_id": 75}', 'created_at': 1792571047}
+{'id': 1449, 'task_id': 't_321bf03c', 'run_id': 75, 'kind': 'spawned', 'payload': '{"pid": 20568, "started_at": "|179257104793"}', 'created_at': 1792571047}
+{'id': 1450, 'task_id': 't_321bf03c', 'run_id': 75, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792571078}
+{'id': 1451, 'task_id': 't_321bf03c', 'run_id': 75, 'kind': 'protocol_violation', 'payload': '{"pid": 20568, "claimer": "DESKTOP-5MKFQIA:16704", "exit_code": 0, "protocol_violation": true, "worker_output": ";255;248;220mQuota: 0/1000000000 tokens (0.0%)\\u001b[0m \\u001b[38;2;255;248;220mexp_date: 2026-11-17T06:12:53.239Z\\u001b[0m \\u001b[1;38;2;255;215;0m\\u001b[0m ⚠️ Kanban worker tried to exit without a terminal board call (kanban_complete/kanban_request_review/kanban_block) — nudging to finish ⚠️ Kanban worker tried to exit without a terminal board call (kanban_complete/kanban_request_review/kanban_block) — nudging to finish", "retry_status": "ready"}', 'created_at': 1792571108}
+{'id': 1452, 'task_id': 't_321bf03c', 'run_id': 76, 'kind': 'claimed', 'payload': '{"lock": "DESKTOP-5MKFQIA:16704", "expires": 1792572008, "run_id": 76}', 'created_at': 1792571108}
+{'id': 1453, 'task_id': 't_321bf03c', 'run_id': 76, 'kind': 'spawned', 'payload': '{"pid": 23728, "started_at": "|179257110888"}', 'created_at': 1792571108}
+{'id': 1454, 'task_id': 't_321bf03c', 'run_id': 76, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792571137}
+{'id': 1455, 'task_id': 't_321bf03c', 'run_id': 76, 'kind': 'protocol_violation', 'payload': '{"pid": 23728, "claimer": "DESKTOP-5MKFQIA:16704", "exit_code": 0, "protocol_violation": true, "worker_output": ";255;248;220mQuota: 0/1000000000 tokens (0.0%)\\u001b[0m \\u001b[38;2;255;248;220mexp_date: 2026-11-17T06:12:53.239Z\\u001b[0m \\u001b[1;38;2;255;215;0m\\u001b[0m ⚠️ Kanban worker tried to exit without a terminal board call (kanban_complete/kanban_request_review/kanban_block) — nudging to finish ⚠️ Kanban worker tried to exit without a terminal board call (kanban_complete/kanban_request_review/kanban_block) — nudging to finish", "retry_status": "ready"}', 'created_at': 1792571169}
+{'id': 1456, 'task_id': 't_321bf03c', 'run_id': None, 'kind': 'gave_up', 'payload': '{"failures": 1, "effective_limit": 3, "limit_source": "dispatcher", "error": "worker exited cleanly (rc=0) without kanban_complete, kanban_block or kanban_request_review — protocol violation. If the prior run already did the work, verify it and report it via kanban_complete (or kanban_request_review); a run without a terminal kanban call counts as failed no matter what it did. Worker\'s last output: \';255;248;220mQuota: 0/1000000000 tokens (0.0%)\\\\x1b[0m \\\\x1b[38;2;255;248;220mexp_date: 2026-11-17T06:12:53.239Z\\\\x1b[0m \\\\x1b[1;38;2;255;215;0m\\\\x1b[0m ⚠️ Kanban worker tried to e", "trigger_outcome": "crashed", "retry_status": "ready", "sticky": true, "pid": 23728, "claimer": "DESKTOP-5MKFQIA:16704", "protocol_violations": 3, "protocol_violation_limit": 3}', 'created_at': 1792571169}
+{'id': 1457, 'task_id': 't_321bf03c', 'run_id': None, 'kind': 'unblocked', 'payload': None, 'created_at': 1792571428}
+{'id': 1458, 'task_id': 't_321bf03c', 'run_id': 77, 'kind': 'claimed', 'payload': '{"lock": "DESKTOP-5MKFQIA:16704", "expires": 1792572372, "run_id": 77}', 'created_at': 1792571472}
+{'id': 1459, 'task_id': 't_321bf03c', 'run_id': 77, 'kind': 'spawned', 'payload': '{"pid": 13944, "started_at": "|179257147294"}', 'created_at': 1792571472}
+{'id': 1460, 'task_id': 't_321bf03c', 'run_id': 77, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792571503}
+{'id': 1461, 'task_id': 't_321bf03c', 'run_id': 77, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792571563}
+{'id': 1462, 'task_id': 't_321bf03c', 'run_id': 77, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792571641}
+{'id': 1463, 'task_id': 't_321bf03c', 'run_id': 77, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792571715}
+{'id': 1464, 'task_id': 't_321bf03c', 'run_id': 77, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792571781}
+{'id': 1465, 'task_id': 't_321bf03c', 'run_id': 77, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792571855}
+{'id': 1466, 'task_id': 't_321bf03c', 'run_id': 77, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792571915}
+{'id': 1467, 'task_id': 't_321bf03c', 'run_id': 77, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792571975}
+{'id': 1468, 'task_id': 't_321bf03c', 'run_id': 77, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792572035}
+{'id': 1469, 'task_id': 't_321bf03c', 'run_id': 77, 'kind': 'heartbeat', 'payload': None, 'created_at': 1792572099}

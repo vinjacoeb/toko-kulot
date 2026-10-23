@@ -1,0 +1,70 @@
+Bukti backend — kartu t_a90d5215
+"B5: Midtrans order_id unik per percobaan charge"
+
+Tanggal: 22 Oktober 2026
+Workspace: C:\Users\LENOVO\Downloads\toko-kulot
+Runtime: PHP 8.3.32, PHPUnit 11.5.57, Laravel (SQLite in-memory untuk test)
+
+Semua perintah dijalankan dari root proyek dengan ekstensi SQLite dari scratch
+(docs/catatan-techlead.md):
+  PHP_INI_SCAN_DIR="C:/Users/LENOVO/AppData/Local/hermes/profiles/backenddeveloper/cache/scratch/phpsqlite"
+Server tidak dinyalakan. `.env` tidak dibaca/diubah.
+
+1) Kondisi awal / pembuktian RED
+   `nextMidtransOrderId()` sementara diubah menjadi `return (string) $order->code;`
+   lalu test baru dijalankan:
+
+   $ php vendor/bin/phpunit tests/Feature/Checkout/MidtransOrderIdUniqueTest.php
+   FFF                                                               3 / 3 (100%)
+   Tests: 3, Assertions: 13, Failures: 3.
+     - dua charge memakai order_id berbeda          : gagal (string identik)
+     - checkout ulang setelah gagal pasca-charge    : gagal (ID tanpa sufiks)
+     - notifikasi dengan ID bersufiks               : gagal (ID tanpa sufiks)
+
+   Baris sementara itu dihapus kembali sebelum verifikasi berikutnya.
+
+2) GREEN — test baru
+
+   $ php vendor/bin/phpunit tests/Feature/Checkout/MidtransOrderIdUniqueTest.php
+   OK (3 tests, 38 assertions)
+
+   Cakupan:
+   (a) dua charge untuk order yang sama -> order_id Midtrans berbeda, keduanya
+       `TK-YYYYMMDD-NNNN-XXXXXX`, panjang <= 60, `orders.code` tetap tanpa sufiks.
+   (b) checkout gagal SETELAH charge (fake mengembalikan actions stdClass) -> HTTP 500,
+       order rollback, kode pesanan dipakai ulang, checkout ulang sukses walau fake
+       menolak order_id duplikat (rejectDuplicateOrderIds=true).
+   (c) notifikasi Midtrans dengan order_id bersufiks -> payments.settlement,
+       orders.payment_status=settlement, orders.status=dibayar, paid_at terisi.
+
+3) GREEN — regresi terkait
+
+   $ php vendor/bin/phpunit --filter 'Checkout|Midtrans|Payment'
+   OK (78 tests, 873 assertions)
+
+   $ php vendor/bin/phpunit
+   OK (245 tests, 1884 assertions)
+
+4) Gaya kode
+
+   $ php vendor/bin/pint --test app/Services/MidtransService.php \
+       tests/Support/FakeMidtransApi.php tests/Feature/Checkout/PaymentModeTest.php \
+       tests/Feature/Checkout/MidtransSdkShapeTest.php \
+       tests/Feature/Checkout/MidtransOrderIdUniqueTest.php
+   {"tool":"pint","result":"passed"}
+
+5) Panjang kolom
+
+   database/migrations/2026_10_20_000012_create_payments_table.php:23
+     $table->string('order_id_midtrans', 60)->nullable()->index();
+   docs/db.md:104 -> `order_id_midtrans` (60, null, index)
+
+   Format baru = orders.code (16) + '-' (1) + sufiks 6 hex = 23 karakter (<= 60).
+   Basis kode dipotong ke 60-6-1 = 53 karakter bila suatu saat kode lebih panjang.
+
+Catatan:
+- Cabang mode uji (fake) tetap menulis `order_id_midtrans = $order->code` seperti
+  petunjuk techlead; hanya jalur charge asli dan `regenerateCharge()` bersufiks.
+- Komentar docblock migrasi lama masih berbunyi `= orders.code`; migrasi tidak
+  diubah (aturan: migrasi lama beku). Semantik baru dicatat di
+  docs/catatan-backend.md entri U8.

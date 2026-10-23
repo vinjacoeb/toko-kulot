@@ -1,0 +1,229 @@
+===== D1 t_e83922f2 — bekukan build rilis =====
+mulai: 2026-10-21 20:54:41 +0700
+
+----- [1] keadaan SEBELUM build -----
+  manifest  2026-10-21 19:25:42.135347600 +0700  32218 B
+  aset di public/build/assets: 71
+  chunk app sebelum build   : app-Dyl9odRh.js 
+  berkas sumber lebih baru dari manifest (sebelum build):
+    resources/js/Components/Countdown.jsx
+    resources/js/lib/midtrans.js
+    tests/Feature/Checkout/UlasanBolehVerifikasiQaTest.php
+  (akhir daftar)
+
+----- [2] npm run build (satu kali, tidak paralel) -----
+
+> build
+> vite build
+
+[36mvite v6.4.4 [32mbuilding for production...[36m[39m
+transforming...
+[32m✓[39m 729 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mpublic/build/[22m[32mmanifest.json                       [39m[1m[2m 32.22 kB[22m[1m[22m[2m │ gzip:   2.86 kB[22m
+[2mpublic/build/[22m[35massets/app-DBVmikiX.css             [39m[1m[2m 58.59 kB[22m[1m[22m[2m │ gzip:  10.45 kB[22m
+[2mpublic/build/[22m[36massets/Skeleton-B5mJb3Po.js         [39m[1m[2m  0.40 kB[22m[1m[22m[2m │ gzip:   0.30 kB[22m
+[2mpublic/build/[22m[36massets/midtrans-DhMFajGi.js         [39m[1m[2m  0.47 kB[22m[1m[22m[2m │ gzip:   0.29 kB[22m
+[2mpublic/build/[22m[36massets/Badge-DrkgYnDL.js            [39m[1m[2m  0.52 kB[22m[1m[22m[2m │ gzip:   0.32 kB[22m
+[2mpublic/build/[22m[36massets/Spinner-B7Rm_E1z.js          [39m[1m[2m  0.55 kB[22m[1m[22m[2m │ gzip:   0.38 kB[22m
+[2mpublic/build/[22m[36massets/Input-Dr8h638-.js            [39m[1m[2m  0.57 kB[22m[1m[22m[2m │ gzip:   0.39 kB[22m
+[2mpublic/build/[22m[36massets/KartuBagian-7aHie52i.js      [39m[1m[2m  0.59 kB[22m[1m[22m[2m │ gzip:   0.35 kB[22m
+[2mpublic/build/[22m[36massets/Textarea-DkFqz9Tg.js         [39m[1m[2m  0.60 kB[22m[1m[22m[2m │ gzip:   0.40 kB[22m
+[2mpublic/build/[22m[36massets/IconButton-K76vaPjI.js       [39m[1m[2m  0.65 kB[22m[1m[22m[2m │ gzip:   0.41 kB[22m
+[2mpublic/build/[22m[36massets/Field-i8Ox8bYc.js            [39m[1m[2m  0.66 kB[22m[1m[22m[2m │ gzip:   0.38 kB[22m
+[2mpublic/build/[22m[36massets/EmptyState-BBO5pOZg.js       [39m[1m[2m  0.78 kB[22m[1m[22m[2m │ gzip:   0.44 kB[22m
+[2mpublic/build/[22m[36massets/StatusBadge-CgPPwMSp.js      [39m[1m[2m  0.88 kB[22m[1m[22m[2m │ gzip:   0.49 kB[22m
+[2mpublic/build/[22m[36massets/VariantChip-BxTwBWlM.js      [39m[1m[2m  0.89 kB[22m[1m[22m[2m │ gzip:   0.54 kB[22m
+[2mpublic/build/[22m[36massets/ErrorState-DA2RzAd8.js       [39m[1m[2m  0.91 kB[22m[1m[22m[2m │ gzip:   0.51 kB[22m
+[2mpublic/build/[22m[36massets/Select-A8iAnmBh.js           [39m[1m[2m  0.95 kB[22m[1m[22m[2m │ gzip:   0.58 kB[22m
+[2mpublic/build/[22m[36massets/Create-9U_r5qeW.js           [39m[1m[2m  0.99 kB[22m[1m[22m[2m │ gzip:   0.56 kB[22m
+[2mpublic/build/[22m[36massets/Breadcrumb-DGFQkxu9.js       [39m[1m[2m  1.05 kB[22m[1m[22m[2m │ gzip:   0.49 kB[22m
+[2mpublic/build/[22m[36massets/format-CZMha6Op.js           [39m[1m[2m  1.06 kB[22m[1m[22m[2m │ gzip:   0.43 kB[22m
+[2mpublic/build/[22m[36massets/Accordion-DbA1QR8e.js        [39m[1m[2m  1.07 kB[22m[1m[22m[2m │ gzip:   0.60 kB[22m
+[2mpublic/build/[22m[36massets/Edit-BFjzb7pg.js             [39m[1m[2m  1.10 kB[22m[1m[22m[2m │ gzip:   0.64 kB[22m
+[2mpublic/build/[22m[36massets/InlineNotice-KwA376P-.js     [39m[1m[2m  1.18 kB[22m[1m[22m[2m │ gzip:   0.61 kB[22m
+[2mpublic/build/[22m[36massets/Button-B9zQFD67.js           [39m[1m[2m  1.27 kB[22m[1m[22m[2m │ gzip:   0.68 kB[22m
+[2mpublic/build/[22m[36massets/Toast-CK7KiR4x.js            [39m[1m[2m  1.37 kB[22m[1m[22m[2m │ gzip:   0.73 kB[22m
+[2mpublic/build/[22m[36massets/InfoResi-DZ0JiCIB.js         [39m[1m[2m  1.38 kB[22m[1m[22m[2m │ gzip:   0.79 kB[22m
+[2mpublic/build/[22m[36massets/ForgotPassword-BUQY6dC7.js   [39m[1m[2m  1.45 kB[22m[1m[22m[2m │ gzip:   0.73 kB[22m
+[2mpublic/build/[22m[36massets/OrderSummary-D3-Woson.js     [39m[1m[2m  1.50 kB[22m[1m[22m[2m │ gzip:   0.64 kB[22m
+[2mpublic/build/[22m[36massets/Modal-B7tiqvVa.js            [39m[1m[2m  1.62 kB[22m[1m[22m[2m │ gzip:   0.84 kB[22m
+[2mpublic/build/[22m[36massets/RatingSummary-oyb0OITL.js    [39m[1m[2m  1.64 kB[22m[1m[22m[2m │ gzip:   0.77 kB[22m
+[2mpublic/build/[22m[36massets/StarRating-BOLnB864.js       [39m[1m[2m  1.76 kB[22m[1m[22m[2m │ gzip:   0.93 kB[22m
+[2mpublic/build/[22m[36massets/KpiCard-B0v1oB3Y.js          [39m[1m[2m  1.80 kB[22m[1m[22m[2m │ gzip:   0.84 kB[22m
+[2mpublic/build/[22m[36massets/QtyStepper-9jVi0PyG.js       [39m[1m[2m  1.83 kB[22m[1m[22m[2m │ gzip:   0.83 kB[22m
+[2mpublic/build/[22m[36massets/Login-CN7iIcjp.js            [39m[1m[2m  2.04 kB[22m[1m[22m[2m │ gzip:   0.90 kB[22m
+[2mpublic/build/[22m[36massets/ResetPassword-C5DjHY7U.js    [39m[1m[2m  2.05 kB[22m[1m[22m[2m │ gzip:   0.86 kB[22m
+[2mpublic/build/[22m[36massets/hooks-D4MHJ3WL.js            [39m[1m[2m  2.17 kB[22m[1m[22m[2m │ gzip:   0.81 kB[22m
+[2mpublic/build/[22m[36massets/BuktiPembayaran-C9DrsJ4l.js  [39m[1m[2m  2.39 kB[22m[1m[22m[2m │ gzip:   1.09 kB[22m
+[2mpublic/build/[22m[36massets/AuthLayout-CPnb44BY.js       [39m[1m[2m  2.40 kB[22m[1m[22m[2m │ gzip:   1.04 kB[22m
+[2mpublic/build/[22m[36massets/DataTable-XLjX8P1g.js        [39m[1m[2m  2.67 kB[22m[1m[22m[2m │ gzip:   1.21 kB[22m
+[2mpublic/build/[22m[36massets/Login-C3bCb8nE.js            [39m[1m[2m  2.85 kB[22m[1m[22m[2m │ gzip:   1.22 kB[22m
+[2mpublic/build/[22m[36massets/Register-CTnUQJEO.js         [39m[1m[2m  2.95 kB[22m[1m[22m[2m │ gzip:   1.10 kB[22m
+[2mpublic/build/[22m[36massets/StokAksiModal-DAIzyPI_.js    [39m[1m[2m  3.00 kB[22m[1m[22m[2m │ gzip:   1.54 kB[22m
+[2mpublic/build/[22m[36massets/UbahStatusModal-CAKmi6LI.js  [39m[1m[2m  3.23 kB[22m[1m[22m[2m │ gzip:   1.47 kB[22m
+[2mpublic/build/[22m[36massets/Pagination-Df0MzJW0.js       [39m[1m[2m  3.45 kB[22m[1m[22m[2m │ gzip:   1.47 kB[22m
+[2mpublic/build/[22m[36massets/DropzoneGalery-CEzyM6YO.js   [39m[1m[2m  3.75 kB[22m[1m[22m[2m │ gzip:   1.82 kB[22m
+[2mpublic/build/[22m[36massets/VarianEditor-PGOP8Xeq.js     [39m[1m[2m  4.94 kB[22m[1m[22m[2m │ gzip:   1.51 kB[22m
+[2mpublic/build/[22m[36massets/ProductGrid-BWx4Uhza.js      [39m[1m[2m  4.97 kB[22m[1m[22m[2m │ gzip:   2.08 kB[22m
+[2mpublic/build/[22m[36massets/Contact-CWBOslbx.js          [39m[1m[2m  5.81 kB[22m[1m[22m[2m │ gzip:   2.13 kB[22m
+[2mpublic/build/[22m[36massets/Show-Btl0lsoh.js             [39m[1m[2m  5.92 kB[22m[1m[22m[2m │ gzip:   2.33 kB[22m
+[2mpublic/build/[22m[36massets/Cart-DIZvjOh8.js             [39m[1m[2m  6.08 kB[22m[1m[22m[2m │ gzip:   2.42 kB[22m
+[2mpublic/build/[22m[36massets/QrCode-I8Z9P4H3.js           [39m[1m[2m  6.17 kB[22m[1m[22m[2m │ gzip:   2.87 kB[22m
+[2mpublic/build/[22m[36massets/PageHeader--CkE9277.js       [39m[1m[2m  6.17 kB[22m[1m[22m[2m │ gzip:   2.13 kB[22m
+[2mpublic/build/[22m[36massets/Show-71ynVez3.js             [39m[1m[2m  6.74 kB[22m[1m[22m[2m │ gzip:   2.34 kB[22m
+[2mpublic/build/[22m[36massets/History-Dp14whnn.js          [39m[1m[2m  7.13 kB[22m[1m[22m[2m │ gzip:   2.75 kB[22m
+[2mpublic/build/[22m[36massets/icons-UMZqPMDc.js            [39m[1m[2m  7.23 kB[22m[1m[22m[2m │ gzip:   2.14 kB[22m
+[2mpublic/build/[22m[36massets/Checkout-OlGXvjm9.js         [39m[1m[2m  7.76 kB[22m[1m[22m[2m │ gzip:   2.63 kB[22m
+[2mpublic/build/[22m[36massets/Index-D3TMpTT6.js            [39m[1m[2m  7.99 kB[22m[1m[22m[2m │ gzip:   2.84 kB[22m
+[2mpublic/build/[22m[36massets/Index-XRsUW1Am.js            [39m[1m[2m  8.29 kB[22m[1m[22m[2m │ gzip:   2.99 kB[22m
+[2mpublic/build/[22m[36massets/CheckoutSuccess-D5s1AHje.js  [39m[1m[2m  8.47 kB[22m[1m[22m[2m │ gzip:   2.87 kB[22m
+[2mpublic/build/[22m[36massets/PublicLayout-D_Qqt2Vc.js     [39m[1m[2m  9.46 kB[22m[1m[22m[2m │ gzip:   3.22 kB[22m
+[2mpublic/build/[22m[36massets/Index-CdQQZm1g.js            [39m[1m[2m  9.63 kB[22m[1m[22m[2m │ gzip:   3.61 kB[22m
+[2mpublic/build/[22m[36massets/Index-nnWF4-XG.js            [39m[1m[2m  9.77 kB[22m[1m[22m[2m │ gzip:   3.53 kB[22m
+[2mpublic/build/[22m[36massets/Index-CfMx9vF5.js            [39m[1m[2m  9.84 kB[22m[1m[22m[2m │ gzip:   3.62 kB[22m
+[2mpublic/build/[22m[36massets/Dashboard-CpMthWkP.js        [39m[1m[2m 10.52 kB[22m[1m[22m[2m │ gzip:   3.81 kB[22m
+[2mpublic/build/[22m[36massets/Index-Dc9vF31b.js            [39m[1m[2m 11.46 kB[22m[1m[22m[2m │ gzip:   4.13 kB[22m
+[2mpublic/build/[22m[36massets/CheckoutPay-nXiKqEM1.js      [39m[1m[2m 11.77 kB[22m[1m[22m[2m │ gzip:   3.94 kB[22m
+[2mpublic/build/[22m[36massets/Index-B5ietkMq.js            [39m[1m[2m 11.85 kB[22m[1m[22m[2m │ gzip:   4.12 kB[22m
+[2mpublic/build/[22m[36massets/Index-DzmbrW_Y.js            [39m[1m[2m 11.95 kB[22m[1m[22m[2m │ gzip:   4.34 kB[22m
+[2mpublic/build/[22m[36massets/Home-DSFpuzVJ.js             [39m[1m[2m 13.50 kB[22m[1m[22m[2m │ gzip:   4.39 kB[22m
+[2mpublic/build/[22m[36massets/Show-j5_kyYDd.js             [39m[1m[2m 14.04 kB[22m[1m[22m[2m │ gzip:   4.83 kB[22m
+[2mpublic/build/[22m[36massets/ProdukForm-DCIYWJ7z.js       [39m[1m[2m 14.70 kB[22m[1m[22m[2m │ gzip:   4.28 kB[22m
+[2mpublic/build/[22m[36massets/Index-DKYFDGY_.js            [39m[1m[2m 50.76 kB[22m[1m[22m[2m │ gzip:  12.15 kB[22m
+[2mpublic/build/[22m[36massets/app-Dyl9odRh.js              [39m[1m[2m364.49 kB[22m[1m[22m[2m │ gzip: 114.32 kB[22m
+[32m✓ built in 43.88s[39m
+EXIT CODE npm run build = 0
+
+----- [3] keadaan SESUDAH build -----
+  manifest  2026-10-21 20:55:37.948312500 +0700  32218 B
+  sha256 manifest : 5b23e055678f5c2377ca88dcac68037bb7b9bd39e04779612b009e4caa793b2b
+  aset di public/build/assets: 71
+  chunk app sesudah build   : app-Dyl9odRh.js 
+  css app sesudah build     : app-DBVmikiX.css 
+  e92e1d37b104c6b29b181f6c19cc9e75c36cb890d4cf969ed6a9a972da0859eb *public/build/assets/app-Dyl9odRh.js
+  aaf6ee8eb4fdde2fe5298f53aae4cd8e4b5c688ec25a4e939760792422c42a35 *public/build/assets/app-DBVmikiX.css
+  ukuran chunk app-*.js:
+    364493 B  public/build/assets/app-Dyl9odRh.js
+  berkas sumber lebih baru dari manifest (sesudah build):
+  (akhir daftar)
+  berkas di public/build yang TIDAK lebih baru dari manifest (sisa build lama): 72
+
+----- [4] penyapu statis -----
+--- 4a. sumber: komponen JSX tanpa import (tmp/cek-komponen-tanpa-import.py) ---
+file diperiksa: 95
+resources\js\app.jsx: App
+--- 4b. bundel: identifier JSX tanpa definisi (tmp/cek-bundel-identifier-bebas.py) ---
+chunk .js diperiksa: 70
+DropzoneGalery-CEzyM6YO.js -> FREE: P  (import: B, D, a, p, w)
+--- 4c. bundel: penanda terlarang (scratch/cek-penanda-bundel-d1.py) ---
+berkas teks diperiksa: 72 di public/build
+OK  path-absolut-Windows: 0 kecocokan
+OK  path-absolut-Windows-slash: 0 kecocokan
+OK  file-url-drive: 0 kecocokan
+HIT alamat-lokal-localhost: public/build\assets\app-Dyl9odRh.js -> 1 kecocokan; contoh konteks: ...g(),ty...); (len=69)...
+OK  alamat-lokal-127: 0 kecocokan
+OK  port-8000: 0 kecocokan
+OK  nama-var-env: 0 kecocokan
+OK  prefiks-berkas-env: 0 kecocokan
+OK  kredensial-midtrans-server: 0 kecocokan
+OK  kredensial-midtrans-client: 0 kecocokan
+OK  kredensial-stripe: 0 kecocokan
+OK  private-key: 0 kecocokan
+OK  laravel-app-key: 0 kecocokan
+TOTAL kecocokan penanda terlarang: 1
+
+----- [5] isi manifest: halaman wajib kartu D1 -----
+manifest: public/build/manifest.json  (71 entri)
+ADA    resources/js/app.jsx
+         file=assets/app-Dyl9odRh.js src=resources/js/app.jsx css=0 aset=0
+           - assets/app-Dyl9odRh.js
+ADA    resources/js/Pages/Admin/Products/Index.jsx
+         file=assets/Index-XRsUW1Am.js src=resources/js/Pages/Admin/Products/Index.jsx css=0 aset=0
+           - assets/Index-XRsUW1Am.js
+ADA    resources/js/Pages/Admin/Products/Create.jsx
+         file=assets/Create-9U_r5qeW.js src=resources/js/Pages/Admin/Products/Create.jsx css=0 aset=0
+           - assets/Create-9U_r5qeW.js
+ADA    resources/js/Pages/Admin/Products/Edit.jsx
+         file=assets/Edit-BFjzb7pg.js src=resources/js/Pages/Admin/Products/Edit.jsx css=0 aset=0
+           - assets/Edit-BFjzb7pg.js
+ADA    resources/js/Pages/Admin/Products/Show.jsx
+         file=assets/Show-71ynVez3.js src=resources/js/Pages/Admin/Products/Show.jsx css=0 aset=0
+           - assets/Show-71ynVez3.js
+ADA    resources/js/Pages/Admin/Stocks/Index.jsx
+         file=assets/Index-CdQQZm1g.js src=resources/js/Pages/Admin/Stocks/Index.jsx css=0 aset=0
+           - assets/Index-CdQQZm1g.js
+ADA    resources/js/Pages/Admin/Stocks/History.jsx
+         file=assets/History-Dp14whnn.js src=resources/js/Pages/Admin/Stocks/History.jsx css=0 aset=0
+           - assets/History-Dp14whnn.js
+ADA    resources/js/Pages/Admin/Orders/Index.jsx
+         file=assets/Index-D3TMpTT6.js src=resources/js/Pages/Admin/Orders/Index.jsx css=0 aset=0
+           - assets/Index-D3TMpTT6.js
+ADA    resources/js/Pages/Admin/Orders/Show.jsx
+         file=assets/Show-Btl0lsoh.js src=resources/js/Pages/Admin/Orders/Show.jsx css=0 aset=0
+           - assets/Show-Btl0lsoh.js
+ADA    resources/js/Pages/Public/CheckoutPay.jsx
+         file=assets/CheckoutPay-nXiKqEM1.js src=resources/js/Pages/Public/CheckoutPay.jsx css=0 aset=0
+           - assets/CheckoutPay-nXiKqEM1.js
+ADA    resources/js/Pages/Public/CheckoutSuccess.jsx
+         file=assets/CheckoutSuccess-D5s1AHje.js src=resources/js/Pages/Public/CheckoutSuccess.jsx css=0 aset=0
+           - assets/CheckoutSuccess-D5s1AHje.js
+ringkas: wajib=11 ada=11 hilang=0
+OK: semua halaman wajib ada di manifest.
+EXIT CODE cek-manifest = 0
+
+----- [6] bundel yang benar-benar dilayani server pemilik (GET saja) -----
+  chunk app di manifest: app-Dyl9odRh.js 
+    GET / -> 200
+    GET /produk -> 200
+    GET /keranjang -> 200
+    GET /admin/login -> 200
+    GET /checkout -> 302
+  referensi /build/assets/ pada HTML beranda:
+    /build/assets/app-DBVmikiX.css
+    /build/assets/app-Dyl9odRh.js
+
+----- [7] keadaan akhir (sesudah semua pemeriksaan) -----
+  manifest  2026-10-21 20:55:37.948312500 +0700  32218 B
+  sha256 manifest : 5b23e055678f5c2377ca88dcac68037bb7b9bd39e04779612b009e4caa793b2b
+  chunk app       : app-Dyl9odRh.js 
+selesai: 2026-10-21 20:55:50 +0700
+
+----- [8] suite PHP pada keadaan beku (D1) -----
+  perintah : php -d extension=pdo_sqlite vendor/bin/phpunit   (sqlite :memory:; php.ini global & .env tidak disentuh)
+  PHP      : 8.3.32 (cli, ZTS)  |  PHPUnit 11.5.57
+  hasil    : OK (225 tests, 1736 assertions)  exit 0  waktu 01:06.661  memori 68.00 MB
+  arti     : sama dengan hasil QA1 (docs/laporan-qa.md §15.2 butir 5) -> kode tidak berubah sejak QA1.
+
+----- [9] klarifikasi "sisa build lama" -----
+  Baris "[3] berkas di public/build yang TIDAK lebih baru dari manifest (sisa build lama): 72" berarti
+  seluruh berkas memang lebih tua daripada manifest.json — wajar, karena Vite menulis manifest terakhir.
+  Pemeriksaan stale yang sebenarnya adalah membandingkan daftar berkas keluaran build dengan isi disk
+  (pembersih kode ANSI: scratch/cek-kesesuaian-bundel-d1.py):
+    keluaran vite (baris berkas): 72   |   berkas nyata di public/build: 72
+    terdaftar di keluaran tapi tidak ada di disk : tidak ada
+    ada di disk tapi tidak terdaftar (sisa build lama): tidak ada
+    ukuran tidak cocok (toleransi 0,02 kB)      : tidak ada
+  Jadi TIDAK ada berkas sisa build lama; angka 72 pada [3] bukan temuan.
+
+----- [10] identitas bundel beku D1 -----
+  manifest    : public/build/manifest.json  2026-10-21 20:55:37.948 +0700  32218 B
+  sha256      : 5b23e055678f5c2377ca88dcac68037bb7b9bd39e04779612b009e4caa793b2b
+  chunk app   : app-Dyl9odRh.js   364493 B  sha256 e92e1d37b104c6b29b181f6c19cc9e75c36cb890d4cf969ed6a9a972da0859eb
+  css app     : app-DBVmikiX.css            sha256 aaf6ee8eb4fdde2fe5298f53aae4cd8e4b5c688ec25a4e939760792422c42a35
+  isi         : manifest 71 entri; public/build/assets 71 berkas (70 .js + 1 .css) + manifest.json = 72 berkas
+  halaman wajib: 11/11 ada (wajib=11 ada=11 hilang=0, exit 0)
+  build       : vite v6.4.4, 729 modul, "built in 43.88s", EXIT CODE npm run build = 0
+  server      : HTML beranda merujuk /build/assets/app-DBVmikiX.css + /build/assets/app-Dyl9odRh.js (GET / = 200)
+
+----- [11] putusan temuan penyapu statis [4] -----
+  4a resources\js\app.jsx: App        -> positif palsu: `App` didefinisikan di berkas yang sama (createInertiaApp).
+  4b DropzoneGalery-CEzyM6YO.js -> FREE: P
+                                      -> positif palsu: `P=({size:t=24,className:n=""})=>a.jsxs("svg",...`
+                                         didefinisikan pada offset 314, dipakai pada offset 2463 (sebelum dipakai).
+  4c HIT alamat-lokal-localhost di app-Dyl9odRh.js (1 kecocokan)
+                                      -> bukan kebocoran: konteks mentahnya
+                                         `typeof window>"u"?"http://localhost":window.location.toString()`
+                                         (cadangan base URL pustaka saat tidak ada `window`/SSR), bukan alamat mesin ini.
+  Total temuan yang perlu tindakan: 0.

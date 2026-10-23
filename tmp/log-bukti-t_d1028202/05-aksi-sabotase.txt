@@ -1,0 +1,15 @@
+### D. Kontrol negatif B (sabotase sementara: URL simpan -> /resi-tiruan)
+$ sed -i 's|/admin/pesanan/${id}/resi|/admin/pesanan/${id}/resi-tiruan|' resources/js/Pages/Admin/Orders/partials/InfoResi.jsx
+        B1: PATCH /admin/pesanan/5/resi-tiruan {"tracking_number":"JX9988776655"}
+        B2: PATCH /admin/pesanan/5/resi-tiruan {"tracking_number":""}
+        B4: PATCH /admin/pesanan/42/resi-tiruan {"tracking_number":""}
+GAGAL | B1 kirim resi baru -> PATCH /admin/pesanan/{id}/resi payload tracking_number            | url salah: /admin/pesanan/5/resi-tiruan
+GAGAL | B2 isian dikosongkan lalu dikirim -> tracking_number "" (hitung sebagai hapus, §12.18a) | url salah: /admin/pesanan/5/resi-tiruan
+GAGAL | B3 kiriman ganda ditahan selama proses, tombol loading, lalu bisa kirim lagi            | semua kiriman harus ke rute resi yang sama
+GAGAL | B4 url memakai id pesanan dari props, tanpa rute karangan lain                          | url salah: /admin/pesanan/42/resi-tiruan
+OK    | B5 galat server dibaca dari props halaman dan tidak mengunci form                       | 
+OK    | B6 props server berubah -> isian mengikuti nilai tersimpan terbaru                      | 
+OK    | B7 kontrol isian sesuai kontrak: name, maxLength, dan tanpa nilai tersembunyi           | 
+
+RINGKASAN: 3/7 uji lulus
+$ echo $?  ->  1

@@ -1,0 +1,169 @@
+PHPUnit 11.5.57 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.3.32
+Configuration: C:\Users\LENOVO\Downloads\toko-kulot\phpunit.xml
+
+...............................................................  63 / 127 ( 49%)
+............................................................... 126 / 127 ( 99%)
+.                                                               127 / 127 (100%)
+
+Time: 00:21.418, Memory: 60.00 MB
+
+Admin Dashboard (Tests\Feature\Admin\AdminDashboard)
+ ✔ Dashboard menampilkan stats sesuai kontrak
+ ✔ Revenue total hanya menghitung order masuk akuntansi
+ ✔ Products active hanya menghitung produk tayang
+
+Admin Inbox (Tests\Feature\Admin\AdminInbox)
+ ✔ Daftar pesan menampilkan ringkasan belum dibaca
+ ✔ Filter status belum dibaca
+ ✔ Tandai pesan sudah dibaca
+ ✔ Balas pesan menyimpan balasan dan menandai dibaca
+ ✔ Balas pesan wajib isi
+ ✔ Daftar ulasan menampilkan ringkasan rating
+ ✔ Balas ulasan menyimpan balasan
+ ✔ Visibilitas disembunyikan menghitung ulang rating produk
+ ✔ Visibilitas tanpa body membalik nilai
+ ✔ Tamu tidak boleh membuka pesan masuk
+
+Admin Master Data (Tests\Feature\Admin\AdminMasterData)
+ ✔ Daftar produk memakai paginator dan membaca filter
+ ✔ Tambah produk membuat varian dan riwayat stok awal
+ ✔ Tambah produk menolak input tidak valid
+ ✔ Tambah produk menolak sku ganda
+ ✔ Kategori terpakai tidak bisa dihapus
+ ✔ Stok masuk dan keluar mencatat pergerakan
+ ✔ Stok keluar ditolak bila melebihi stok dan qty di bawah satu
+ ✔ Riwayat stok menampilkan pergerakan masuk dan keluar
+
+Admin Route Access (Tests\Feature\Admin\AdminRouteAccess)
+ ✔ Tamu diarahkan ke login admin
+ ✔ Pembeli tidak bisa menembus panel admin
+ ✔ Terdapat rute admin yang diuji
+ ✔ Admin aktif dapat membuka seluruh rute get admin
+ ✔ Form login admin tampil untuk tamu
+ ✔ Form login admin untuk admin yang sudah masuk
+
+Admin Sales (Tests\Feature\Admin\AdminSales)
+ ✔ Daftar dan detail pesanan menampilkan langkah status berikut
+ ✔ Ubah status menolak transisi tidak sah
+ ✔ Pembatalan mengembalikan stok dan mencatat riwayat
+ ✔ Pesanan final tidak bisa diubah lagi
+ ✔ Daftar akun menandai akun sendiri
+ ✔ Akun tidak bisa menonaktifkan diri sendiri
+ ✔ Tambah akun admin dan tolak email ganda
+ ✔ Detail pesanan memuat props nomor resi
+ ✔ Simpan nomor resi hanya mengubah kolom resi
+ ✔ Nomor resi kosong menghapus nomor resi
+ ✔ Nomor resi lebih dari 60 karakter ditolak
+ ✔ Bukan admin tidak bisa menyimpan nomor resi
+ ✔ Migrasi nomor resi punya up dan down
+ ✔ Nomor resi terlalu panjang membalas 422 untuk klien json
+
+Admin Setting (Tests\Feature\Admin\AdminSetting)
+ ✔ Halaman pengaturan menampilkan tujuh grup
+ ✔ Simpan pengaturan umum
+ ✔ Key pengaturan di luar whitelist diabaikan
+ ✔ Logo diunggah menyimpan path storage
+ ✔ Unggahan bukan gambar ditolak
+ ✔ Simpan konten landing
+ ✔ Landing hero wajib judul
+ ✔ Simpan carousel dengan gambar
+ ✔ Carousel tanpa gambar ditolak
+ ✔ Perbarui dan hapus carousel
+ ✔ Crud faq
+ ✔ Faq wajib pertanyaan dan jawaban
+ ✔ Admin nonaktif tidak bisa menyimpan pengaturan
+
+Cart (Tests\Feature\Checkout\Cart)
+ ✔ Tamu bisa menambah produk ke keranjang
+ ✔ Harga grosir dipakai saat qty mencapai minimum
+ ✔ Qty melebihi stok ditolak dengan pesan
+ ✔ Produk tanpa varian dipilih ditolak
+ ✔ Item keranjang milik sesi lain tidak bisa diubah
+ ✔ Qty disesuaikan bila stok menipis
+ ✔ Item dihapus dari keranjang
+
+Checkout (Tests\Feature\Checkout\Checkout)
+ ✔ Checkout membuat pesanan memotong stok dan tagihan qris
+ ✔ Checkout dengan keranjang kosong kembali ke keranjang
+ ✔ Checkout menolak stok yang sudah habis
+ ✔ Validasi formulir checkout mengembalikan galat
+ ✔ Notifikasi settlement menandai pesanan dibayar
+ ✔ Notifikasi settlement idempoten
+ ✔ Notifikasi expire mengembalikan stok dan membatalkan pesanan
+ ✔ Notifikasi dengan signature salah ditolak
+ ✔ Notifikasi dengan nominal tidak cocok ditolak
+ ✔ Pesanan orang lain tidak bisa dibuka
+ ✔ Tamu diarahkan ke login sebelum checkout
+ ✔ Halaman bayar menampilkan qr string dan batas waktu
+ ✔ Halaman selesai menolak pesanan yang belum dibayar
+ ✔ Halaman selesai tampil setelah dibayar
+ ✔ Ulasan boleh true bila belum ada ulasan
+ ✔ Ulasan boleh true bila baru sebagian produk diulas
+ ✔ Ulasan boleh false bila semua produk sudah diulas
+ ✔ Ulasan boleh false bila status pesanan batal
+ ✔ Ulasan boleh false bila pesanan satu produk sudah diulas
+
+Midtrans Expiry (Tests\Unit\Services\MidtransExpiry)
+ ✔ Bawaan berkas config lima menit
+ ✔ Override env dipakai berkas config
+ ✔ Nilai env tidak sah jatuh ke bawaan lima menit
+ ✔ Expiry minutes mengikuti config dan menolak nilai tidak sah
+
+Midtrans Service (Tests\Unit\Services\MidtransService)
+ ✔ Mode info bentuk baku mengikuti kontrak
+ ✔ Pemetaan status midtrans ke status pembayaran
+ ✔ Status midtrans tidak dikenal diabaikan
+ ✔ Mode fake aktif saat server key kosong
+ ✔ Mode fake mengikuti flag konfigurasi
+ ✔ Signature valid diterima
+ ✔ Signature salah ditolak
+ ✔ Signature dengan field tidak lengkap ditolak
+ ✔ Tanpa server key dan tanpa mode fake notifikasi ditolak
+ ✔ Mode fake menerima notifikasi lokal
+
+Payment Mode (Tests\Feature\Checkout\PaymentMode)
+ ✔ Halaman checkout menampilkan mode uji
+ ✔ Mode uji terlihat pada props halaman bayar
+ ✔ Tagihan mode uji dibuat ulang ke baris yang sama
+ ✔ Pembuatan ulang gagal menampilkan galat dan tidak mengubah tagihan
+ ✔ Status membuat ulang tagihan lalu menanyakan midtrans
+ ✔ Status mode uji tidak menghubungi midtrans
+ ✔ Tab pembayaran admin menjelaskan mode uji
+
+Qris Expiry (Tests\Feature\Checkout\QrisExpiry)
+ ✔ Lima menit dipakai di props checkout custom expiry dan expires at
+ ✔ Override config dipakai semua tempat
+ ✔ Nilai config tidak sah jatuh ke bawaan lima menit
+ ✔ Tagihan dibuat ulang memakai masa berlaku terbaru
+
+Setting Service (Tests\Unit\Services\SettingService)
+ ✔ Teks disimpan dan dibaca kembali
+ ✔ Nilai kosong dibaca sebagai null
+ ✔ Nilai cadangan dipakai hanya bila key belum ada
+ ✔ Ongkir disimpan sebagai integer tanpa desimal
+ ✔ Ongkir negatif dijepit ke nol
+ ✔ Bendera boolean dibaca sebagai boolean
+ ✔ Nilai json di encode dan decode
+ ✔ Key di luar daftar putih ditolak
+ ✔ Put many rollback bila ada key tidak sah
+ ✔ Grouped membagi tujuh grup dan menampung key luar daftar
+ ✔ Key tidak dikenal tidak bisa ditulis
+
+Stock Service Label (Tests\Unit\Services\StockServiceLabel)
+ ✔ Label ukuran dan warna
+ ✔ Label hanya ukuran
+ ✔ Label tanpa ukuran memakai sku
+ ✔ Label tanpa varian disebut produk
+
+Ulasan Boleh Verifikasi Qa (Tests\Feature\Checkout\UlasanBolehVerifikasiQa)
+ ✔ Boleh sama persis dengan kemampuan server menerima ulasan
+ ✔ Dua produk satu ulasan boleh true dan sisa produk masih diterima
+ ✔ Settlement status batal boleh false dan kiriman ditolak
+ ✔ Bentuk props ulasan tidak berubah
+ ✔ Produk sama dua varian dihitung sekali
+ ✔ Ulasan ganda produk sama ditolak walau boleh sempat true
+ ✔ Batas laju kiriman ulasan dibatasi per menit
+
+OK (127 tests, 1116 assertions)

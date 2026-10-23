@@ -1,0 +1,173 @@
+BUKTI FRONTEND — kartu t_321bf03c (F4: /admin/stok — daftar stok + riwayat pergerakan)
+Proyek : C:/Users/LENOVO/Downloads/toko-kulot (workspace kind=dir, sesuai kartu)
+Tanggal: 21 Oktober 2026 — dijalankan oleh profile frontenddeveloper
+Ringkas: 39 uji harness lulus (23 SSR/statik + 16 interaksi), `npm run build` exit 0 (723 modul),
+         gate docs/qa/*.py exit 0, 3 sapu regresi lulus. Server pengembangan tidak dinyalakan.
+
+====================================================================
+1. BERKAS YANG DIKERJAKAN
+====================================================================
+  resources/js/Pages/Admin/Stocks/Index.jsx — 510 baris, 20979 bita
+  resources/js/Pages/Admin/Stocks/History.jsx — 343 baris, 14642 bita
+  resources/js/Pages/Admin/Stocks/partials/StokAksiModal.jsx — 193 baris, 7201 bita
+
+  Index.jsx   : dibangun ulang dari placeholder 25 baris (review F-4) — daftar varian + stok +
+                status + filter (q/status/kategori/urut) + paginasi + aksi Masuk/Keluar/Setel.
+  History.jsx : berkas baru — riwayat pergerakan (q/tipe/varian) + ringkasan + paginasi.
+  StokAksiModal.jsx : partial lokal (DoD-2 melarang mengubah Components/* bersama).
+
+  Berkas bersama TIDAK diubah. Bukti: `git status --porcelain resources/js/Components
+  resources/js/Layouts resources/js/lib resources/js/app.jsx` → hanya
+  " M resources/js/Layouts/PublicLayout.jsx" (perubahan kartu F1 t_7ebfca05, bukan kartu ini).
+
+====================================================================
+2. PERINTAH YANG DIJALANKAN (semua dari akar repo)
+====================================================================
+  # harness SSR + statik (23 uji)
+  ./node_modules/@esbuild/win32-x64/esbuild.exe tmp/uji-ssr-stok-t_321bf03c.mjs --bundle \
+    --platform=node --format=esm --jsx=automatic --packages=external \
+    --outfile=tmp/uji-ssr-stok-t_321bf03c.bundle.mjs \
+    --alias:@inertiajs/react=./tmp/stub-inertia-t_321bf03c.mjs
+  node tmp/uji-ssr-stok-t_321bf03c.bundle.mjs            -> exit 0
+
+  # harness interaksi (16 uji; react diganti shim, bukan browser)
+  ./node_modules/@esbuild/win32-x64/esbuild.exe tmp/uji-aksi-stok-t_321bf03c.mjs --bundle \
+    --platform=node --format=esm --jsx=automatic --packages=external \
+    --outfile=tmp/uji-aksi-stok-t_321bf03c.bundle.mjs \
+    --alias:react/jsx-runtime=./tmp/shim-jsx-runtime-t_321bf03c.mjs \
+    --alias:react=./tmp/shim-react-t_321bf03c.mjs \
+    --alias:@inertiajs/react=./tmp/stub-inertia-t_321bf03c.mjs
+  node tmp/uji-aksi-stok-t_321bf03c.bundle.mjs           -> exit 0
+
+  npm run build                                          -> exit 0 (log tmp/build-t_321bf03c.txt)
+  python docs/qa/*.py + python tmp/cek-*.py              -> semua exit 0 (log tmp/gate-t_321bf03c.txt)
+
+  Catatan perintah: `node_modules/.bin/esbuild` (pembungkus npm) meneruskan gagal tanpa pesan —
+  karena itu dipakai biner `@esbuild/win32-x64/esbuild.exe` agar galat terlihat apa adanya.
+
+====================================================================
+3. LOG HARNESS SSR + STATIK (tmp/hasil-ssr-t_321bf03c.txt)
+====================================================================
+=== UJI SSR + STATIK kartu t_321bf03c ===
+[OK] S1 tidak ada fetch/axios/SPA client
+[OK] S2 tidak ada route()/Ziggy dan tidak ada akses storage
+[OK] S3 semua impor relatif ada di disk
+[OK] S4 props halaman ⊆ props yang dikirim StockController (kontrak §12.12/§12.15)
+[OK] S5 URL literal halaman sama dengan rute admin.php
+[OK] S6 tidak ada teks placeholder tersisa
+[OK] I1 daftar terisi: nama, label, SKU, stok, status, ringkasan, hitung
+[OK] I2 status kolom rendah-stok mengikuti aturan kontrak (0 habis / 1-4 kritis / >=5 aman)
+[OK] I3 kosong tanpa filter: ajakan menambah produk, bukan pesan galat
+[OK] I4 kosong karena filter: pesan "tidak cocok" + reset filter
+[OK] I5 props hilang/null: halaman tetap render aman
+[OK] I6 angka dari server sebagai string & nilai null tetap tampil benar
+[OK] I7 filter terpilih mengikuti props (status/urut/kategori/q)
+[OK] I8 modal setel tertutup secara bawaan + tautan riwayat tersedia
+[OK] H1 riwayat terisi: angka bertanda, tipe, petugas kosong -> "-"
+[OK] H2 angka kartu ringkasan = jumlah baris per tipe (bukan unit stok)
+[OK] H3 kosong tanpa filter vs kosong karena filter
+[OK] H4 props hilang/null: halaman tetap render aman
+[OK] H5 signed_qty null & angka string tidak menghasilkan NaN
+[OK] M1 modal mode masuk: judul, field, tombol sesuai desain
+[OK] M2 galat server per kolom terhubung aria-describedby
+[OK] M3 galat non-kolom tampil sebagai notice, mode keluar beda tombol
+[OK] D1 DataTable: loading, error + Coba lagi, kosong adalah tiga hal berbeda
+
+TOTAL: 23 uji, 0 gagal
+
+====================================================================
+4. LOG HARNESS INTERAKSI (tmp/hasil-aksi-t_321bf03c.txt)
+====================================================================
+=== UJI INTERAKSI kartu t_321bf03c ===
+[OK]   A1 tombol urut tabel mengirim query urut ke server
+[OK]   A2 filter status, kategori, dan urutan lewat router.get literal
+[OK]   A3 pencarian menunggu debounce 300ms sebelum memanggil server
+[OK]   A4 reset filter mengembalikan query ke kosong
+[OK]   A5 memuat -> galat -> Coba lagi: tiga keadaan berbeda
+[OK]   A6 paginasi mengirim page hanya bila > 1
+[OK]   A7 aksi baris membuka modal stok masuk/keluar dan modal Setel
+[OK]   B1 validasi klien: pesan per kondisi, tanpa memanggil server
+[OK]   B2 kirim sah: URL literal, data form, opsi Inertia, tutup saat sukses
+[OK]   B3 mode keluar: URL keluar, judul, hint stok saat ini, dan tombolnya
+[OK]   B4 jumlah dikirim sekali saja saat server masih memproses
+[OK]   B5 varian null: tombol simpan mati dan tidak ada URL /null/
+[OK]   B6 galat server per kolom terhubung aria-describedby, galat lain jadi notice
+[OK]   C1 filter riwayat: tipe, varian, dan reset
+[OK]   C2 galat riwayat tidak menyamar sebagai riwayat kosong + Coba lagi
+[OK]   C3 pencarian riwayat ikut debounce dan memakai query q
+
+TOTAL: 16 uji, 0 gagal
+
+====================================================================
+5. BUILD PRODUKSI (tmp/build-t_321bf03c.txt)
+====================================================================
+  Jumlah modul : [32m✓[39m 723 modules transformed.
+  Hasil akhir  : [32m✓ built in 40.70s[39m
+  Cuplikan chunk halaman ini:
+    [2mpublic/build/[22m[36massets/Index-D_xtpihP.js            [39m[1m[2m  9.57 kB[22m[1m[22m[2m │ gzip:   3.58 kB[22m
+    [2mpublic/build/[22m[36massets/History-DnaYmjrN.js          [39m[1m[2m  7.06 kB[22m[1m[22m[2m │ gzip:   2.72 kB[22m
+
+  Halaman baru terbukti masuk bundel rilis (dicari dari teks khasnya):
+    grep -rl "Pantau stok per varian"    public/build/assets/ -> public/build/assets/Index-D_xtpihP.js
+    grep -rl "Riwayat pergerakan stok"   public/build/assets/ -> public/build/assets/History-DnaYmjrN.js
+
+  Build dijalankan sendirian (aturan rantai kartu): sebelum build, `python
+  tmp/papan-jalan-t_321bf03c.py` menunjukkan hanya t_321bf03c berstatus running.
+
+====================================================================
+6. GATE + SAPU REGRESI (tmp/gate-t_321bf03c.txt, 256 baris — ringkas)
+====================================================================
+  python docs/qa/audit-penanda-meta.py      -> exit 0 (kandidat: berkas non-F4)
+  python docs/qa/kontras-badge.py           -> exit 0 "SEMUA angka tabel §4.21 cocok dengan hitungan WCAG 2.1 ... — 7 tone + 7 tone solid."
+  python docs/qa/kontras-meta.py            -> exit 0 (ringkas kandidat keputusan meta)
+  python docs/qa/sweep-meta-surface.py      -> exit 0 "status: LOLOS (keluar 0)"
+  python tmp/cek-komponen-tanpa-import.py . -> exit 0; 89 berkas; hanya false positive dikenal
+                                               "resources\js\app.jsx: App" (parameter `setup({el, App, props})`).
+  python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build
+                                            -> exit 0; 61 chunk; satu temuan `DropzoneGalery-DbK3OEU7.js
+                                               -> FREE: P` yang sudah dinilai false positive di kartu F3.
+  python tmp/cek-tautan-admin-vs-rute.py    -> exit 0 "LULUS: semua url admin cocok dengan rute
+                                               terdaftar pada metode yang benar." URL F4
+                                               (/admin/stok/{variant}/masuk|keluar, /admin/produk/{product}/ubah)
+                                               muncul sebagai "konteks tidak dikenal (info)".
+
+====================================================================
+7. PEMERIKSAAN STATIS BERKAS F4
+====================================================================
+  Pola terlarang / berisiko (hitungan langsung atas 3 berkas F4):
+  gradient                   : bersih
+  bg-grid                    : bersih
+  shadow-                    : bersih
+  animate-                   : bersih
+  dangerouslySetInnerHTML    : bersih
+  localStorage               : bersih
+  sessionStorage             : bersih
+  <img                       : bersih
+
+  Tidak ada `<img>`, jadi aturan alt/lazy tidak berlaku di halaman ini (data dikirim sebagai teks).
+
+====================================================================
+8. PROPS YANG DIPAKAI (kontrak §12.12–§12.15)
+====================================================================
+  Index   : stok{data,links,meta}, filter{q,status,kategori,urut}, kategori[], ringkasan{varian,habis,kritis},
+            flash{success,error} (props bersama) — dicocokkan dengan StockController@index.
+  History : riwayat{data,links,meta}, filter{q,tipe,varian}, varian[], ringkasan{masuk,keluar,adjust,sale}
+            — dicocokkan dengan StockController@history.
+  Baris   : {id, product{id,name,slug}, size, color, label, sku, stock, is_active, status, updated_at} dan
+            {id, product_name, variant_label, variant_sku, type, tipe_label, qty, signed_qty, note,
+            admin{id,name}|null, created_at}.
+  Uji S4 memastikan props halaman ⊆ props yang benar-benar dikirim StockController.
+
+====================================================================
+9. BELUM DIUJI (butuh browser / tindakan pemilik)
+====================================================================
+  - Tata letak nyata pada 360 / 768 / 1024 / 1280 px, urutan tab & fokus di dalam Modal,
+    zoom 200%, dan kontras terukur di layar.
+  - Debounce pencarian pada browser nyata dan navigasi filter tanpa reload penuh.
+  - Aksi stok end-to-end ke server (POST /admin/stok/{variant}/masuk|keluar) — butuh sesi admin;
+    agent tidak menyalakan server dan tidak melakukan login.
+  Langkah uji aman untuk pemilik (server pemilik sudah berjalan di http://127.0.0.1:8000):
+    1) buka /admin/stok (setelah login admin) — cek KPI, tabel, dua ragam kosong, dan filter;
+    2) klik Masuk/Keluar pada satu varian, isi qty, kirim, pastikan toast sukses dan stok berubah;
+    3) buka /admin/stok/riwayat — pastikan baris baru muncul dan filter tipe/varian bekerja;
+    4) jalankan lagi uji keyboard: Tab ke tombol aksi, Enter membuka modal, Esc menutup.

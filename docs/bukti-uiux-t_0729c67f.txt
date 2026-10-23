@@ -1,0 +1,124 @@
+# Bukti UIUX — kartu t_0729c67f (UIUX1b: catat deviasi D12 — isian nomor resi)
+
+Tugas: catat isian nomor resi (PRD A15) yang belum digambar di `docs/design.md` sebagai deviasi **D12**
+(§11.3) + satu catatan di §5.12 bahwa kartu "Pengiriman" pada halaman detail pesanan mendapat isian resi.
+Assignee: uiux | Lingkungan: repo lokal `C:/Users/LENOVO/Downloads/toko-kulot` | Tanggal: 21 Okt 2026, 18:39.
+Tidak ada berkas kode yang disentuh; `.env` tidak dibaca. Tidak ada token, warna, atau komponen baru.
+
+## 1. DoD → bukti
+
+| DoD | Bukti | Lokasi |
+|---|---|---|
+| Baris D12 memuat **asal** (A15, kartu `t_394b40ba`) | kolom Bukti D12: "Keputusan techlead kartu `t_394b40ba` (`docs/keputusan-a15-resi.md` §1)" + "dasar PRD A15 (`docs/PRD.md:375`…)" | `docs/design.md:869` |
+| Baris D12 memuat **rujukan kontrak §12.17/§12.18a** | kolom Bukti D12: "kontrak `docs/kontrak-props.md` §12.17 (`pesanan.tracking_number`: string atau `null`) dan §12.18a (validasi …, galat `errors.tracking_number` …)" | `docs/design.md:869` |
+| Catatan §5.12 bahwa kartu "Pengiriman" dapat isian nomor resi | bullet baru tepat setelah bullet "Detail pesanan: …" | `docs/design.md:687` |
+| Teks & bentuk beku `docs/keputusan-a15-resi.md` §1 dipakai apa adanya | label `Nomor resi`; bantuan `Isi nomor resi dari ekspedisi setelah paket dikirim. Kosongkan untuk menghapus.`; status `Belum ada nomor resi.` / `Tersimpan: <nomor>`; tombol `Simpan resi`; galat server di bawah input — semuanya dikutip di kedua baris baru (§3) | `docs/design.md:687,869` |
+| Tanpa token/warna/komponen baru | kedua baris hanya menyebut komponen yang sudah ada: §4.5 `Field` + `Input`, §4.1 `Button` `primary`, kelas `text-meta text-slate-500` / `text-meta text-danger-strong` yang sudah dipakai §4.5 | `docs/design.md:687,869` |
+| Tidak ada bagian lain yang berubah | diff terhadap salinan sebelum penyuntingan: **2 tambah / 0 hapus**, hanya 2 hunk | §2 dan §4 di bawah |
+| Diff dilampirkan | `git diff --numstat` (working tree + terhadap salinan) + kutipan baris baru | §2, §3 |
+
+## 2. Perubahan berkas (hanya `docs/design.md`, hanya penambahan)
+
+```
+$ git diff --numstat docs/design.md
+5	0	docs/design.md
+# 5 = 3 baris deviasi dari kartu uiux sebelumnya (t_99424f19) yang masih belum di-commit
+#   + 2 baris kartu ini. Rincian 2 baris itu dibuktikan baris berikutnya.
+
+$ git diff --no-index --numstat <salinan-sebelum-edit>/design.md.bak docs/design.md
+2	0	C:/Users/LENOVO/AppData/Local/hermes/profiles/uiux/cache/scratch/design.md.bak => docs/design.md
+# perubahan kartu ini saja: 2 baris ditambah, 0 dihapus
+
+$ git diff --no-index -U0 <salinan-sebelum-edit>/design.md.bak docs/design.md
+@@ -686,0 +687 @@ ### 5.12 Admin — halaman CRUD
++- Isian nomor resi pada kartu "Pengiriman" … (baris penuh di §3)
+@@ -867,0 +869 @@ ### 11.3 Drift yang ditemukan saat K3
++| D12 | Kartu "Pengiriman" pada halaman detail pesanan … (baris penuh di §3)
+# tepat 2 hunk, tanpa satu pun baris yang dihapus atau diubah
+
+$ wc -l docs/design.md
+917 docs/design.md        # sebelum: 915 (+2)
+
+$ md5sum docs/design.md
+d96093a267ff173535e0794de44e43f4 *docs/design.md
+# sebelum penyuntingan: f3f13913a341529d7e73c7042b86ef44
+
+$ grep -c $'\r' docs/design.md
+0                        # line ending tetap LF (tidak ada CR yang diselipkan); UTF-8
+
+$ grep -n "^| D12 \|^### 11\.3 \|^### 11\.4 \|Isian nomor resi" docs/design.md
+687:- Isian nomor resi pada kartu **"Pengiriman"** halaman detail pesanan (§5.12 admin CRUD)
+854:### 11.3 Drift yang ditemukan saat K3
+869:| D12 | … (kolom Bukti + Status)
+873:### 11.4 Temuan kontras di luar badge (terukur 20 Okt 2026, kartu `t_8cd61512`)
+# §11.4 tetap utuh tepat setelah tabel; halaman tidak bergeser selain +2 baris
+```
+
+## 3. Kutipan baris baru (apa adanya)
+
+Baris `docs/design.md:687` (§5.12 Admin — halaman CRUD):
+
+- Isian nomor resi pada kartu **"Pengiriman"** halaman detail pesanan (`InfoResi` di dalam `KartuBagian`, PRD A15; deviasi **D12** §11.3): `Field` + `Input` §4.5 — label `Nomor resi`, nilai awal `pesanan.tracking_number`, maks 60, bantuan `Isi nomor resi dari ekspedisi setelah paket dikirim. Kosongkan untuk menghapus.` (`text-meta text-slate-500` di latar putih kartu), galat server `errors.tracking_number` di bawah input; tombol `Simpan resi` §4.1 `primary` (`disabled` + label "Memproses…" selama proses); baris status `text-meta text-slate-500` — `Belum ada nomor resi.` bila kosong, `Tersimpan: <nomor>` bila terisi; sukses = `flash.success` server. Tanpa komponen, token, atau warna baru; state mengikuti `saving` / `validation-error` baku halaman ini.
+
+Baris `docs/design.md:869` (§11.3, kolom `# | Drift | Bukti | Status`):
+
+| D12 | Kartu **"Pengiriman"** pada halaman detail pesanan `/admin/pesanan/{order}` (§5.12) mendapat **isian nomor resi** (PRD A15) yang belum digambar di spesifikasi desain — elemen baru, bukan penyimpangan dari elemen lama | Keputusan techlead kartu `t_394b40ba` (`docs/keputusan-a15-resi.md` §1): kolom `orders.tracking_number` string(60) dengan `null` = belum diisi, rute `PATCH /admin/pesanan/{order}/resi` (`admin.orders.resi`) + `Admin\OrderController@resi`; kontrak `docs/kontrak-props.md` §12.17 (`pesanan.tracking_number`: string atau `null`) dan §12.18a (validasi `nullable` `string` `max:60`, `''` → `null` = menghapus, galat `errors.tracking_number` = `Nomor resi maksimal 60 karakter.` / `Nomor resi harus berupa teks.`); dasar PRD A15 (`docs/PRD.md:375`: "Tidak ada integrasi kurir; nomor resi diisi manual di detail pesanan"); F5 `t_018b2723` hanya bisa merender notice "Nomor resi belum bisa diisi" (`resources/js/Pages/Admin/Orders/partials/InfoResi.jsx:18-21`), jadi bentuk isian belum punya acuan | **Diterima sebagai deviasi — asal PRD A15; keputusan + teks beku kartu `t_394b40ba`; pengerjaan tampilan kartu `t_d1028202` (F5b).** Alasan: A15 adalah permintaan PRD yang belum punya gambaran tampilan, sedangkan F5b sudah menulis kode; tanpa baris ini frontend menulis isian tanpa acuan. Batas: **tanpa token, warna, atau komponen baru** — hanya komponen yang sudah ada: §4.5 `Field` + `Input` (label `Nomor resi`, bantuan `text-meta text-slate-500` di latar putih kartu, galat server `errors.tracking_number` `text-meta text-danger-strong` di bawah input) dan §4.1 `Button` `primary` (`Simpan resi`; `disabled` + label "Memproses…" selama menyimpan); baris status `text-meta text-slate-500` = `Belum ada nomor resi.` (kosong) / `Tersimpan: <nomor>` (terisi). Teks beku tambahan: bantuan `Isi nomor resi dari ekspedisi setelah paket dikirim. Kosongkan untuk menghapus.`. Sukses mengikuti `flash.success` server (§12.18a `Nomor resi pesanan diperbarui.`) — tanpa toast atau state halaman baru; `InlineNotice` lama di `InfoResi.jsx` **dihapus**. Di luar baris ini (belum digambar, usulan `docs/usulan.md` U5): resi tampil di halaman pembeli, tautan lacak kurir, integrasi ekspedisi, riwayat resi |
+
+## 4. Tidak ada bagian lain yang berubah
+
+- `git diff --no-index -U0` (salinan sebelum edit → hasil): **hanya 2 hunk tambahan** (baris 687 di §5.12 dan baris 869 di §11.3), **nol** penghapusan.
+- Tabel §11.3 tetap utuh: baris 856–869 semuanya 4 kolom (header + separator + D1…D12); baris D12 **contiguous** dengan D11 (tidak ada baris kosong yang memutus tabel). Diperiksa dengan hitung pipe per baris: `pipes=5` untuk 856–869, `pipes=0` untuk baris kosong di 855 dan 870.
+- §11.4 masih berjudul sama di baris 873 (dicek ulang setelah penyuntingan); §5.12 hanya bertambah satu bullet, bullet "Detail pesan"/"Penilaian"/"Akun"/"State per halaman" tetap apa adanya.
+- §4.1, §4.5, §4.23, §5.8, §5.13, §10, §11.1, §11.2 **tidak disentuh**.
+- `## Riwayat Revisi` (baris 9–19) **tidak** diubah (kartu melarang perubahan bagian lain). Konsekuensi: belum ada baris versi baru (mis. v2.3) — perlu kartu uiux terpisah bila techlead ingin menaikkan penomoran versi.
+- Tidak ada berkas `.php`, `.jsx`, `.css`, atau `tailwind.config.js` yang disentuh; tidak ada `npm run build` (bukan perubahan kode); `docs/PRD.md`, kontrak, dan `docs/keputusan-a15-resi.md` tidak diubah.
+
+## 5. Verifikasi ulang klaim (dijalankan sendiri, 21 Okt 2026)
+
+```
+$ grep -n "A15" docs/PRD.md
+375:| A15 | Kurir & resi | Tidak ada integrasi kurir; nomor resi diisi manual di detail pesanan | Perlu integrasi pengiriman |
+# catatan: docs/keputusan-a15-resi.md:29,32 mengutip "docs/PRD.md:391". Hari ini A15 ada di baris 375
+# (PRD tidak diubah kartu ini); D12 memakai angka terukur 375, bukan kutipan dokumen lama.
+
+$ grep -n "^### 12.17 \|^### 12.18a \|tracking_number" docs/kontrak-props.md
+1356:### 12.17 GET `/admin/pesanan/{order}` — `admin.orders.show` — `Admin/Orders/Show`
+1365:    "tracking_number": "JX1234567890",
+1381:`tracking_number` = nomor resi kurir yang diisi manual admin (PRD A15); `null` bila belum diisi.
+1392:### 12.18a PATCH `/admin/pesanan/{order}/resi` — `admin.orders.resi`
+1394:Field: `tracking_number` (opsional, teks, maks 60; kosong/`null` = menghapus nomor resi).
+1395:Galat: `errors.tracking_number` (`Nomor resi maksimal 60 karakter.` / `Nomor resi harus berupa teks.`).
+
+$ grep -n "Pengiriman\|InfoResi" resources/js/Pages/Admin/Orders/Show.jsx
+172: <KartuBagian title="Pengiriman" ...>
+185: <InfoResi />
+
+$ grep -n "bg-white" resources/js/Pages/Admin/Orders/partials/KartuBagian.jsx
+10: <section className={cn('... border-line bg-white p-6', className)}>
+# kartu berlatar putih → aturan §2.1 v2.2 butir 5: teks meta boleh `text-slate-500` (bukan wajib `slate-600`)
+
+$ sed -n '15,20p' resources/js/Pages/Admin/Orders/partials/InfoResi.jsx
+export default function InfoResi() {
+    return (
+        <InlineNotice tone="warning" title="Nomor resi belum bisa diisi">
+            Aksi simpan nomor resi belum tersedia di sistem, …
+# notice lama yang akan dihapus F5b (bukan dikerjakan kartu ini)
+
+$ grep -rn "tracking_number" app/ routes/ database/migrations/ resources/js/Pages/Admin/Orders/
+app/Http/Requests/Admin/UpdateOrderTrackingRequest.php:26: 'tracking_number' => ['nullable','string','max:60'],
+app/Http/Requests/Admin/UpdateOrderTrackingRequest.php:36: 'tracking_number.string' => 'Nomor resi harus berupa teks.',
+app/Http/Requests/Admin/UpdateOrderTrackingRequest.php:37: 'tracking_number.max' => 'Nomor resi maksimal 60 karakter.',
+database/migrations/2026_10_21_000019_add_tracking_number_to_orders_table.php:16: $table->string('tracking_number', 60)->nullable()->after('paid_at');
+resources/js/Pages/Admin/Orders/partials/InfoResi.jsx:11: (komentar: kontrak §12.17 versi lama belum punya field resi)
+
+$ grep -n "resi\|tracking" routes/admin.php
+# 0 hasil (exit 1) — rute `admin.orders.resi` belum terlihat di berkas rute saat bukti ini ditulis
+```
+
+## 6. Belum diuji / terbuka (jujur, tanpa klaim)
+
+1. Kartu ini **dokumentasi murni**: tidak ada kode atau tampilan yang dibangun/diuji; tidak ada browser, server, atau `npm run build` (R11). Baris D12 adalah acuan tampilan, bukan laporan bahwa isian resi sudah jadi.
+2. Rute `admin.orders.resi` belum ada di `routes/admin.php` saat bukti ini ditulis (kartu backend `t_b078318d` masih berjalan). D12 karena itu mengutip **keputusan + kontrak**, bukan mengklaim rute sudah hidup.
+3. Varian tombol `primary`, posisi galat di bawah input, dan baris status adalah pembacaan komponen yang sudah ada (§4.1/§4.5) oleh uiux untuk memberi acuan tunggal; bila frontend memilih bentuk lain (mis. varian `secondary`), itu penyimpangan dari D12 dan harus dicatat sebagai deviasi baru.
+4. Penomoran versi `docs/design.md` belum dinaikkan ke v2.3 (bagian "Riwayat Revisi" sengaja tidak disentuh kartu ini).
+5. Belum diuji end-to-end di browser (PATCH nyata, galat 422, toast/flash) — butuh sesi admin nyata; dijadwalkan ke kartu QA lanjutan sesuai `docs/keputusan-a15-resi.md` §4.

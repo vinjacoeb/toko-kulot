@@ -1,0 +1,22 @@
+### F. npm run build + jejak kelas/teks di bundel
+[2mpublic/build/[22m[36massets/Index-Biazmt12.js              [39m[1m[2m  9.84 kB[22m[1m[22m[2m │ gzip:   3.61 kB[22m
+[2mpublic/build/[22m[36massets/Dashboard-D-Wzp-l3.js          [39m[1m[2m 10.52 kB[22m[1m[22m[2m │ gzip:   3.80 kB[22m
+[2mpublic/build/[22m[36massets/Index-CX9myFdt.js              [39m[1m[2m 11.46 kB[22m[1m[22m[2m │ gzip:   4.13 kB[22m
+[2mpublic/build/[22m[36massets/CheckoutPay-DGKt7J4e.js        [39m[1m[2m 11.77 kB[22m[1m[22m[2m │ gzip:   3.93 kB[22m
+[2mpublic/build/[22m[36massets/Index-B-3QCOVT.js              [39m[1m[2m 11.85 kB[22m[1m[22m[2m │ gzip:   4.12 kB[22m
+[2mpublic/build/[22m[36massets/Index-ByVZ8YTX.js              [39m[1m[2m 11.95 kB[22m[1m[22m[2m │ gzip:   4.34 kB[22m
+[2mpublic/build/[22m[36massets/Home-DRpL3ZfJ.js               [39m[1m[2m 13.50 kB[22m[1m[22m[2m │ gzip:   4.38 kB[22m
+[2mpublic/build/[22m[36massets/Show-Clb62TXI.js               [39m[1m[2m 14.04 kB[22m[1m[22m[2m │ gzip:   4.82 kB[22m
+[2mpublic/build/[22m[36massets/ProdukForm-Cfhocq_3.js         [39m[1m[2m 14.70 kB[22m[1m[22m[2m │ gzip:   4.28 kB[22m
+[2mpublic/build/[22m[36massets/Index-BuQtlxKJ.js              [39m[1m[2m 50.76 kB[22m[1m[22m[2m │ gzip:  12.14 kB[22m
+[2mpublic/build/[22m[36massets/app-BCun0p-R.js                [39m[1m[2m364.67 kB[22m[1m[22m[2m │ gzip: 114.34 kB[22m
+[32m✓ built in 13.93s[39m
+$ echo ${PIPESTATUS[0]}  ->  0
+$ grep -c 'min-width:16rem' public/build/assets/*.css
+1
+$ grep -o 'min-w-[^{]*{min-width:16rem}' public/build/assets/*.css | head -3
+min-w-\[16rem\]{min-width:16rem}
+$ grep -o 'Sinkronkan status pembayaran' public/build/assets/*.js | head -3
+public/build/assets/SyncPaymentButton-TLkCqPKk.js:Sinkronkan status pembayaran
+$ grep -o 'sinkron-pembayaran' public/build/assets/*.js | head -3
+public/build/assets/SyncPaymentButton-TLkCqPKk.js:sinkron-pembayaran

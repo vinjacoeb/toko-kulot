@@ -1,0 +1,93 @@
+# Bukti UIUX — kartu t_99424f19 (U1: deviasi design.md — mode uji, masa berlaku 5 menit, kolom pembayaran)
+
+Tugas: tambahkan baris deviasi di `docs/design.md` §11.3 untuk (1) penanda mode uji Midtrans, (2) hitung mundur
+masa berlaku QRIS 5 menit, (3) status CATATAN kolom `midtrans_client_key`/`midtrans_is_production`.
+Assignee: uiux | Lingkungan: repo lokal `C:/Users/LENOVO/Downloads/toko-kulot` | Tanggal: 21 Okt 2026
+Nilai `.env` **tidak** dibaca (hanya `.env.example` baris 74, variabel contoh bukan kredensial). Tidak ada berkas kode yang disentuh.
+
+## 1. DoD → bukti (setiap deviasi: nomor bagian design + kartu asal + alasan)
+
+| Deviasi | Nomor bagian design yang terdampak | Kartu asal | Alasan | Baris hasil |
+|---|---|---|---|---|
+| D9 penanda "Mode uji" | §5.8 (halaman bayar) + `QrisPanel` §4.4 + tab Pembayaran §5.13; bentuk penanda dibatasi ke komponen §4.23 `InlineNotice` / §4.21 `StatusBadge` | temuan `t_15531332` (butir 2 laporan pemilik), pengerjaan tampilan `t_e60e7733` (F2), prop mode efektif dari `t_9f4b6aee` (B1), keputusan pemilik `docs/pertanyaan-pemilik.md` §5 P3 | QR tampil tetapi tidak mungkin dibayar dan tidak ada penanda di UI | `docs/design.md:865` |
+| D10 masa berlaku 5 menit | sketsa `QrisPanel` §4.4 (`⏱ 14:32`) + `Countdown` §4.21 + baris §10 "§8 QRIS Midtrans (… countdown 15 menit …)" | keputusan pemilik `docs/pertanyaan-pemilik.md` §5 P1; pengerjaan `t_e35050e8` (B2) + `t_e60e7733` (F2); bukti `docs/review.md` F-3 | pemilik menilai batas 15 menit terlalu lama; permintaan menggantikan PRD §8 butir 6 / A17 yang belum diamendemen | `docs/design.md:866` |
+| D11 kolom pembayaran CATATAN | tab Pembayaran §5.13 | keputusan pemilik §5 P3 **masih ditunggu**; bukti `docs/review.md` F-2 akar 2 | kredensial efektif dibaca dari `.env`, sehingga isian tab Pembayaran tidak berpengaruh | `docs/design.md:867` |
+
+Batas visual yang ditegaskan di baris deviasi (tanpa mengubah spec lama): tidak ada token/kelas/warna baru,
+format `Countdown` dan state `QrisPanel` tetap seperti §4.21/§4.4, penanda D9 tidak dirender saat `fake=false`.
+
+## 2. Perubahan berkas (hanya satu berkas, hanya penambahan)
+
+```
+$ git diff --stat docs/design.md
+ docs/design.md | 3 +++
+ 1 file changed, 3 insertions(+)
+
+$ grep -n "^| D9 \|^| D10 \|^| D11 \|^### 11.3 \|^### 11.4 " docs/design.md
+853:### 11.3 Drift yang ditemukan saat K3
+865:| D9 | ...
+866:| D10 | ...
+867:| D11 | ...
+871:### 11.4 Temuan kontras di luar badge (terukur 20 Okt 2026, kartu `t_8cd61512`)
+
+$ wc -l docs/design.md
+915 docs/design.md        # 912 → 915 (+3 baris, tepat 3 baris deviasi)
+
+$ git diff --numstat docs/design.md
+3	0	docs/design.md      # 3 baris ditambah, 0 dihapus
+
+$ md5sum docs/design.md
+f3f13913a341529d7e73c7042b86ef44 *docs/design.md
+```
+
+`git status --short` pada run ini: `docs/design.md` satu-satunya berkas yang diubah kartu ini.
+Berkas lain yang tampak modified di working tree (`docs/catatan-techlead.md`, `docs/pertanyaan-pemilik.md`,
+`docs/traceability.md`, `docs/review.md`, `resources/js/Layouts/PublicLayout.jsx`) berasal dari kartu lain
+(`t_15531332`, F1 `t_7ebfca05`) dan **tidak** disentuh di sini.
+
+## 3. Tidak ada bagian lain yang berubah
+
+- `git diff -U0 docs/design.md` → **hanya tiga baris tambahan** di §11.3 (tanpa satu pun penghapusan); §4.4, §4.21, §4.23, §5.8, §5.13, §10 dan §11.4 tetap apa adanya.
+- §11.4 masih memuat judul aslinya di baris 871 (dicek ulang setelah penyuntingan).
+- `## Riwayat Revisi` (baris 9–16) **tidak** diubah: kartu ini melarang perubahan bagian lain design.md. Konsekuensi: baris riwayat versi berikutnya (mis. v2.3) belum ada — perlu kartu uiux terpisah bila techlead ingin penomoran versi dinaikkan.
+- Tidak ada berkas `.php`, `.jsx`, `.css`, atau `tailwind.config.js` yang disentuh; tidak ada `npm run build` (tidak perlu, bukan perubahan kode).
+
+## 4. Verifikasi ulang klaim bukti (dijalankan sendiri, 21 Okt 2026)
+
+```
+$ grep -n "fake\|expiry_minutes" config/midtrans.php
+26:    'fake' => (bool) env('MIDTRANS_FAKE', true),
+29:    'expiry_minutes' => 15,
+# catatan: `docs/review.md` F-2/F-3 mengutip baris 31/33 (nomor versi berkas saat review); berkas hari ini = 26/29.
+
+$ grep -n "MIDTRANS_FAKE" .env.example
+74:MIDTRANS_FAKE=true
+
+$ grep -n "fake" app/Http/Controllers/CheckoutController.php
+248:            'fake' => $this->midtrans->isFake(),
+275:            'fake' => $this->midtrans->isFake(),
+
+$ grep -n "midtrans_client_key\|midtrans_is_production" app/Services/SettingService.php
+46:        'midtrans_client_key' => ['group' => 'pembayaran', 'type' => 'text'],
+47:        'midtrans_is_production' => ['group' => 'pembayaran', 'type' => 'text', 'format' => 'bool'],
+
+$ grep -n "15 menit" docs/PRD.md
+219:… countdown kedaluwarsa (default 15 menit) …
+377:| A17 | Batas waktu bayar QRIS | 15 menit, order `expire` otomatis …
+
+$ grep -n '"fake": true' docs/kontrak-props.md
+427:    "fake": true
+429:  "midtrans": { "client_key": null, "is_production": false, "fake": true }
+
+$ grep -n "countdown 15 menit" docs/design.md
+816:| §8 QRIS Midtrans (QR, countdown 15 menit, cek status) | §4.4, §5.7, §5.8, §5.16 |
+```
+
+## 5. Belum diuji / terbuka (jujur, tanpa klaim)
+
+1. Penanda mode uji (D9) **belum ada di kode**: `grep -rn "fake" resources/js` → **0 hasil (exit 1)**, dijalankan 21 Okt 2026;
+   kartu F2 `t_e60e7733` masih berstatus `todo`.
+   Baris deviasi D9 ditulis ke depan sebagai pegangan F2, bukan laporan bahwa penanda sudah jadi.
+2. Masa berlaku 5 menit (D10) juga belum berlaku di kode: `config/midtrans.php:29` masih `15`; kartu B2 `t_e35050e8` belum selesai.
+3. Keputusan pemilik P3 (kolom pembayaran dihapus atau dipertahankan) masih ditunggu → D11 berstatus CATATAN, bukan final.
+4. Tampilan nyata di browser (halaman bayar, tab Pembayaran admin, 360–1280 px) tidak diuji kartu ini — tidak ada server dinyalakan; kartu ini hanya dokumentasi. Berkas ini hanyalah bukti kerja; tidak menyatakan ada perubahan tampilan yang sudah tayang.

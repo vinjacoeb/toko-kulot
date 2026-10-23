@@ -1,0 +1,13 @@
+### L. Kode kartu ini terbukti ada di bundel rilis (public/build)
+$ grep -rl 'Simpan resi' public/build/assets/
+public/build/assets/InfoResi-DX6_iCnZ.js
+$ grep -c '<teks beku>' public/build/assets/InfoResi-DX6_iCnZ.js
+  Simpan resi = 1
+  Belum ada nomor resi. = 1
+  Tersimpan: = 1
+  Isi nomor resi dari ekspedisi setelah paket dikirim. = 1
+  Memproses = 0
+$ grep -n 'preserveScroll' resources/js/Pages/Admin/Orders/partials/InfoResi.jsx
+53:                preserveScroll: true,
+$ ls -la public/build/assets/InfoResi-DX6_iCnZ.js
+-rw-r--r-- 1 LENOVO 197121 1383 Oct 21 19:05 public/build/assets/InfoResi-DX6_iCnZ.js

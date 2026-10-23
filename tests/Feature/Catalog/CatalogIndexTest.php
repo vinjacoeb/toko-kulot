@@ -359,8 +359,9 @@ class CatalogIndexTest extends TestCase
         $this->assertSame(4, $kartu['stock']);
         $this->assertCount(1, $kartu['variants']);
         $this->assertSame('M', $kartu['variants'][0]['size']);
+        $this->assertSame('#111827', $kartu['variants'][0]['color_hex']);
         $this->assertSame(
-            ['id', 'size', 'color', 'sku', 'price_delta', 'stock', 'is_active'],
+            ['id', 'size', 'color', 'color_hex', 'sku', 'price_delta', 'stock', 'is_active'],
             array_keys($kartu['variants'][0])
         );
         $this->assertSame(

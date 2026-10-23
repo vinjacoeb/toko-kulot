@@ -1,0 +1,12 @@
+kolom tasks: assignee, block_kind, block_recurrences, body, branch_name, claim_expires, claim_lock, completed_at, completion_contract, consecutive_failures, created_at, created_by, current_run_id, current_step_key, goal_max_turns, goal_mode, id, idempotency_key, last_failure_error, last_heartbeat_at, max_retries, max_runtime_seconds, model_override, priority, project_id, provider_override, reasoning_effort, result, session_id, skills, started_at, status, tenant, title, worker_pid, worker_started_at, workflow_template_id, workspace_kind, workspace_path
+t_d98cf23d  [archived/techlead]  Keputusan dokumen: PRD §5.2 (PATCH) vs kontrak-props §10.2 (POST) untuk admin.messages.read
+t_92fcaafd  [blocked/techlead]  Kontrak + backend: nomor resi manual pesanan (PRD A15) — kolom, field §12.17, rute simpan
+t_15531332  [done/techlead]  laporan dari pemilik untuk dikerjakan
+t_394b40ba  [done/techlead]  Kontrak + backend: nomor resi manual pesanan (PRD A15) — kolom, field §12.17, rute simpan
+t_54bfee4e  [done/techlead]  Keputusan dokumen: PRD §5.2 (PATCH) vs kontrak-props §10.2 (POST) untuk admin.messages.read
+t_7c685183  [done/techlead]  Gerbang pemilik 1: persetujuan hasil K1 sebelum K2/K3
+t_a24a79d0  [done/techlead]  Keputusan: F4 /admin/stok — nilai minimum, set stok, stok sebelum→sesudah, filter tanggal
+t_b5de72e3  [done/techlead]  Keputusan: pencarian global topbar admin (design §5.10) belum bisa dibangun — tidak ada rute pencarian di PRD §5.2
+t_e16ab638  [done/techlead]  Gerbang pemilik 2: persetujuan design.md (K3) sebelum slicing frontend
+t_ecd07ae5  [done/techlead]  Pelajari PRD + design, tulis ringkasan tim dan brief per peran
+total: 10

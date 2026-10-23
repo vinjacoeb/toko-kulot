@@ -1,0 +1,24 @@
+563 docs/catatan-frontend.md
+384:## Kartu t_950a38ca — error per blok: tiga blok dashboard lanjutan (stok kritis, pesanan terbaru, ulasan terbaru)
+411:## Kartu t_90759be9 — kontras & token warna semantik (non-badge)
+426:## t_e5149746 — Halaman Admin Kategori & Akun (2026-10-20)
+448:## t_954abfe8 — 29 titik teks meta → `text-slate-600` (design §2.1 v2.2 / §11.4 T7) (2026-10-20)
+473:## t_7ebfca05 — F1: Badge keranjang menampilkan jumlah item (2026-10-21)
+495:## t_5988a39e — F3: /admin/produk (daftar + Create/Edit/Show) (2026-10-21)
+519:## t_321bf03c — F4: /admin/stok — daftar stok + riwayat pergerakan (2026-10-21)
+543:## F5 — /admin/pesanan: daftar + detail pesanan (kartu t_018b2723, 21 Okt 2026)
+--- ekor berkas ---
+- Label status/pembayaran/opsi lanjutan dari server (`status_label`, `payment_label`, `status_berikut`); klien tidak mengarang label. Angka dinormalkan dengan aman dan nilai kosong tampil `-` (KPI ringkasan, "Menampilkan X dari Y") — tidak ada `NaN`/`undefined`.
+- Validasi tiga arah: kebutuhan kartu punya layar & state (daftar, detail, modal); nama key/tipe/enum/format uang & tanggal/paginasi/filter cocok §12.16–§12.18; resolver halaman + komponen yang sudah ada dipakai ulang.
+
+Verifikasi (dijalankan, 21 Okt 2026):
+- Harness SSR + statik `tmp/uji-ssr-pesanan-t_018b2723.mjs` (stub Inertia `tmp/stub-inertia-t_321bf03c.mjs`) → exit 0, **26 uji / 0 gagal**: S1–S7 (tanpa fetch/SPA/`route()`/storage/`dangerouslySetInnerHTML`; impor relatif ada di disk; props halaman ⊆ props `OrderController`; URL literal = rute `admin.php`; tanpa teks placeholder & tanpa isian resi tanpa rute; state galat punya "Coba lagi"); I1–I8 (daftar terisi + KPI + hitung + paginasi; dua ragam kosong — tanpa filter vs terfilter; props hilang/null; angka string & null; filter terpilih; ringkasan/meta hilang → `-`; penanganan flash); H1–H8 (detail terisi; status final → tombol nonaktif + penjelasan; bukti pembayaran ada/kosong/QR kosong; item & catatan kosong; props hilang; notice temuan resi; flash); M1–M3 (modal: label server, opsi status, tombol simpan, galat per kolom via `aria-describedby`).
+- Kontrol negatif: sabotase sementara (judul kosong Index dijadikan konstan + judul notice `InfoResi` dipendekkan) → **exit 1, tepat I3 + H7 gagal**; setelah dikembalikan → exit 0. Assert terbukti menangkap regresi.
+- `npm run build` → exit 0, "✓ built in 2.82s"; halaman baru terbukti ada di bundel rilis (`public/build/assets/Index-DH9fHr4J.js`).
+- Bukti lengkap: `docs/bukti-frontend-t_018b2723.txt`.
+
+Catatan / known issue:
+- **Nomor resi manual (PRD A15) belum bisa disimpan.** Tidak ada kolom resi di `database/migrations/2026_10_20_000010_create_orders_table.php`, tidak ada rute resi di `routes/admin.php` (hanya `orders.index|show|status`), dan `docs/kontrak-props.md` §12.17 tidak punya field resi/`tracking_number`. Kartu mewajibkan "catat temuan, jangan bangun rute baru", jadi kolom isian tidak dibangun; detail pesanan menampilkan notice jujur (`InfoResi`: "Nomor resi belum bisa diisi") + arahan pencatatan manual. DoD "nomor resi bisa disimpan" **belum terpenuhi** sampai kontrak + backend menambah field dan rute simpan; kartu lanjutan sudah dibuat untuk itu.
+- Aksi lain yang disebut pemilik (retur/refund) tidak ada di PRD/kontrak → tidak dibangun.
+- Belum diuji, butuh browser: tata letak nyata 360/768/1024/1280 px, urutan tab & fokus di modal, zoom 200%, dan aksi ubah status end-to-end (PATCH butuh sesi admin). Instruksi aman untuk pemilik: buka `/admin/pesanan` dengan sesi admin, cek daftar + kombinasi filter + paginasi tanpa reload penuh, detail `/admin/pesanan/{id}`, modal "Ubah status" → simpan → status berubah + toast sukses, dan tombol nonaktif saat status final.
+- Tidak ada commit (R8), tidak ada server/migrasi/seeder; `.env` dan dokumen acuan tidak disentuh.

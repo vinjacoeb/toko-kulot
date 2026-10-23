@@ -1,0 +1,39 @@
+=== Harness gerbang `ulasan.boleh` — kartu t_4ef6e8bd ===
+node            : v26.7.0
+esbuild         : 0.25.12
+berkas diuji    : resources/js/Pages/Public/CheckoutSuccess.jsx
+md5 berkas uji  : 2e4df85a082cae829efecc0580ce373a
+
+--- 1. komponen apa adanya (gate resmi) ---
+  [LULUS] Q1 boleh=false (settlement, status dibayar): tidak ada form penilaian
+  [LULUS] Q2 boleh=true: satu form per produk yang belum dinilai
+  [LULUS] Q2b sumber CheckoutSuccess memuat gate resmi — gate resmi ada
+  [LULUS] Q3 boleh=false dengan sebagian sudah dinilai: form hilang, tanpa notice alasan
+  [LULUS] Q4 belum settlement: notice alasan tanpa form
+  [LULUS] Q5 semua sudah dinilai: tanpa form, ringkasan tampil
+  [LULUS] Q6 props ulasan hilang pada order yang boleh dinilai: tanpa form
+  [LULUS] Q6b props ulasan hilang pada order yang belum settlement: tetap notice alasan
+  [LULUS] Q7 boleh='true' (string) tidak dianggap true — perbandingan ketat
+  [LULUS] Q8 gerbang memakai `boleh` apa adanya, cabang kontradiksi tidak kembali
+  [LULUS] Q9 daftar status yang boleh dinilai sama antara ReviewService (PHP) dan CheckoutSuccess (JSX) — PHP=[dibayar,dikirim,diproses,selesai] JSX=[dibayar,dikirim,diproses,selesai]
+  [LULUS] Q10 hanya CheckoutSuccess.jsx yang membaca `ulasan.boleh` — pembaca=[resources/js/Pages/Public/CheckoutSuccess.jsx] penyebut kata boleh=[Components/EmptyState.jsx,Pages/Admin/Accounts/Index.jsx,Pages/Admin/Orders/Index.jsx,Pages/Public/CheckoutSuccess.jsx]
+  ringkasan: 12/12 lulus
+
+--- 2. kontrol negatif (gerbang lama `boleh || kontradiksiBoleh`, di memori) ---
+  mode=kontrol-lama lulus=true
+  [LULUS] Q1-kontrol kontrol negatif: harness mampu melihat form saat gerbang lama dipakai
+  → harness MEMANG bisa melihat form: gerbang lama menampilkan form saat `boleh=false`, sedangkan komponen apa adanya tidak. Pemeriksaan (1) bermakna.
+
+KESIMPULAN: LULUS — gerbang klien memakai `ulasan.boleh` apa adanya dan kontrol negatif menggigit.
+
+=== bukti berkas aplikasi tidak diubah QA (2026-10-21 20:11 +0700) ===
+$ git status --porcelain -- <berkas yang diuji>
+ M docs/design.md
+ M resources/js/Pages/Public/CheckoutSuccess.jsx
+(kosong = tidak ada perubahan tak-tercatat pada berkas tersebut)
+$ md5 berkas yang diuji
+2e4df85a082cae829efecc0580ce373a *resources/js/Pages/Public/CheckoutSuccess.jsx
+b90c4fa7ebd9b4a468cd5e8007924a01 *resources/js/Components/ReviewForm.jsx
+
+=== bundle sementara di docs/qa (harus kosong) ===
+0

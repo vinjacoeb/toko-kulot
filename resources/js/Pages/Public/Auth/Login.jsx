@@ -8,8 +8,9 @@ import Input from '@/Components/Input';
 
 /**
  * `/login` — kontrak props §6.3/§6.4, design §5.5.
- * URL literal (`POST /login`, tautan `/forgot-password`): PRD §15.2 melarang Ziggy/`route()`.
+ * URL literal (`POST /login`, tautan `/forgot-password`, tautan silang `/register`): PRD §15.2 melarang Ziggy/`route()`.
  * State: idle | submitting (tombol loading) | error-field | error-global (kredensial salah) | success.
+ * Tautan silang ke `/register` (teks "Belum punya akun? Daftar") — deviasi D16, kartu t_e3f68f7f.
  */
 export default function Login({ status = null, settings = null, flash = null }) {
   const { data, setData, post, processing, errors } = useForm({
@@ -91,6 +92,14 @@ export default function Login({ status = null, settings = null, flash = null }) 
       <p className="mt-4 text-meta">
         <Link href="/forgot-password" className="text-brand underline underline-offset-4">
           Lupa kata sandi?
+        </Link>
+      </p>
+
+      {/* Tautan silang Masuk↔Daftar — deviasi D16 (design.md §5.5/§11.3; kartu t_e3f68f7f). */}
+      <p className="mt-4 text-meta">
+        Belum punya akun?{' '}
+        <Link href="/register" className="text-brand underline underline-offset-4">
+          Daftar
         </Link>
       </p>
     </AuthLayout>

@@ -31,6 +31,42 @@ function uniqueBy(list, key) {
     return out;
 }
 
+const POLA_HEX = /^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+
+/** `color_hex` kontrak §8.3: `#RRGGBB` atau null. Nilai asing diperlakukan null. */
+function hexSah(value) {
+    const teks = typeof value === 'string' ? value.trim() : '';
+    return POLA_HEX.test(teks) ? teks : null;
+}
+
+/** Varian bisa dibeli: aktif dan stok > 0 (stok tidak dikirim dianggap tersedia). */
+function varianTersedia(variant) {
+    if (!variant || variant.is_active === false) return false;
+    const stok = Number(variant.stock);
+    return !Number.isFinite(stok) || stok > 0;
+}
+
+/**
+ * Daftar warna unik diturunkan dari `variants[]` (kontrak §8.3, tidak ada `colors[]`).
+ * Satu entri per nama; hex diambil dari baris pertama yang punya hex sah supaya swatch
+ * tidak jatuh ke lingkaran netral hanya karena baris pertama berhex null.
+ */
+function daftarWarna(variants) {
+    const peta = new Map();
+    (variants || []).forEach((variant) => {
+        const nama = variant?.color;
+        if (nama === null || nama === undefined || nama === '') return;
+        const hex = hexSah(variant.color_hex);
+        if (!peta.has(nama)) {
+            peta.set(nama, { color: nama, color_hex: hex });
+            return;
+        }
+        const entri = peta.get(nama);
+        if (!entri.color_hex && hex) entri.color_hex = hex;
+    });
+    return [...peta.values()];
+}
+
 /**
  * Detail produk `/produk/{slug}` — docs/design.md §5.3.
  * Bentuk produk baku kontrak §8.3 + key aditif K11 (`description`, `variants`, `reviews`).
@@ -48,9 +84,36 @@ export default function ProductsShow({
 }) {
     const variants = useMemo(() => (Array.isArray(product?.variants) ? product.variants : []), [product]);
     const sizes = useMemo(() => uniqueBy(variants, 'size'), [variants]);
-    const colors = useMemo(() => uniqueBy(variants, 'color'), [variants]);
+    const colors = useMemo(() => daftarWarna(variants), [variants]);
     const hasSize = sizes.length > 0;
     const hasColor = colors.length > 0;
+
+    // Ketersediaan per nilai (bukan per kombinasi): chip hanya mati bila nilai itu sendiri
+    // tidak punya stok di kombinasi mana pun. Dengan begitu mengklik satu chip tidak
+    // mengunci chip lain — bug "ukuran & warna tak bisa dipilih" (laporan pemilik).
+    const ukuranAdaStok = useMemo(() => {
+        const set = new Set();
+        variants.forEach((variant) => {
+            if (variant?.size && varianTersedia(variant)) set.add(variant.size);
+        });
+        return set;
+    }, [variants]);
+    const warnaAdaStok = useMemo(() => {
+        const set = new Set();
+        variants.forEach((variant) => {
+            if (variant?.color && varianTersedia(variant)) set.add(variant.color);
+        });
+        return set;
+    }, [variants]);
+
+    /** Apakah kombinasi ukuran × warna punya varian aktif berstok. */
+    const kombinasiAda = (nilaiUkuran, nilaiWarna) =>
+        variants.some(
+            (variant) =>
+                (nilaiUkuran === null || variant.size === nilaiUkuran) &&
+                (nilaiWarna === null || variant.color === nilaiWarna) &&
+                varianTersedia(variant)
+        );
 
     const [size, setSize] = useState(null);
     const [color, setColor] = useState(null);
@@ -60,12 +123,28 @@ export default function ProductsShow({
     const [openSection, setOpenSection] = useState(null);
 
     useEffect(() => {
-        setSize(hasSize && sizes.length === 1 ? sizes[0].size : null);
-        setColor(hasColor && colors.length === 1 ? colors[0].color : null);
+        const ukuranTunggal = sizes.filter((variant) => varianTersedia(variant));
+        const warnaTunggal = colors.filter((variant) => varianTersedia(variant));
+        setSize(ukuranTunggal.length === 1 ? ukuranTunggal[0].size : null);
+        setColor(warnaTunggal.length === 1 ? warnaTunggal[0].color : null);
         setQty(1);
         setFormError(null);
         setOpenSection(null);
     }, [product?.id]);
+
+    /** Pilih ukuran; warna yang tidak punya stok untuk ukuran itu dilepas agar pilihan tetap sah. */
+    const pilihUkuran = (value) => {
+        setSize(value);
+        setFormError(null);
+        if (color !== null && !kombinasiAda(value, color)) setColor(null);
+    };
+
+    /** Pilih warna; ukuran yang tidak punya stok untuk warna itu dilepas. */
+    const pilihWarna = (value) => {
+        setColor(value);
+        setFormError(null);
+        if (size !== null && !kombinasiAda(size, value)) setSize(null);
+    };
 
     const selectedVariant = useMemo(() => {
         if (variants.length === 0) return null;
@@ -94,13 +173,6 @@ export default function ProductsShow({
     const relatedList = Array.isArray(related) ? related : Array.isArray(product?.related) ? product.related : [];
     const ratingCount = Number(product?.rating_count ?? 0) || 0;
     const ratingAvg = Number(product?.rating_avg ?? 0) || 0;
-
-    const variantAvailable = (variant) => {
-        if (!variant) return false;
-        if (variant.is_active === false) return false;
-        const stock = Number(variant.stock ?? 0);
-        return !Number.isFinite(stock) || stock > 0;
-    };
 
     const addToCart = (redirect = false) => {
         if (!product?.id || needsVariant || soldOut || submitting) return;
@@ -273,16 +345,13 @@ export default function ProductsShow({
                                 <div className="flex flex-wrap gap-2" role="group" aria-label="Pilih ukuran">
                                     {sizes.map((variant) => {
                                         const value = variant.size;
-                                        const available = variants.some(
-                                            (item) => item.size === value && variantAvailable(item) && (!hasColor || item.color === color)
-                                        );
                                         return (
                                             <VariantChip
                                                 key={value}
                                                 label={value}
                                                 active={size === value}
-                                                disabled={!available}
-                                                onClick={() => setSize(value)}
+                                                disabled={!ukuranAdaStok.has(value)}
+                                                onClick={() => pilihUkuran(value)}
                                             />
                                         );
                                     })}
@@ -293,23 +362,17 @@ export default function ProductsShow({
                         {hasColor && (
                             <div className="mt-4">
                                 <p className="mb-2 text-meta font-semibold text-ink">Warna{color ? ': ' + color : ''}</p>
-                                <div className="flex flex-wrap gap-2" role="group" aria-label="Pilih warna">
-                                    {colors.map((variant) => {
-                                        const value = variant.color;
-                                        const available = variants.some(
-                                            (item) => item.color === value && variantAvailable(item) && (!hasSize || item.size === size)
-                                        );
-                                        return (
-                                            <ColorSwatch
-                                                key={value}
-                                                name={value}
-                                                hex={variant.color_hex ?? null}
-                                                active={color === value}
-                                                disabled={!available}
-                                                onClick={() => setColor(value)}
-                                            />
-                                        );
-                                    })}
+                                <div className="flex flex-wrap gap-3" role="group" aria-label="Pilih warna">
+                                    {colors.map((opsi) => (
+                                        <ColorSwatch
+                                            key={opsi.color}
+                                            name={opsi.color}
+                                            hex={opsi.color_hex}
+                                            active={color === opsi.color}
+                                            disabled={!warnaAdaStok.has(opsi.color)}
+                                            onClick={() => pilihWarna(opsi.color)}
+                                        />
+                                    ))}
                                 </div>
                             </div>
                         )}

@@ -1,0 +1,18 @@
+Basis URL: http://127.0.0.1:8000
+
+== 1. Halaman publik (GET, baca-saja) ==
+/              status=200 komponen=Public/Home cart.count=0 jumlah_prop=10 settings=ada
+/produk        status=200 komponen=Public/Products/Index cart.count=0 jumlah_prop=11 settings=ada
+/kontak-kami   status=200 komponen=Public/Contact cart.count=0 jumlah_prop=6 settings=ada
+/keranjang     status=200 komponen=Public/Cart cart.count=0 jumlah_prop=7 settings=ada
+
+== 2. Rute terlindungi tanpa autentikasi (GET, redirect tidak diikuti) ==
+/admin             status=302 location=http://127.0.0.1:8000/admin/login
+/admin/produk      status=302 location=http://127.0.0.1:8000/admin/login
+/admin/stok        status=302 location=http://127.0.0.1:8000/admin/login
+/admin/pesanan     status=302 location=http://127.0.0.1:8000/admin/login
+/admin/login       status=200 location=None
+
+== 3. Halaman bayar order tanpa autentikasi ==
+/checkout/99999/bayar        status=302 location=http://127.0.0.1:8000/login
+/checkout/99999/selesai      status=302 location=http://127.0.0.1:8000/login

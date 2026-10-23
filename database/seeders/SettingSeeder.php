@@ -6,10 +6,17 @@ use App\Models\Setting;
 use Database\Seeders\Concerns\WritesSeedImages;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 /**
- * 19 key `settings` minimum sesuai PRD §6. Bentuk JSON mengikuti
+ * 21 key `settings`: 19 key minimum PRD §6 ditambah `store_favicon` dan
+ * `footer_copyright` (kartu t_101b9145). Bentuk JSON mengikuti
  * docs/kontrak-props.md §2 sehingga frontend bisa langsung memakainya.
+ *
+ * Seeder idempoten: memakai `firstOrCreate` supaya nilai yang sudah diubah
+ * pemilik lewat panel admin TIDAK ditimpa saat seeder dijalankan ulang. Berkas
+ * gambar seed tetap ditulis ulang secara deterministik agar aset yang hilang
+ * (mis. hasil `git clean` pada `public/images/seed/`) pulih kembali.
  *
  * Key pembayaran (`midtrans_client_key`) sengaja dikosongkan: nilainya diisi
  * pemilik lewat panel admin, bukan oleh seeder.
@@ -22,8 +29,13 @@ class SettingSeeder extends Seeder
     {
         DB::transaction(function (): void {
             $logo = $this->seedImage('images/seed/logo.png', 240, 64, 'TOKO KULOT');
+            $favicon = $this->seedImage('images/seed/favicon.png', 64, 64, 'TK');
             $heroImage = $this->seedImage('images/seed/landing/hero.png', 1600, 900, 'DASTER & KULOT HARIAN');
             $promoImage = $this->seedImage('images/seed/landing/promo-grosir.png', 1600, 900, 'HARGA GROSIR 4 PCS');
+
+            // Favicon cadangan untuk root domain (`/favicon.ico`): hanya ditulis
+            // bila belum ada atau masih 0 byte, supaya berkas milik pemilik aman.
+            $this->seedFaviconIco();
 
             $settings = [
                 [
@@ -39,6 +51,13 @@ class SettingSeeder extends Seeder
                     'group' => 'umum',
                     'type' => 'image',
                     'label' => 'Logo toko',
+                ],
+                [
+                    'key' => 'store_favicon',
+                    'value' => $favicon,
+                    'group' => 'umum',
+                    'type' => 'image',
+                    'label' => 'Favicon toko',
                 ],
                 [
                     'key' => 'store_tagline',
@@ -65,6 +84,13 @@ class SettingSeeder extends Seeder
                     'group' => 'footer',
                     'type' => 'textarea',
                     'label' => 'Tentang toko (footer)',
+                ],
+                [
+                    'key' => 'footer_copyright',
+                    'value' => '',
+                    'group' => 'footer',
+                    'type' => 'text',
+                    'label' => 'Copyright footer (kosong = otomatis)',
                 ],
                 [
                     'key' => 'footer_links',
@@ -232,9 +258,133 @@ class SettingSeeder extends Seeder
             ];
 
             foreach ($settings as $setting) {
-                Setting::updateOrCreate(['key' => $setting['key']], $setting);
+                Setting::firstOrCreate(['key' => $setting['key']], $setting);
+            }
+
+            $this->restoreMissingSeedImages();
+            $this->assertSeedComplete(array_column($settings, 'key'));
+        });
+    }
+
+    /**
+     * Pulihkan berkas gambar seed yang hilang/0 byte untuk path yang sudah
+     * tersimpan di DB — termasuk path lama yang berbeda dari nilai seeder.
+     * Path non-seed (unggahan pemilik di `/storage/...`) tidak disentuh.
+     */
+    private function restoreMissingSeedImages(): void
+    {
+        $stored = Setting::query()
+            ->whereIn('key', ['store_logo', 'store_favicon', 'landing_hero', 'landing_sections'])
+            ->get();
+
+        foreach ($stored as $setting) {
+            foreach ($this->seedImagePaths($setting) as $path) {
+                $absolute = public_path(ltrim($path, '/'));
+
+                if (is_file($absolute) && filesize($absolute) > 0) {
+                    continue;
+                }
+
+                [$width, $height] = $this->seedImageDimensions($setting->key);
+                $label = strtoupper(str_replace('-', ' ', pathinfo($path, PATHINFO_FILENAME)));
+
+                $this->seedImage(ltrim($path, '/'), $width, $height, $label);
+            }
+        }
+    }
+
+    /**
+     * @return array<int, string> path gambar seed milik satu baris setting
+     */
+    private function seedImagePaths(Setting $setting): array
+    {
+        if ($setting->type === 'image') {
+            return $this->isSeedPath($setting->value) ? [$setting->value] : [];
+        }
+
+        if (! in_array($setting->key, ['landing_hero', 'landing_sections'], true)) {
+            return [];
+        }
+
+        $decoded = json_decode((string) $setting->value, true);
+
+        if (! is_array($decoded)) {
+            return [];
+        }
+
+        $candidates = $setting->key === 'landing_hero'
+            ? [$decoded['image'] ?? null]
+            : [$decoded['promo']['image'] ?? null];
+
+        return array_values(array_filter($candidates, fn ($path) => $this->isSeedPath($path)));
+    }
+
+    private function isSeedPath(mixed $path): bool
+    {
+        if (! is_string($path) || ! str_starts_with($path, '/images/seed/')) {
+            return false;
+        }
+
+        // `seedImage()` selalu menulis PNG; jangan membuat bytes PNG berkedok
+        // ekstensi lain (mis. path lama `.jpg` milik repo).
+        return str_ends_with(strtolower((string) parse_url($path, PHP_URL_PATH)), '.png');
+    }
+
+    /**
+     * @return array{0: int, 1: int}
+     */
+    private function seedImageDimensions(string $key): array
+    {
+        return match ($key) {
+            'store_favicon' => [64, 64],
+            'store_logo' => [240, 64],
+            default => [1600, 900],
+        };
+    }
+
+    /**
+     * Pemeriksaan akhir: gagal keras bila jumlah/keunikan key atau berkas aset
+     * tidak sesuai, supaya seed yang tidak lengkap tidak lolos diam-diam.
+     *
+     * @param  array<int, string>  $expectedKeys
+     */
+    private function assertSeedComplete(array $expectedKeys): void
+    {
+        $stored = Setting::query()->whereIn('key', $expectedKeys)->get(['key', 'value', 'type']);
+
+        if ($stored->count() !== count($expectedKeys)) {
+            $missing = array_diff($expectedKeys, $stored->pluck('key')->all());
+
+            throw new RuntimeException('SettingSeeder tidak lengkap; key hilang: '.implode(', ', $missing));
+        }
+
+        $stored->each(function (Setting $setting): void {
+            if ($setting->type !== 'json') {
+                return;
+            }
+
+            json_decode((string) $setting->value, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new RuntimeException("Nilai JSON setting `{$setting->key}` tidak valid.");
             }
         });
+
+        foreach ($stored as $setting) {
+            foreach ($this->seedImagePaths($setting) as $path) {
+                $absolute = public_path(ltrim($path, '/'));
+
+                if (! is_file($absolute) || filesize($absolute) === 0) {
+                    throw new RuntimeException("Berkas seed hilang setelah seeding: {$path}");
+                }
+            }
+        }
+
+        $favicon = public_path('favicon.ico');
+
+        if (! is_file($favicon) || filesize($favicon) === 0) {
+            throw new RuntimeException('Favicon cadangan public/favicon.ico gagal ditulis.');
+        }
     }
 
     /**

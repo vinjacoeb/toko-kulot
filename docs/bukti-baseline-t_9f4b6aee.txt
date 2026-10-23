@@ -1,0 +1,8 @@
+Berkas ini dahulu dipakai untuk menangkap baseline test kartu t_9f4b6aee, tetapi gagal
+("stdin is not a tty" / exit=1, isi lama 26 byte). Sudah digantikan bukti nyata:
+
+- docs/bukti-t_9f4b6aee.txt       -> php artisan test tests/Feature/Checkout tests/Unit/Services/MidtransServiceTest.php
+                                     = 31 passed (284 assertions), exit 0
+- docs/bukti-suite-t_9f4b6aee.txt -> php artisan test (seluruh suite) = 198 passed (1263 assertions), exit 0
+
+Keduanya dijalankan dengan sqlite :memory: (phpunit.xml); DB pengembangan pemilik tidak disentuh.

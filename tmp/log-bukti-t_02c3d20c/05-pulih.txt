@@ -1,0 +1,2 @@
+sisa_sabotase_gate=0
+md5_setelah_pulih=2e4df85a082cae829efecc0580ce373a

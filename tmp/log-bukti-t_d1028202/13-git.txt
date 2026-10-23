@@ -1,0 +1,22 @@
+### K. Berkas tersentuh kartu ini
+$ git status --short resources/js/Pages/Admin/Orders/ docs/ tmp/uji-ssr-resi-t_d1028202.mjs tmp/uji-aksi-resi-t_d1028202.mjs
+ M docs/catatan-frontend.md
+ M resources/js/Pages/Admin/Orders/Index.jsx
+?? resources/js/Pages/Admin/Orders/Show.jsx
+?? resources/js/Pages/Admin/Orders/partials/
+?? tmp/akhir-t_2de36f29.txt
+?? tmp/anak-t_321bf03c.py
+?? tmp/append-f2.py
+?? tmp/b-baru-t_321bf03c.txt
+?? tmp/baca-kartu-t_2de36f29.py
+?? tmp/build-final-t_7ebfca05.txt
+?? tmp/build-t_2de36f29.txt
+?? tmp/build-t_321bf03c.txt
+?? tmp/build-t_5988a39e.txt
+?? tmp/build-t_7ebfca05.txt
+?? tmp/cek-badge-keranjang-t_7ebfca05.mjs
+?? tmp/cek-jam-t_2de36f29.py
+?? tmp/daftar-kartu-t_2de36f29.out.txt
+?? tmp/daftar-kartu-t_2de36f29.py
+?? tmp/dump-kartu-baca-t_321bf03c.py
+?? tmp/dump-kartu-t_321bf03c.py

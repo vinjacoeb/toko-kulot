@@ -1,0 +1,111 @@
+BUKTI FRONTEND — kartu t_2de36f29 (F6: halaman selesai checkout menghormati `ulasan.boleh`)
+Tanggal kerja: 21 Okt 2026 (UTC+7). Workspace: C:\Users\LENOVO\Downloads\toko-kulot (dir)
+Lingkup: 1 berkas kode diubah (resources/js/Pages/Public/CheckoutSuccess.jsx) + 1 dokumen kerja
+(docs/catatan-frontend.md). Tidak ada berkas backend, rute, migrasi, seeder, .env, package.json,
+tailwind.config.js, atau dokumen acuan yang disentuh.
+
+1) Diff berkas kode
+   $ git diff --stat -- resources/js/Pages/Public/CheckoutSuccess.jsx
+    resources/js/Pages/Public/CheckoutSuccess.jsx | 77 +++++++++++++++++++--------
+    1 file changed, 54 insertions(+), 23 deletions(-)
+
+   Baris kunci setelah perubahan (resources/js/Pages/Public/CheckoutSuccess.jsx:12-57):
+   - const STATUS_BOLEH_DINILAI = ['dibayar', 'diproses', 'dikirim', 'selesai'];   (kontrak §9.1)
+   - const boleh = ulasan?.boleh === true;                                          (kontrak §7.9)
+   - const syaratDinilai = pesanan?.payment_status === 'settlement' && STATUS_BOLEH_DINILAI.includes(...)
+   - const sudahAda = ...  (produk yang ulasannya sudah tersimpan, dari server atau kiriman sesi ini)
+   - const kontradiksiBoleh = !boleh && syaratDinilai && pending.length > 0;
+   - const tampilkanForm = (boleh || kontradiksiBoleh) && syaratDinilai && pending.length > 0;
+   - const alasanBelumBoleh = !tampilkanForm && pending.length > 0;
+   - Notice alasan (tone warning) memakai kalimat server apa adanya: "Ulasan bisa dikirim setelah
+     pembayaran berhasil." — sumbernya app/Http/Controllers/ReviewController.php:29 dan
+     docs/kontrak-props.md §9.1 baris 654 (bukan microcopy karangan).
+   - Notice "Terima kasih! Penilaianmu membantu pembeli lain." (design §5.8) kini tampil hanya bila
+     SEMUA produk sudah diulas, bukan setiap kali daftar form kosong.
+
+2) Temuan F-5 ditutup (versi HEAD memang mengabaikan `ulasan.boleh`)
+   $ git show HEAD:resources/js/Pages/Public/CheckoutSuccess.jsx | grep -n "boleh"
+   HEAD:resources/js/Pages/Public/CheckoutSuccess.jsx:13:  * Props: `{ pesanan, ulasan: { boleh, sudah } }` + `errors` hasil validasi Inertia.
+   (hanya komentar; `boleh` tidak dipakai di kode — sesuai docs/review.md F-5)
+
+3) Harness SSR (komponen asli: PublicLayout + InlineNotice + ReviewForm; bukan browser)
+   $ ./node_modules/@esbuild/win32-x64/esbuild.exe tmp/uji-ssr-ulasan-t_2de36f29.mjs --bundle \
+       --platform=node --format=esm --jsx=automatic --packages=external \
+       --outfile=tmp/uji-ssr-ulasan-t_2de36f29.bundle.mjs \
+       --alias:@inertiajs/react=./tmp/stub-inertia-t_321bf03c.mjs
+   $ node tmp/uji-ssr-ulasan-t_2de36f29.bundle.mjs
+   exit 0 — RINGKASAN: 13/13 uji lulus
+   OK | 1. boleh=true, belum ada ulasan -> 2 form, tanpa notice alasan
+   OK | 2. boleh=true, 1 dari 2 sudah diulas -> 1 form + 1 kartu terkunci
+   OK | 3. boleh=false (kuirk server: sudah diulas sebagian) -> sisa tetap bisa dinilai
+   OK | 4. boleh=false, semua sudah diulas -> tanpa form + terima kasih + 2 kartu
+   OK | 5. belum lunas (payment_status pending) -> tanpa form + alasan            <- DoD-1
+   OK | 6. settlement status=batal -> tanpa form + alasan                         <- DoD-1
+   OK | 7. boleh=true padahal status belum boleh dinilai -> tanpa form + alasan
+   OK | 8. flash.error dari server ditampilkan
+   OK | 9. galat validasi ulasan (errors.ulasan) ditampilkan
+   OK | 10. angka dari server sebagai string -> tanpa NaN, rupiah benar
+   OK | 11. items kosong -> tidak ada form/notice, tidak crash
+   OK | 12. props `ulasan` tidak dikirim (null) -> form memakai syarat §9.1, tidak crash
+   OK | 13. sapu kotor (NaN/undefined/placeholder) di semua state di atas
+   Log: tmp/uji-ssr-ulasan-t_2de36f29.out.txt
+
+4) Harness interaksi (react -> shim, @inertiajs/react -> stub pencatat; bukan browser)
+   $ ./node_modules/@esbuild/win32-x64/esbuild.exe tmp/uji-aksi-ulasan-t_2de36f29.mjs --bundle \
+       --platform=node --format=esm --jsx=automatic --packages=external \
+       --outfile=tmp/uji-aksi-ulasan-t_2de36f29.bundle.mjs \
+       --alias:react/jsx-runtime=./tmp/shim-jsx-runtime-t_321bf03c.mjs \
+       --alias:react=./tmp/shim-react-t_321bf03c.mjs \
+       --alias:@inertiajs/react=./tmp/stub-inertia-t_321bf03c.mjs
+   $ node tmp/uji-aksi-ulasan-t_2de36f29.bundle.mjs
+   exit 0 — RINGKASAN: 6/6 uji lulus
+   OK | 1. kirim ulasan -> POST /checkout/{order}/ulasan payload kontrak §9.1
+        (metode post, url '/checkout/21/ulasan', data {ulasan:[{product_id,rating,comment}]},
+         preserveScroll true, onSuccess/onFinish ada; setelah onSuccess produk itu jadi kartu
+         terkirim dan hanya form produk sisa yang aktif)
+   OK | 2. kirim ganda dicegah selama kiriman pertama belum selesai (produk lain submitting=false)
+   OK | 3. boleh=false & semua sudah diulas -> tanpa form, kartu terkunci, terima kasih   <- DoD-3
+   OK | 4. belum boleh dinilai -> tidak ada jalur kirim ulasan sama sekali (0 panggilan router)
+   OK | 5. galat validasi server menempel pada produk yang dikirim
+   OK | 6. seluruh produk selesai dinilai dalam sesi -> form habis + terima kasih
+   Log: tmp/uji-aksi-ulasan-t_2de36f29.out.txt
+
+5) Kontrol negatif (assert terbukti menggigit)
+   Sabotase sementara: `const tampilkanForm = pending.length > 0;` (gerbang diabaikan) ->
+   $ node tmp/uji-ssr-ulasan-t_2de36f29.bundle.mjs
+   exit 1 — RINGKASAN: 10/13 uji lulus; tepat 3 assert gerbang gagal:
+   GAGAL | 5. belum lunas (payment_status pending) -> tanpa form + alasan | form harus 0 saat belum lunas, dapat 2
+   GAGAL | 6. settlement status=batal -> tanpa form + alasan              | form harus 0 saat status batal, dapat 2
+   GAGAL | 7. boleh=true padahal status belum boleh dinilai -> ...        | form harus 0, dapat 2
+   Setelah dikembalikan: exit 0, 13/13 lulus lagi dan `grep -c SABOTASE` = 0 (berkas bersih).
+   Log: tmp/sabotase-ssr-t_2de36f29.txt
+
+6) Build rilis
+   $ npm run build
+   exit 0 — "✓ 728 modules transformed." lalu "✓ built in 2.95s"
+   public/build/assets/CheckoutSuccess-BEtjHwYb.js  8.50 kB │ gzip: 2.87 kB
+   public/build/assets/app-C1hWdp4I.js              364.45 kB │ gzip: 114.28 kB
+   Kode baru terbukti ada di bundel rilis:
+   $ grep -rl "Ulasan bisa dikirim setelah pembayaran berhasil" public/build/assets/ -> CheckoutSuccess-BEtjHwYb.js
+   $ grep -rl "Beri Penilaian" public/build/assets/                                 -> CheckoutSuccess-BEtjHwYb.js
+   $ grep -rl "Produk ini sudah kamu nilai" public/build/assets/                    -> CheckoutSuccess-BEtjHwYb.js
+   Build dijalankan sendirian: jam 18:45:36 tidak ada kartu frontend lain berstatus running (hanya
+   t_b078318d backend; papan: tmp/papan-t_2de36f29.txt). Kartu F5b t_d1028202 mulai running 18:48:54
+   dan akan membangun ulang public/build — artefak ini bukti pada jam tersebut. Log: tmp/build-t_2de36f29.txt
+
+7) Sapu regresi (kelas bug "komponen dipakai tanpa impor" / blank page)
+   $ python tmp/cek-komponen-tanpa-import.py .        -> "file diperiksa: 94", 1 temuan:
+        resources\js\app.jsx: App  = false positive dikenal (parameter setup({el, App, props}))
+   $ python tmp/cek-bundel-identifier-bebas.py public/build/assets public/build
+        -> "chunk .js diperiksa: 69", 1 temuan: DropzoneGalery-C7tJa3Ar.js -> FREE: P
+        = false positive lama yang sudah dinilai di F3 (komponen lokal UnggahIcon)
+   Log: tmp/sapu-t_2de36f29.txt
+
+8) Belum diuji (butuh browser, bukan lingkup tanpa server)
+   - Tampilan nyata 360/768/1024/1280 px, fokus keyboard pada bintang (StarRating), urutan tab,
+     zoom 200%, kontras terukur di layar.
+   - Kiriman ulasan end-to-end lewat sesi pembeli nyata (POST butuh order milik user + CSRF).
+   - Instruksi aman untuk pemilik: buka /checkout/{order}/selesai dengan sesi pembeli; order lunas
+     belum diulas -> form penilaian tampil; order belum lunas -> form tidak tampil dan muncul notice
+     "Ulasan bisa dikirim setelah pembayaran berhasil."; sesudah semua produk dinilai -> kartu
+     terkunci + "Terima kasih! Penilaianmu membantu pembeli lain."

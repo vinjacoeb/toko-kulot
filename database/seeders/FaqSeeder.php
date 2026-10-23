@@ -31,7 +31,7 @@ class FaqSeeder extends Seeder
         [
             'question' => 'Metode pembayaran apa yang tersedia?',
             'answer' => 'Pembayaran dilakukan dengan QRIS, sehingga bisa memakai semua e-wallet '
-                .'dan mobile banking yang mendukung QRIS. Kode QRIS berlaku 15 menit setelah pesanan dibuat.',
+                .'dan mobile banking yang mendukung QRIS. Kode QRIS berlaku 5 menit setelah pesanan dibuat.',
         ],
         [
             'question' => 'Berapa lama pesanan dikirim?',

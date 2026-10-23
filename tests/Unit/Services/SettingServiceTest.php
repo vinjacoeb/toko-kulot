@@ -136,6 +136,19 @@ class SettingServiceTest extends TestCase
         $this->assertSame(['key_tambahan' => 'x'], $grouped['lainnya']);
     }
 
+    public function test_footer_copyright_disimpan_dan_terbaca(): void
+    {
+        $this->service->put('footer_copyright', '© 2026 Toko Kulot');
+
+        $this->assertSame('© 2026 Toko Kulot', $this->service->get('footer_copyright'));
+        $this->assertDatabaseHas('settings', [
+            'key' => 'footer_copyright',
+            'group' => 'footer',
+            'type' => 'text',
+        ]);
+        $this->assertSame('© 2026 Toko Kulot', $this->service->grouped()['footer']['footer_copyright']);
+    }
+
     public function test_key_tidak_dikenal_tidak_bisa_ditulis(): void
     {
         $this->assertTrue($this->service->isWritable('store_name'));

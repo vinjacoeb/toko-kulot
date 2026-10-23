@@ -1,0 +1,121 @@
+BUKTI G2 - jalankan 2 migrasi tertunda (compare_price, tracking_number) di DB pemilik
+Kartu    : t_576d4f09 (backenddeveloper)
+Waktu    : 2026-10-21 22:55-23:05 +0700
+Lingkungan: PHP 8.3.32 (Laragon) | MySQL 127.0.0.1:3306, database `toko-kulot`
+Folder   : C:\Users\LENOVO\Downloads\toko-kulot
+Batasan  : hanya `php artisan migrate:status` + `php artisan migrate`.
+           Tidak ada migrate:fresh / migrate:rollback / db:wipe.
+           Tidak ada perubahan kode, migrasi, atau .env.
+
+--------------------------------------------------------------------------------
+1) KEADAAN SEBELUM - php artisan migrate:status (23:5x, keluar exit 0)
+--------------------------------------------------------------------------------
+  2026_10_20_000017_create_faqs_table ........................................................................ [1] Ran
+  2026_10_20_000018_add_compare_price_to_products_table ...................................................... Pending
+  2026_10_21_000019_add_tracking_number_to_orders_table ...................................................... Pending
+
+Jumlah baris "Pending" sebelum : 2
+
+--------------------------------------------------------------------------------
+2) PERINTAH YANG DIJALANKAN - php artisan migrate (exit 0)
+--------------------------------------------------------------------------------
+   INFO  Running migrations.
+
+  2026_10_20_000018_add_compare_price_to_products_table ................................................ 302.58ms DONE
+  2026_10_21_000019_add_tracking_number_to_orders_table ................................................. 64.89ms DONE
+
+Tidak ada galat. Tidak ada migrasi lain yang ikut berjalan.
+
+--------------------------------------------------------------------------------
+3) KEADAAN SESUDAH - php artisan migrate:status
+--------------------------------------------------------------------------------
+  2026_10_20_000017_create_faqs_table ........................................................................ [1] Ran
+  2026_10_20_000018_add_compare_price_to_products_table ...................................................... [2] Ran
+  2026_10_21_000019_add_tracking_number_to_orders_table ...................................................... [2] Ran
+
+Jumlah baris "Pending" sesudah : 0
+(000018 & 000019 kini batch [2] = dijalankan pada batch ini, baris lama tetap batch [1])
+
+--------------------------------------------------------------------------------
+4) CEK BACA-SAJA KOLOM DI DB PEMILIK (php artisan tinker, tanpa tulis apa pun)
+--------------------------------------------------------------------------------
+Driver / database aktif:
+  db = mysql
+  database = toko-kulot
+
+Schema::hasColumn:
+  products.compare_price  = true
+  orders.tracking_number  = true
+
+Bentuk kolom (SHOW COLUMNS ... LIKE):
+  products.compare_price   type=bigint unsigned  null=YES  default=NULL
+  orders.tracking_number   type=varchar(60)      null=YES  default=NULL
+
+getColumnListing('orders') memuat tracking_number:
+  id,user_id,code,status,subtotal,shipping_cost,discount,total,payment_method,payment_status,
+  customer_name,customer_phone,customer_email,shipping_address,city,postal_code,notes,paid_at,
+  tracking_number,created_at,updated_at
+
+Data lama utuh, kolom baru masih NULL (tidak ada baris yang berubah):
+  produk id=1 base_price=89000  compare_price=NULL
+  produk id=2 base_price=99000  compare_price=NULL
+  produk id=3 base_price=109000 compare_price=NULL
+  pesanan id=1 code=TK-20261015-0001 tracking_number=NULL
+  pesanan id=2 code=TK-20261016-0001 tracking_number=NULL
+  pesanan id=3 code=TK-20261018-0001 tracking_number=NULL
+  jumlah produk = 11 | jumlah pesanan = 9
+
+--------------------------------------------------------------------------------
+5) UJI OTOMATIS yang menyentuh kedua kolom
+--------------------------------------------------------------------------------
+(a) `php artisan test <5 berkas>` -> GAGAL TOTAL, bukan karena kode:
+    Tests: 44 failed, 5 passed -- "could not find driver
+    (Connection: sqlite, Database: :memory:)".
+    Sebab: ekstensi pdo_sqlite belum diaktifkan di php.ini mesin ini (mesin, bukan repo).
+    `php artisan test` tidak mewariskan flag `-d` ke proses PHPUnit anak.
+
+(b) Ulangan lewat PHPUnit langsung, flag sekali pakai (tanpa mengubah konfigurasi):
+
+    php -d extension=pdo_sqlite vendor/bin/phpunit \
+      --filter '(AdminMasterDataTest|AdminSalesTest|CatalogIndexTest|CatalogShowTest|ProductPricingTest)'
+
+    PHPUnit 11.5.57 | Runtime: PHP 8.3.32 | Configuration: C:\...\toko-kulot\phpunit.xml
+
+    ................................................. 49 / 49 (100%)
+    Time: 00:02.686, Memory: 54.00 MB
+    OK (49 tests, 415 assertions)          <- exit 0, semua lulus
+
+    Cakupan berkas (yang menyentuh compare_price / tracking_number):
+      tests/Feature/Admin/AdminMasterDataTest.php     -> admin produk (daftar, tambah, varian, stok)
+      tests/Feature/Admin/AdminSalesTest.php:241-330  -> resi pesanan (simpan, kosong, 60 karakter, tipe salah)
+      tests/Feature/Catalog/CatalogIndexTest.php:346-367 -> compare_price kartu produk
+      tests/Feature/Catalog/CatalogShowTest.php:123-134  -> compare_price detail produk
+      tests/Unit/Models/ProductPricingTest.php:59-62     -> hasDiscount() dari compare_price
+
+    DB uji = SQLite :memory: dari phpunit.xml -> database MySQL pemilik TIDAK tersentuh.
+    Cara flag ini sah dan sudah tertulis di docs/langkah-pemilik.md
+    ("Menjalankan test (PHPUnit) - perlu pdo_sqlite", butir 2).
+
+(c) `php artisan test` tanpa flag masih gagal di mesin ini sampai pemilik mengaktifkan
+    `extension=pdo_sqlite` + `extension=sqlite3` di php.ini (docs/langkah-pemilik.md §7).
+    Sebelum uji ini php.ini masih memuat kedua baris dalam keadaan dikomentari.
+
+--------------------------------------------------------------------------------
+6) YANG BELUM DIUJI - butuh browser + server (pemilik)
+--------------------------------------------------------------------------------
+  - klik ulang /admin/produk/tambah
+  - klik ulang /admin/produk/12/ubah
+  - isi resi di /admin/pesanan/{order}
+
+Status: "belum diuji, butuh browser". Bukti di atas hanya membuktikan kolom ada di DB pemilik
+dan terpakai di suite otomatis; render/form halaman admin tidak bisa dijalankan dari sini
+(tidak menyalakan server pengembangan, tidak ada browser).
+
+Catatan: DB pemilik berisi 11 produk dan tidak punya produk id=12, jadi jalur
+/admin/produk/12/ubah pada laporan pemilik hanya bisa diulang pemilik pada datanya sendiri.
+
+--------------------------------------------------------------------------------
+7) PERUBAHAN BERKAS
+--------------------------------------------------------------------------------
+Kartu ini tidak mengubah kode aplikasi, migrasi, maupun .env.
+Yang ditulis hanya di docs/: berkas bukti ini + satu bagian ringkas di docs/catatan-backend.md.

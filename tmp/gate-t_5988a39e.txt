@@ -1,0 +1,40 @@
+--- docs/qa/audit-penanda-meta.py
+  resources/js/Components/CartLine.jsx:117 | bg-surface @67 baris (DAUN) | <span className="mt-1 flex items-center gap-2 text-meta text-slate-500 lg:justif
+  resources/js/Components/ProductCard.jsx:93 | bg-surface @45 baris (kontainer) | <p className="text-badge uppercase text-slate-500">{product.category.name}</p>
+  resources/js/Components/ProductCard.jsx:112 | bg-surface @64 baris (kontainer) | <span className="text-meta text-slate-500">{`(${formatNumber(ratingCount)})`}</s
+  resources/js/Components/QrisPanel.jsx:92 | bg-surface @4 baris (kontainer) | <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full
+  resources/js/Components/RatingSummary.jsx:54 | bg-surface @6 baris (DAUN) | <span className="w-9 shrink-0 text-right text-meta text-slate-500">{bar.percent}
+  resources/js/Pages/Admin/Settings/Index.jsx:293 | bg-surface @4 baris (DAUN) | <p className="text-meta text-slate-500">
+exit=0
+--- docs/qa/kontras-badge.py
+  success-strong   #166534 OK
+  warning-strong   #92400E OK
+  danger-strong    #991B1B OK
+
+== HASIL ==
+  SEMUA angka tabel §4.21 cocok dengan hitungan WCAG 2.1 (toleransi 0,006) — 7 tone + 7 tone solid.
+exit=0
+--- docs/qa/kontras-meta.py
+
+Ambang: teks normal (<24px / <18.66px bold) = 4,5:1 ; elemen non-teks/ikon = 3:1
+
+Ringkas kandidat keputusan t_14cad9e2:
+  slate-500: putih 4.76 | surface 4.40 | brand-100 3.93 | chip@surface 4.08
+  slate-600: putih 7.58 | surface 7.00 | brand-100 6.26 | chip@surface 6.50
+exit=0
+--- docs/qa/sweep-meta-surface.py
+  TINJAU   : resources/js/Pages/Public/Products/Show.jsx:380 (tidak ada penanda kontainer <= 12 baris di atas)
+  ditinjau : 60
+=== C. Sisa text-slate-500 (tidak menggagalkan) ===
+  total kemunculan text-slate-500 di resources/js: 86
+=== HASIL ===
+status: LOLOS (keluar 0)
+exit=0
+--- docs/qa/terapkan-meta-v22.py
+  - resources/js/Pages/Admin/Reviews/Index.jsx:265: anchor/`text-slate-500` tidak ditemukan (mungkin sudah diterapkan?)
+  - resources/js/Pages/Admin/Reviews/Index.jsx:397: anchor/`text-slate-500` tidak ditemukan (mungkin sudah diterapkan?)
+  - resources/js/Pages/Admin/Reviews/Index.jsx:459: anchor/`text-slate-500` tidak ditemukan (mungkin sudah diterapkan?)
+  - resources/js/Pages/Admin/Settings/Index.jsx:163: anchor/`text-slate-500` tidak ditemukan (mungkin sudah diterapkan?)
+  - resources/js/Pages/Admin/Settings/Index.jsx:1551: anchor/`text-slate-500` tidak ditemukan (mungkin sudah diterapkan?)
+  - resources/js/Pages/Admin/Settings/Index.jsx:1573: anchor/`text-slate-500` tidak ditemukan (mungkin sudah diterapkan?)
+exit=0

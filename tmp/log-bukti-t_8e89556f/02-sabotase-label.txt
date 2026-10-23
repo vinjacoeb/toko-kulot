@@ -1,0 +1,22 @@
+### B. Kontrol negatif A (sabotase sementara: label 'Sinkronkan status pembayaran' -> 'Sinkronkan pembayaran')
+$ sed -i 's/Sinkronkan status pembayaran/Sinkronkan pembayaran/' resources/js/Pages/Admin/Orders/partials/SyncPaymentButton.jsx
+=== Hasil harness aksi kartu t_8e89556f (F8) ===
+01. [GAGAL] A1. Render: satu tombol, label beku, varian secondary, lebar dikunci min-w-[16rem]
+      -> label beku tidak ditemukan
+02. [OK] A2. Klik: PATCH URL literal kontrak §12.24, tanpa body, preserveScroll + preserveState
+03. [OK] A3. State memproses: label "Memproses…" + disabled + aria-busy, kelas lebar tetap
+04. [OK] A4. Klik ganda saat memproses: tidak ada kunjungan kedua
+05. [OK] A5. Jawaban flash.error: InlineNotice tone error + pesan server apa adanya + pelaporan pasangan
+06. [OK] A6. Jawaban flash.success: InlineNotice tone success + pelaporan pasangan
+07. [OK] A7. Klik berikutnya: notice lama hilang sebelum jawaban baru
+08. [OK] A8. Tanpa id pesanan: tidak merender tombol (tidak menembak URL tanpa id)
+09. [OK] A9. Higiene teks: tanpa undefined/NaN/[CONTOH]/placeholder di semua state
+10. [OK] B1. Show: tombol dirender di dalam kartu "Bukti pembayaran" dengan props dari pesanan.id
+11. [OK] B2. Show: payment null/absen → tombol sinkron tidak dirender (D13)
+12. [OK] B3. Show: flash aksi lain tetap menjadi Toast halaman (suppress tidak bocor)
+13. [OK] B4. Show: flash aksi sinkron di-suppress dari Toast setelah dilaporkan partial (U6-1)
+14. [GAGAL] B5. Integrasi: props dari Show → klik → URL kontrak → flash.error server tampil di kartu
+      -> label beku harus tampil
+
+RINGKAS: 12/14 OK, 2 GAGAL
+$ echo $?  ->  1

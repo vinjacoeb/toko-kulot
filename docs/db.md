@@ -30,6 +30,7 @@ Semua uang = integer rupiah tanpa desimal. Semua tabel: `id` bigint auto-increme
 | 19 | `2026_10_20_000016_create_carousels_table` | `carousels` |
 | 20 | `2026_10_20_000017_create_faqs_table` | `faqs` |
 | 21 | `2026_10_20_000018_add_compare_price_to_products_table` | kolom `compare_price` pada `products` (K11) |
+| 22 | `2026_10_21_000019_add_tracking_number_to_orders_table` | kolom `tracking_number` pada `orders` (PRD A15) |
 
 ## 2. Tabel & kolom
 
@@ -85,7 +86,8 @@ Index: (`category_id`,`is_active`), (`is_active`,`is_featured`).
 `discount` ubigint, `total` ubigint, `payment_method` (20) default `qris`,
 `payment_status` string(20) default `pending`, `customer_name` (120), `customer_phone` (30),
 `customer_email` (180, null), `shipping_address` text, `city` (100), `postal_code` (10, null),
-`notes` text null, `paid_at` timestamp null, `timestamps`.
+`notes` text null, `paid_at` timestamp null, `tracking_number` string(60) null
+(diisi manual admin — PRD A15; migrasi `2026_10_21_000019`), `timestamps`.
 Index: (`status`,`created_at`), (`payment_status`,`created_at`), (`user_id`).
 
 Nilai `status` (PRD §7): `pending` → `dibayar` → `diproses` → `dikirim` → `selesai` | `batal`.
@@ -124,6 +126,12 @@ Key minimum (PRD §6): `store_name`, `store_logo`, `store_tagline`, `header_nav`
 `contact_whatsapp`, `contact_address`, `contact_map_embed`, `landing_hero` (json),
 `landing_sections` (json), `seo_default_title`, `seo_default_description`,
 `shipping_cost_default`, `midtrans_client_key`, `midtrans_is_production`.
+
+Tambahan di luar PRD §6 (kartu `t_101b9145`, 23 Okt 2026): `store_favicon` (grup `umum`,
+type `image`, dipakai tag `<link rel="icon">`; kosong → `/favicon.ico`) dan
+`footer_copyright` (grup `footer`, type `text`, nullable, maks 200; kosong → frontend
+memakai `© {tahun} {store_name}`). Keduanya di-seed oleh `SettingSeeder` (21 key total)
+dan tidak menimpa nilai yang sudah diubah pemilik (`firstOrCreate`).
 
 ### carousels
 `id`, `title` (150), `subtitle` (255, null), `image`, `link` (255, null),
@@ -216,8 +224,8 @@ Aturan yang dipakai:
   ada produk unggulan, ada varian stok 0 dan stok kritis), 19 key settings wajib, JSON valid,
   dan invarian stok; gagal keras dengan daftar masalah.
 - Data contoh memakai prefiks `[CONTOH]` agar bisa dibersihkan tanpa menyentuh data pemilik.
-- `midtrans_client_key` sengaja kosong (diisi pemilik lewat panel admin), `MIDTRANS_SERVER_KEY`
-  tidak pernah masuk tabel `settings`.
+- `midtrans_client_key` + `midtrans_is_production` hanya **catatan** di panel admin (tidak dibaca jalur
+  bayar); kredensial efektif dari `.env` (`MIDTRANS_*`), dan `MIDTRANS_SERVER_KEY` tidak pernah masuk `settings`.
 
 Akun lokal: `docs/akun-dev.md`. Bentuk JSON settings: `docs/kontrak-props.md` §2.
 
@@ -258,3 +266,32 @@ public/images/seed                 -> 33 PNG dibuat lokal (161 KB)
 
 Belum dijalankan pada kartu ini: `php artisan test` (belum ada test; kartu K15),
 `npm run build` (frontend belum memakai props ini).
+
+## 8. Bukti verifikasi (t_c374a29b — aksi admin "Sinkronkan status pembayaran", 21 Oktober 2026)
+
+Tidak ada tabel, kolom, indeks, atau migrasi baru pada kartu ini. Aksi kontrak props §12.24
+memakai kolom yang sudah ada:
+
+```
+payments.status          -> 'pending'|'settlement'|'expire'|'deny'|'cancel' (sumber status tagihan)
+payments.paid_at         -> diisi saat settlement; transaction_id ikut diperbarui
+orders.payment_status    -> cerminan payments.status (daftar §2 orders)
+orders.status            -> 'pending' -> 'dibayar' saat settlement; 'pending' -> 'batal' saat expire
+orders.paid_at           -> diisi saat settlement
+stock_movements          -> baris type 'in' saat stok dikembalikan (expire/deny/cancel)
+```
+
+Verifikasi baca-saja di DB test (SQLite `:memory:` dari `phpunit.xml`, DB pemilik tidak disentuh):
+
+```
+Schema::getColumnListing('payments') -> id, order_id, provider, transaction_id, order_id_midtrans,
+                                        qris_url, qr_string, gross_amount, status, payload,
+                                        paid_at, expires_at, created_at, updated_at
+Schema::getColumnListing('orders')   -> ... payment_status, paid_at, tracking_number ...
+php artisan test                     -> 237 passed (1791 assertions)
+```
+
+Catatan: `docs/kontrak-props.md` §12.23 (tabel status) menyebut kolom `orders.payment_status`
+dengan label yang sama; tidak ada nilai baru yang diperkenalkan. Bukti lengkap:
+`docs/bukti-backend-t_c374a29b.txt`.
+

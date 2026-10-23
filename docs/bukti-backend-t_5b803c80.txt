@@ -1,0 +1,49 @@
+BUKTI VERIFIKASI — kartu t_5b803c80
+Halaman riwayat pesanan pembeli GET /history (Perbaikan 5 baris 1, kontrak props §13)
+23 Oktober 2026, C:/Users/LENOVO/Downloads/toko-kulot
+
+Lingkungan
+  phpunit.xml = SQLite :memory:, jadi database pengembangan/pemilik tidak disentuh.
+  `pdo_sqlite` masih nonaktif di php.ini pemilik. Supaya `php artisan test` (DoD) bisa dipakai,
+  dibuat ini sementara di `storage/framework/testing/php-ini/pdo_sqlite.ini` (gitignored, isi:
+  `extension=pdo_sqlite`) dan dijalankan dengan `PHP_INI_SCAN_DIR` menunjuk folder itu — proses
+  PHPUnit anak ikut mewarisinya. php.ini dan .env TIDAK diubah; folder sementara dihapus setelah
+  verifikasi. Tanpa env itu, perintah setara tetap bisa dipakai:
+  `php -d extension=pdo_sqlite vendor/bin/phpunit ...` (docs/langkah-pemilik.md).
+  Tidak ada migrasi/seeder baru.
+
+1) Sintaks
+  $ php -l app/Http/Controllers/HistoryController.php
+  No syntax errors detected in app/Http/Controllers/HistoryController.php
+  $ php -l tests/Feature/HistoryTest.php
+  No syntax errors detected in tests/Feature/HistoryTest.php
+  $ php -l routes/web.php
+  No syntax errors detected in routes/web.php
+
+2) Rute
+  $ php artisan route:list --name=history
+  GET|HEAD  history ..... history.index › HistoryController@index
+  (ditambah middleware auth:web; tamu → /login)
+
+3) Gaya (Pint, tanpa mengubah berkas)
+  $ php vendor/bin/pint --test app/Http/Controllers/HistoryController.php tests/Feature/HistoryTest.php routes/web.php
+  {"tool":"pint","result":"passed"}
+
+4) Test kartu — `php artisan test --filter=History` (DoD)
+  Tests:    5 passed (141 assertions) — 0,80 s
+    ✓ tamu dialihkan ke halaman login
+    ✓ hanya pesanan sendiri, semua status (termasuk batal), terbaru dulu,
+      item & total benar, gambar utama, pesanan pembeli lain tidak ikut
+    ✓ pagination 10 per halaman + halaman kedua + ringkasan seluruh pesanan
+    ✓ detail_url: null (batal), /checkout/{id}/selesai (settlement),
+      /checkout/{id}/bayar (pending)
+    ✓ pembeli tanpa pesanan → orders.data [], total 0
+
+5) Suite penuh (regresi) — `php artisan test`
+  Tests:    279 passed (2299 assertions) — 31,4 s
+  (dicek ulang dengan `php -d extension=pdo_sqlite vendor/bin/phpunit`: 279 tests, 2299 assertions)
+
+6) Yang TIDAK dijalankan (jujur)
+  - Migrasi/seeder: kartu ini tidak mengubah skema atau data.
+  - Uji klik di browser: milik pemilik (agent tidak menyalakan server). Halaman
+    `Public/History` dibuat kartu frontend t_326f766b.

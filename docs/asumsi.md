@@ -196,7 +196,11 @@ sehingga tidak ada jalur XSS dari isian admin.
    bukti pesanan, kode pos untuk pengiriman) dan dikunci di kontrak props §7.6.
 3. **Ongkir tunggal.** Belum ada tabel ongkir per wilayah, jadi `settings.shipping_cost_default`
    dipakai untuk semua pesanan; ongkir 0 bila key belum diisi.
-4. **Kedaluwarsa QRIS 15 menit** (`config/midtrans.expiry_minutes`) mengikuti default QRIS Midtrans.
+4. ~~**Kedaluwarsa QRIS 15 menit** (`config/midtrans.expiry_minutes`) mengikuti default QRIS Midtrans.~~
+   **Digantikan keputusan pemilik 21 Oktober 2026** (`docs/pertanyaan-pemilik.md` §5 P1): **5 menit**,
+   dibaca dari `MIDTRANS_EXPIRY_MINUTES` (bawaan 5 bila kosong/tidak sah) lewat
+   `MidtransService::expiryMinutes()` sebagai satu sumber nilai; kartu `t_e35050e8`.
+   PRD §8 butir 6 + A17 masih menulis 15 menit dan menunggu amendemen pemilik.
 5. **Harga grosir** dihitung ulang setiap qty berubah memakai `products.priceForQty()`; snapshot
    `order_items.unit_price` dibekukan saat checkout.
 6. **Stok dikembalikan** saat pembayaran `expire`/`deny`/`cancel` lewat `StockService` (tipe
@@ -295,3 +299,137 @@ sehingga tidak ada jalur XSS dari isian admin.
     seluruh latar uji §11.4. Prop `className` ditambahkan agar seragam dengan komponen lain (mis. `StatusBadge`).
     Komponen belum dipakai halaman mana pun; bila UIUX menghendaki tone bawaan atau fallback lain, cukup ubah
     satu baris di `resources/js/Components/Badge.jsx`.
+
+18. **Teks penanda mode uji Midtrans belum ada di `docs/design.md`; teks baku ditetapkan kontrak** (kartu `t_9f4b6aee`).
+    `docs/design.md` §865 (D9) hanya menetapkan bentuk penanda (komponen lama `InlineNotice`/`StatusBadge`, tanpa
+    token baru) dan tidak menulis kalimatnya. Agar frontend tidak mengarang teks, backend mengirim kalimat siap
+    tampil di props `midtrans.alasan` (contoh: "MODE UJI aktif karena MIDTRANS_FAKE=true di .env: QRIS dibuat lokal
+    (tanpa Midtrans) sehingga tidak bisa ditransfer.") beserta `midtrans.alasan_kode` (`fake_aktif` | `server_key_kosong`),
+    `midtrans.langkah_perbaikan[]`, dan `pembayaran.galat` ("Gagal membuat pembayaran QRIS. Coba lagi.") — semuanya
+    terdaftar di `docs/kontrak-props.md` §7.5/§7.7/§10.7. Bila UIUX/pemilik ingin kalimat lain, ubah di satu tempat
+    (`MidtransService::MODE_REASONS`/`MODE_FIX_STEPS`) lalu kontraknya.
+
+19. **Bawaan `MIDTRANS_FAKE` diubah dari `true` ke `false`** (kartu `t_9f4b6aee`, temuan F-2 `docs/review.md`).
+    `docs/PRD.md` hanya menyebut "mode uji" sebagai kemungkinan, tidak menetapkan bawaannya; `.env.example` sendiri
+    sudah menulis `MIDTRANS_FAKE=false`. Bawaan `true` membuat QRIS mode uji ikut terpakai tanpa sepengetahuan pemilik
+    (QR tampil, tidak bisa ditransfer) — itulah keluhan pemilik butir 2. Tanpa `MIDTRANS_SERVER_KEY`, `isFake()` tetap
+    `true` (`alasan_kode = server_key_kosong`), jadi pengembangan tanpa kredensial tetap berjalan seperti sebelumnya.
+    Bila pemilik menghendaki bawaan lain, cukup ubah satu baris di `config/midtrans.php` + `.env.example`.
+
+20. **Kolom resi memakai nama `tracking_number`, rutenya `PATCH /admin/pesanan/{order}/resi`** (kartu `t_394b40ba`).
+    `docs/PRD.md` A15 (`docs/PRD.md:391`) mewajibkan nomor resi diisi manual, tetapi PRD §5.2/§6 belum memuat
+    rute maupun kolomnya, dan `docs/kontrak-props.md` §12.17 belum punya fieldnya. Karena rute + kolom adalah
+    cara teknis (bukan fitur baru di luar dokumen acuan), techlead menaruhnya di kontrak baru §12.18a +
+    `docs/db.md` baris 32/88 dan **tidak** mengubah `docs/PRD.md`: menambah baris di §5.2/§6 akan menggeser
+    nomor baris PRD yang dirujuk dokumen lain (`docs/PRD.md:219`, `:255`, `:377`, `:391`). Amendemen PRD
+    diminta lewat `docs/pertanyaan-pemilik.md` §3 Q8 (tidak memblokir). Nama `tracking_number` dipilih karena
+    pola penamaan tabel `orders` memakai bahasa Inggris (`payment_status`, `customer_name`, `paid_at`), dan
+    resep serupa di `docs/kontrak-props.md` memakai istilah Inggris untuk field teknis. Bila pemilik ingin
+    resi tampil di sisi pembeli atau lacak otomatis, itu usulan U5 + amendemen PRD §5.1/§6 lebih dulu.
+
+21. **Lebar tombol "Sinkronkan status pembayaran" dikunci `min-w-[16rem]` (256 px)** (kartu `t_8e89556f`).
+    D13 (`docs/design.md:872`) mewajibkan "lebar dikunci agar layout tidak melompat" tetapi tidak menyebut
+    nilainya, dan tombol ini belum punya acuan tampilan lain. Dipilih `16rem` karena label beku
+    "Sinkronkan status pembayaran" (±230 px pada `text-body`) masih muat satu baris di dalam kartu
+    "Bukti pembayaran" pada lebar 360 px tanpa memotong teks, dan tombol setinggi 47 px (§4.1) tetap
+    proporsional. Kelas ini dihasilkan Tailwind proyek — dibuktikan `.min-w-\[16rem\]{min-width:16rem}`
+    pada CSS hasil `npm run build` (`docs/bukti-frontend-t_8e89556f.txt` bagian I). Tanpa token atau
+    komponen baru; bila UI/UX menetapkan angka lain, cukup ubah satu kelas di `SyncPaymentButton.jsx`.
+
+22. **Hex warna varian diturunkan dari nama, bukan kolom baru** (kartu `t_bc89df6d`).
+    `docs/PRD.md` §6 dan `docs/db.md` tidak memuat kolom hex pada `product_variants`, sementara
+    `docs/design.md` §4.20 meminta swatch berwarna dan `Show.jsx` sudah membaca `variant.color_hex`.
+    Agar tidak menambah kolom di luar dokumen acuan (dan tidak perlu isian admin baru), `color_hex`
+    dihitung server dari `product_variants.color` lewat peta baku `app/Support/VariantColor.php`
+    (nama Indonesia/Inggris; isian `#RGB`/`#RRGGBB` diteruskan). Nama tak dikenal → `null`; frontend
+    memakai lingkaran netral + label nama. Bila pemilik kelak butuh warna persis per varian, perlu
+    kolom `color_hex` + input admin + amendemen `docs/db.md`/PRD §6 lebih dulu.
+
+23. **Grafik `sales_14d` memakai tanggal order dibuat (`created_at`), bukan `paid_at`** (kartu `t_1ef89050`).
+    `docs/PRD.md` §9 hanya menyebut "grafik penjualan 14 hari" tanpa kolom acuan, dan `docs/design.md`
+    tidak merincinya. Dipilih `created_at` karena: (a) konsisten dengan `recent_orders` yang juga urut
+    tanggal order; (b) tidak ada order berstatus omzet tanpa `created_at`, sedangkan `paid_at` bisa `null`
+    untuk order yang di-seed langsung berstatus selesai; (c) dapat diverifikasi ulang dengan satu query
+    `SUM(total) GROUP BY DATE(created_at)` pada rentang yang sama. Status yang dihitung tetap mengikuti
+    `Order::REVENUE_STATUSES` (dibayar/diproses/dikirim/selesai). Bila pemilik ingin omzet berdasarkan
+    tanggal pembayaran, cukup ganti kolom di `DashboardService::salesLast14Days()` + tambah test.
+
+24. **"Stok kritis" dashboard = varian aktif dari produk aktif dengan `stock < 5`, termasuk stok 0,
+    maksimal 5 baris** (kartu `t_1ef89050`). PRD §9 menulis "stok kritis (< 5)" dan `docs/design.md`
+    §5.11 meminta 5 baris; tidak disebut apakah stok 0 (habis) ikut. Stok 0 ikut ditampilkan karena
+    justru paling kritis dan admin perlu restock; varian/produk nonaktif dikeluarkan agar tidak
+    menghasilkan pekerjaan restock palsu. Batas 5 baris diambil dari design, bukan dari PRD.
+    Halaman `/admin/stok` tetap punya filter "habis" terpisah — dashboard tidak mengubahnya.
+
+25. **"Ulasan terbaru" dashboard memuat ulasan tersembunyi (`is_visible = false`)** (kartu `t_1ef89050`).
+    PRD §9 meminta "5 ulasan terbaru" untuk admin, dan alasan admin melihatnya adalah Moderasi
+    (PRD §5.2 `admin.reviews`). Menyembunyikan ulasan `is_visible = false` dari dashboard akan membuat
+    admin tidak tahu ada ulasan yang perlu ditinjau. Halaman publik tetap memakai scope `visible`.
+
+26. **Dashboard dihitung ulang setiap request; `updated_at` = waktu snapshot, bukan waktu data berubah**
+    (kartu `t_1ef89050`). Tidak ada cache/tabel agregat di PRD, dan bug "data tidak sinkron" berasal dari
+    props yang tidak dikirim — bukan cache. `updated_at` dipakai label "Diperbarui …" di frontend; karena
+    tidak ada cache, label ini selalu menunjukkan waktu render halaman. `loading`/`error` pada
+    `Admin/Dashboard.jsx` adalah state klien, jadi tidak dikirim server (dibiarkan memakai nilai bawaan).
+
+27. **`enabled_payments: ["other_qris"]` (PRD §8) tidak lagi dikirim untuk kanal QRIS bawaan** (kartu
+    `t_2f443b75`, 22 Okt 2026). Itu parameter Snap; Core API memilih kanal lewat `qris.acquirer`, dan
+    kombinasi `acquirer = gopay` + `enabled_payments = ["other_qris"]` dijawab Midtrans
+    **402 "Payment channel is not activated"** (9 kegagalan nyata di `storage/logs/laravel.log`).
+    Kanal bawaan `gopay`; `MIDTRANS_QRIS_ACQUIRER` (bawaan `gopay`) boleh diisi `other_qris`, dan bila
+    Midtrans menjawab 402 server mencoba kanal satunya sekali dengan `qris.acquirer` +
+    `enabled_payments` yang konsisten. PRD tidak diubah; ini penyimpangan teknis yang dicatat, bukan
+    aturan bisnis baru.
+
+28. **Cadangan QRIS wajib acquirer Core API sah; `other_qris` hanya alias config** (kartu `t_56062a5c`,
+    22 Okt 2026). Core API `payment_type: qris` hanya menerima `qris.acquirer` `gopay` atau `airpay shopee`
+    (docs.midtrans.com/reference/qris); `other_qris` adalah metode Snap dan dijawab
+    **413 "Payload format is not supported"**. Nilai config lama `MIDTRANS_QRIS_ACQUIRER=other_qris`
+    dipetakan ke `airpay shopee` supaya instalasi lama tidak perlu diubah pemilik; `enabled_payments`
+    tidak pernah dikirim lagi. Bila percobaan pertama 402 lalu cadangan gagal dengan galat lain, pesan
+    akhir tetap `CHANNEL_INACTIVE_MESSAGE` (kanal QRIS belum aktif) — galat cadangan tidak boleh menutupi
+    diagnosis yang hanya bisa diperbaiki pemilik. Menggantikan bagian butir 27 yang menyebut `other_qris`
+    sebagai kanal cadangan.
+
+29. **Riwayat pesanan: 10 per halaman dan `detail_url` boleh `null`** (kartu `t_5b803c80`, 23 Okt 2026).
+    `docs/rencana-perbaikan-5.md` hanya meminta halaman riwayat; jumlah per halaman tidak ditetapkan,
+    dipilih **10** agar konsisten dengan daftar pesanan admin. PRD tidak punya rute detail pesanan
+    pembeli, jadi `detail_url` hanya diisi `/checkout/{id}/bayar` (status `pending` +
+    `payment_status = pending`) dan `/checkout/{id}/selesai` (`payment_status = settlement`); status
+    lain — termasuk `batal` — bernilai `null` dan kartu pesanan tetap tampil lengkap tanpa tautan.
+
+30. **Favicon dan copyright footer boleh kosong** (kartu `t_101b9145`, 23 Okt 2026). PRD §6 tidak
+    menyebut `store_favicon`/`footer_copyright`; keduanya ditambahkan karena
+    `docs/rencana-perbaikan-5.md` memintanya. `store_favicon` kosong → tag icon memakai
+    `/favicon.ico` (seeder menulis ICO 32×32 hanya bila belum ada/0 byte, tidak menimpa unggahan
+    pemilik). `footer_copyright` kosong/null → frontend memakai `© {tahun berjalan} {store_name}`;
+    batas 200 karakter. Props publik `settings` tidak pernah memuat `midtrans_client_key` maupun
+    `midtrans_is_production` (keduanya tetap bisa diubah lewat panel admin, tetapi bukan data publik).
+
+31. **Microcopy katalog lazy scroll di luar `docs/design.md` §5.2** (kartu `t_ed78d5c6`, 23 Okt 2026).
+    §5.2 hanya menetapkan empty "Produk tidak ditemukan" + tombol "Reset filter"; `docs/rencana-perbaikan-5.md`
+    menetapkan tombol "Muat lebih banyak". Teks pelengkap dipilih sendiri: "Menampilkan {n} dari {total} produk",
+    "Memuat produk…", "Semua produk sudah tampil", empty tanpa filter "Belum ada produk" / "Produk akan tampil di
+    sini setelah tersedia.", galat "Gagal memuat produk" + "Periksa koneksi Anda lalu coba lagi.", dan galat batch
+    "Gagal memuat produk berikutnya. Periksa koneksi Anda lalu coba lagi.". Ini teks UI, bukan aturan bisnis; boleh
+    diganti pemilik tanpa mengubah perilaku.
+
+32. **Microcopy riwayat pesanan dan menu profil di luar `docs/design.md`** (kartu `t_326f766b`, 23 Okt 2026).
+    `docs/rencana-perbaikan-5.md` meminta halaman `/history` dan menu profil (nama user, tautan
+    "Riwayat pesanan", "Keluar") tetapi `docs/design.md` tidak punya layar riwayat maupun dropdown profil.
+    Judul halaman "Riwayat Pesanan"; subjudul "{n} pesanan tercatat di akunmu." hanya tampil bila total > 0;
+    saat kosong, `EmptyState` "Belum ada pesanan" + tombol "Mulai Belanja" → `/produk` yang memandu;
+    galat paginasi "Riwayat pesanan gagal dimuat" + tombol "Coba lagi". Label CTA detail memakai microcopy
+    design yang sudah ada: "Lihat Pesanan" (state `paid`, §4.4) dan "Lanjut ke Pembayaran" (ringkasan
+    `/keranjang`, §5.6); tautan hanya dirender
+    bila `detail_url` tidak `null` (kontrak §13). Label "Pembayaran: {payment_label}" memakai
+    `payment_label` server apa adanya. Menu profil header memakai nama/email dari `auth.user`; ikon tetap
+    ikon (bukan nama), panel turun di bawah ikon agar tidak menutupi ikon. Ini teks dan tata letak UI,
+    bukan aturan bisnis; boleh diganti pemilik tanpa mengubah perilaku.
+
+33. **Teks bantuan isian copyright di panel admin** (kartu `t_c915c033`, 23 Okt 2026). Label isian
+    mengikuti kartu: "Copyright notice". `docs/design.md` tidak mengatur layar Pengaturan admin, jadi
+    judul kartu "Copyright", deskripsi "Teks hak cipta di baris paling bawah footer halaman pembeli.",
+    dan hint "Kosongkan agar otomatis menjadi © {tahun} {nama toko}. Placeholder {tahun} dan {toko}
+    diisi otomatis." dipilih sendiri. Perilaku dan batas 200 karakter mengikuti kontrak §10.7/§10.8;
+    teks ini hanya membantu admin dan tidak mengubah aturan bisnis.

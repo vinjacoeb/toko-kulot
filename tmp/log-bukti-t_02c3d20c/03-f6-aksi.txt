@@ -1,0 +1,11 @@
+### C. Regresi harness interaksi F6 (uji 7 baru): tmp/uji-aksi-ulasan-t_2de36f29.mjs
+OK    | 1. kirim ulasan -> POST /checkout/{order}/ulasan payload kontrak §9.1            | 
+OK    | 2. kirim ganda dicegah selama kiriman pertama belum selesai                      | 
+OK    | 3. boleh=false & semua sudah diulas -> tanpa form, kartu terkunci, terima kasih  | 
+OK    | 4. belum boleh dinilai -> tidak ada jalur kirim ulasan sama sekali               | 
+OK    | 5. galat validasi server menempel pada produk yang dikirim                       | 
+OK    | 6. seluruh produk selesai dinilai dalam sesi -> form habis + terima kasih        | 
+OK    | 7. boleh=false + masih ada sisa produk -> tanpa form aktif, nol panggilan router | 
+
+RINGKASAN: 7/7 uji lulus
+$ echo $?  ->  0

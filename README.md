@@ -67,6 +67,7 @@ cp .env.example .env
 | `MIDTRANS_MERCHANT_ID`, `MIDTRANS_CLIENT_KEY`, `MIDTRANS_SERVER_KEY` | pemilik | kredensial Midtrans |
 | `MIDTRANS_IS_PRODUCTION` | pemilik | `false` saat pengembangan |
 | `MIDTRANS_FAKE` | pemilik | `true` = QRIS dummy tanpa kredensial |
+| `MIDTRANS_EXPIRY_MINUTES` | pemilik | masa berlaku QRIS; bawaan `5` menit (keputusan pemilik 21 Okt 2026) |
 
 Zona waktu `Asia/Jakarta`, locale `id`, dan fallback `en` diatur di
 `config/app.php` (bukan `.env`).

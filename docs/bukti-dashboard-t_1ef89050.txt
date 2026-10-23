@@ -1,0 +1,42 @@
+Bukti kartu t_1ef89050 — Dashboard admin sinkron dengan data aktual
+Waktu: 2026-10-22 08:58:32 SEAST
+
+== 1. Syntax check ==
+No syntax errors detected in app/Services/DashboardService.php
+No syntax errors detected in app/Http/Controllers/Admin/DashboardController.php
+No syntax errors detected in app/Models/Order.php
+No syntax errors detected in tests/Feature/Admin/AdminDashboardTest.php
+
+== 2. Test dashboard (SQLite :memory:) ==
+  ✓ dashboard menampilkan stats sesuai kontrak                                                                   0.70s  
+  ✓ revenue total hanya menghitung order masuk akuntansi                                                         0.03s  
+  ✓ products active hanya menghitung produk tayang                                                               0.04s  
+  ✓ sales 14d memakai tanggal order dan hanya status omzet                                                       0.05s  
+  ✓ low stock hanya varian aktif dari produk aktif di bawah lima                                                 0.03s  
+  ✓ low stock dibatasi lima baris urut stok terendah                                                             0.03s  
+  ✓ recent orders lima terbaru semua status                                                                      0.03s  
+  ✓ recent reviews lima terbaru termasuk tersembunyi dan user terhapus                                           0.04s  
+
+  Tests:    8 passed (149 assertions)
+  Duration: 1.37s
+
+
+== 3. Snapshot service pada database pengembangan (read-only) ==
+stats: {"orders_total":13,"orders_pending":7,"revenue_total":884000,"products_active":12}
+sales_14d count: 14
+sales_14d: [{"date":"2026-10-09","total":0},{"date":"2026-10-10","total":0},{"date":"2026-10-11","total":0},{"date":"2026-10-12","total":0},{"date":"2026-10-13","total":0},{"date":"2026-10-14","total":0},{"date":"2026-10-15","total":646000},{"date":"2026-10-16","total":238000},{"date":"2026-10-17","total":0},{"date":"2026-10-18","total":0},{"date":"2026-10-19","total":0},{"date":"2026-10-20","total":0},{"date":"2026-10-21","total":0},{"date":"2026-10-22","total":0}]
+low_stock count: 2
+low_stock: [{"id":28,"product_name":"Kulot Karet Pinggang Motif Garis","size":"M","color":"Hitam","stock":3},{"id":29,"product_name":"Kulot Karet Pinggang Motif Garis","size":"L","color":"Hitam","stock":3}]
+recent_orders count: 5
+recent_orders: [{"id":16,"code":"TK-20261022-0004","customer_name":"budsui","total":500,"status":"pending","created_at":"2026-10-22T08:33:20+07:00"},{"id":15,"code":"TK-20261022-0003","customer_name":"Valentino Aldo","total":500,"status":"batal","created_at":"2026-10-22T08:09:19+07:00"},{"id":14,"code":"TK-20261022-0002","customer_name":"Valentino Aldo","total":189000,"status":"batal","created_at":"2026-10-22T08:02:32+07:00"},{"id":13,"code":"TK-20261022-0001","customer_name":"Valentino Aldo","total":179000,"status":"batal","created_at":"2026-10-22T07:40:09+07:00"},{"id":9,"code":"TK-20261021-0004","customer_name":"Valentino Aldo","total":189000,"status":"pending","created_at":"2026-10-21T19:29:23+07:00"}]
+recent_reviews count: 2
+recent_reviews: [{"id":2,"user_name":"Budi Santoso [CONTOH]","product_name":"Kulot Plisket Premium","rating":4,"comment":"[CONTOH] Kulotnya nyaman dan tidak menerawang. Pengiriman agak lambat dua hari dari perkiraan.","created_at":"2026-10-16T08:00:00+07:00"},{"id":1,"user_name":"Budi Santoso [CONTOH]","product_name":"Daster Batik Pekalongan Lengan Pendek","rating":5,"comment":"[CONTOH] Bahannya adem, jahitan rapi, dan sesuai deskripsi. Beli 6 pcs dapat harga grosir, worth it untuk dijual lagi.","created_at":"2026-10-16T08:00:00+07:00"}]
+updated_at: 2026-10-22T08:58:35+07:00
+
+== 4. Pint (gaya kode) ==
+{"tool":"pint","result":"passed"}
+== 5. Suite penuh ==
+
+  Tests:    258 passed (2041 assertions)
+  Duration: 29.06s
+

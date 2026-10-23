@@ -1,0 +1,42 @@
+### D. Kontrol negatif (sabotase sementara: gate -> 'pending.length > 0', boleh dilepas)
+$ sed -i 's/const tampilkanForm = boleh && pending.length > 0;/const tampilkanForm = pending.length > 0;/' resources/js/Pages/Public/CheckoutSuccess.jsx
+GAGAL | 1. boleh=false, masih ada sisa produk -> TANPA form, tanpa notice alasan (DoD-1)                     | form harus 0 saat boleh=false, dapat 1
+OK    | 2. boleh=true, masih ada sisa produk -> form tampil (DoD-2)                                          | 
+OK    | 3. semua produk sudah diulas (boleh=false) -> tanpa form + terima kasih (DoD-3)                      | 
+GAGAL | 4. boleh=false + sisa produk, syarat §9.1 belum terpenuhi -> notice alasan tampil                    | form harus 0, dapat 2
+GAGAL | 5. boleh=false + sisa produk, status batal -> tanpa form + notice alasan                             | form harus 0, dapat 2
+OK    | 6. props `boleh=true` dipercaya apa adanya (keputusan §3: klien tidak menggandakan §9.1)             | 
+GAGAL | 7. gate statis: `boleh && pending.length > 0`, cabang kontradiksi hilang, alasan pakai syaratDinilai | gate resmi `const tampilkanForm = boleh && pending.length > 0;` tidak ditemukan
+GAGAL | 8. props `ulasan` tidak dikirim -> gerbang tertutup, halaman utuh                                    | form harus 0 tanpa props ulasan, dapat 2
+OK    | 9. sapu kotor (NaN/undefined/placeholder) di semua state di atas                                     | 
+
+RINGKASAN: 4/9 uji lulus
+$ echo $?  ->  1
+--- regresi F6 SSR pada kondisi sabotase:
+OK    | 1. boleh=true, belum ada ulasan -> 2 form, tanpa notice alasan                          | 
+OK    | 2. boleh=true, 1 dari 2 sudah diulas -> 1 form + 1 kartu terkunci                       | 
+GAGAL | 3. boleh=false padahal masih ada sisa produk -> tanpa form, tanpa notice alasan         | form harus 0 saat boleh=false, dapat 1
+OK    | 4. boleh=false, semua sudah diulas -> tanpa form + terima kasih + 2 kartu               | 
+GAGAL | 5. belum lunas (payment_status pending) -> tanpa form + alasan                          | form harus 0 saat belum lunas, dapat 2
+GAGAL | 6. settlement status=batal -> tanpa form + alasan                                       | form harus 0 saat status batal, dapat 2
+OK    | 7. props `boleh=true` dipercaya apa adanya (server = sumber aturan §9.1) -> form tampil | 
+OK    | 8. flash.error dari server ditampilkan                                                  | 
+OK    | 9. galat validasi ulasan (errors.ulasan) ditampilkan                                    | 
+OK    | 10. angka dari server sebagai string -> tanpa NaN, rupiah benar                         | 
+OK    | 11. items kosong -> tidak ada form/notice, tidak crash                                  | 
+GAGAL | 12. props `ulasan` tidak dikirim (null) -> gerbang tertutup (tanpa form), halaman utuh  | tanpa props ulasan gerbang harus tertutup, dapat 2
+OK    | 13. sapu kotor (NaN/undefined/placeholder) di semua state di atas                       | 
+
+RINGKASAN: 9/13 uji lulus
+$ echo $?  ->  1
+--- regresi F6 interaksi pada kondisi sabotase:
+OK    | 1. kirim ulasan -> POST /checkout/{order}/ulasan payload kontrak §9.1            | 
+OK    | 2. kirim ganda dicegah selama kiriman pertama belum selesai                      | 
+OK    | 3. boleh=false & semua sudah diulas -> tanpa form, kartu terkunci, terima kasih  | 
+GAGAL | 4. belum boleh dinilai -> tidak ada jalur kirim ulasan sama sekali               | tidak boleh ada kartu penilaian
+OK    | 5. galat validasi server menempel pada produk yang dikirim                       | 
+OK    | 6. seluruh produk selesai dinilai dalam sesi -> form habis + terima kasih        | 
+GAGAL | 7. boleh=false + masih ada sisa produk -> tanpa form aktif, nol panggilan router | form aktif harus 0 saat boleh=false, dapat 1
+
+RINGKASAN: 5/7 uji lulus
+$ echo $?  ->  1
