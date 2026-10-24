@@ -5,7 +5,7 @@ namespace App\Services\Midtrans;
 use App\Exceptions\CheckoutException;
 use JsonSerializable;
 use Midtrans\Config;
-use Midtrans\CoreApi;
+use Midtrans\Snap;
 use Midtrans\Transaction;
 
 /**
@@ -28,14 +28,14 @@ class SdkMidtransApi implements MidtransApi
      * @param  array<string, mixed>  $params
      * @return array<string, mixed>
      */
-    public function charge(array $params): array
+    public function snap(array $params): array
     {
         $this->boot();
 
         try {
-            return $this->normalizeResponse($this->requestCharge($params));
+            return $this->normalizeResponse($this->requestSnap($params));
         } catch (\Throwable $exception) {
-            throw new CheckoutException('Gagal membuat pembayaran QRIS. Coba lagi.', 0, $exception);
+            throw new CheckoutException('Gagal membuat pembayaran. Coba lagi.', 0, $exception);
         }
     }
 
@@ -54,17 +54,16 @@ class SdkMidtransApi implements MidtransApi
     }
 
     /**
-     * Panggilan SDK mentah untuk `charge` — satu-satunya titik yang menyentuh jaringan.
+     * Panggilan SDK mentah untuk Snap — satu-satunya titik yang menyentuh jaringan.
      *
      * Dipisah (protected) supaya test bisa meniru bentuk respons SDK apa adanya
-     * (stdClass bersarang) tanpa memanggil Midtrans; lihat
-     * `tests/Feature/Checkout/MidtransSdkShapeTest.php`.
+     * (stdClass bersarang) tanpa memanggil Midtrans.
      *
      * @param  array<string, mixed>  $params
      */
-    protected function requestCharge(array $params): mixed
+    protected function requestSnap(array $params): mixed
     {
-        return CoreApi::charge($params);
+        return Snap::createTransaction($params);
     }
 
     /**

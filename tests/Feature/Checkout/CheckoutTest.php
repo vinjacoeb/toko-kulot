@@ -406,7 +406,7 @@ class CheckoutTest extends TestCase
             ->component('Public/CheckoutPay', false)
             ->where('pesanan.code', $order->code)
             ->where('pesanan.total', (int) $order->total)
-            ->where('pembayaran.method', 'qris')
+            ->where('pembayaran.method', 'midtrans')
             ->where('pembayaran.status', Order::PAYMENT_PENDING)
             ->where('midtrans.fake', true)
         );

@@ -13,26 +13,29 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Integrasi QRIS Midtrans (PRD §8).
+ * Integrasi pembayaran Midtrans Snap (PRD-v1.1 §2, D1).
  *
- * - Mode asli: memanggil Core API `charge` dengan `payment_type = qris`.
+ * - Mode asli: membuat transaksi lewat Snap (`POST /snap/v1/transactions`)
+ *   sehingga semua kanal yang aktif di akun merchant tampil. `snap_token` dan
+ *   `snap_redirect_url` disimpan di `payments`; `payment_type` baru diketahui
+ *   saat webhook (Core API QRIS lama tidak dipakai lagi).
  * - `order_id` Midtrans jalur asli = `orders.code` + sufiks acak per panggilan
- *   charge (`nextMidtransOrderId()`); `orders.code` tetap kode pesanan yang
+ *   Snap (`nextMidtransOrderId()`); `orders.code` tetap kode pesanan yang
  *   tampil ke pembeli/admin (tanpa sufiks).
- * - Mode `fake` (pengembangan tanpa kredensial): QRIS dibuat lokal dengan
- *   format EMVCo yang valid + CRC16, sehingga UI dan alur checkout bisa diuji
- *   penuh. `MIDTRANS_FAKE=false` wajib di produksi.
- * - Notifikasi: signature SHA-512 diverifikasi, penerapan status idempoten.
+ * - Mode `fake` (pengembangan tanpa kredensial): tagihan dibuat lokal dengan
+ *   QRIS dummy + panel simulasi; `simulateSuccess()` menandai lunas lewat jalur
+ *   service. `MIDTRANS_FAKE=false` wajib di produksi.
+ * - Notifikasi: signature SHA-512 diverifikasi, penerapan status idempoten,
+ *   `payment_type` disimpan, `orders.payment_method` diisi saat settlement.
  * - Panggilan jaringan lewat `MidtransApi` (seam yang bisa diganti di test).
- * - Dipakai juga oleh aksi admin "Sinkronkan status pembayaran" (kontrak §12.24) lewat
- *   `syncStatusOrFail()` — kegagalan di situ harus terlihat admin, bukan senyap.
+ * - Dipakai juga oleh aksi admin "Sinkronkan status pembayaran" (kontrak §12.24).
  */
 class MidtransService
 {
     /** Kode alasan mode uji → teks siap tampil (kontrak props §7.5, §7.7, §10.7). */
     private const MODE_REASONS = [
-        'fake_aktif' => 'MODE UJI aktif karena MIDTRANS_FAKE=true di .env: QRIS dibuat lokal (tanpa Midtrans) sehingga tidak bisa ditransfer.',
-        'server_key_kosong' => 'MODE UJI aktif karena MIDTRANS_SERVER_KEY di .env masih kosong: QRIS dibuat lokal (tanpa Midtrans) sehingga tidak bisa ditransfer.',
+        'fake_aktif' => 'MODE UJI aktif karena MIDTRANS_FAKE=true di .env: pembayaran disimulasikan lokal (tanpa Midtrans).',
+        'server_key_kosong' => 'MODE UJI aktif karena MIDTRANS_SERVER_KEY di .env masih kosong: pembayaran disimulasikan lokal (tanpa Midtrans).',
     ];
 
     /** Langkah perbaikan untuk pemilik, per kode alasan mode uji. */
@@ -55,7 +58,7 @@ class MidtransService
     private const CREDENTIAL_NOTE = 'Kredensial efektif dibaca dari .env (MIDTRANS_*); kolom Midtrans pada tab Pembayaran admin belum dipakai jalur pembayaran ini.';
 
     /**
-     * Bawaan masa berlaku tagihan QRIS dalam menit bila konfigurasi hilang atau
+     * Bawaan masa berlaku tagihan dalam menit bila konfigurasi hilang atau
      * tidak sah — keputusan pemilik 21 Oktober 2026: 5 menit.
      */
     public const DEFAULT_EXPIRY_MINUTES = 5;
@@ -63,38 +66,18 @@ class MidtransService
     /** Batas panjang `order_id` Midtrans; kolom `payments.order_id_midtrans` = 60. */
     private const MIDTRANS_ORDER_ID_MAX_LENGTH = 60;
 
-    /** Panjang sufiks acak pada `order_id` Midtrans per panggilan charge. */
+    /** Panjang sufiks acak pada `order_id` Midtrans per panggilan Snap. */
     private const MIDTRANS_ORDER_ID_SUFFIX_LENGTH = 6;
 
-    /**
-     * Acquirer QRIS Core API yang sah untuk `payment_type = qris`:
-     * `gopay` (QRIS GoPay) dan `airpay shopee` (QRIS acquirer lain).
-     *
-     * `other_qris` BUKAN acquirer Core API — itu metode Snap. Dikirim sebagai
-     * `qris.acquirer`, Midtrans menjawab **413 "Payload format is not supported"**
-     * (docs/review-4.md §2 F2, kartu `t_56062a5c`).
-     */
-    private const QRIS_ACQUIRERS = ['gopay', 'airpay shopee'];
-
-    /** Acquirer QRIS bawaan bila `MIDTRANS_QRIS_ACQUIRER` kosong/tidak sah. */
-    private const QRIS_ACQUIRER_DEFAULT = 'gopay';
+    /** Batas kolom `payments.payment_type`. */
+    private const PAYMENT_TYPE_MAX_LENGTH = 40;
 
     /**
-     * Nilai config lama yang masih beredar di `.env` pemilik: `other_qris`
-     * dipetakan ke acquirer Core API yang setara (`airpay shopee`) supaya
-     * payload tidak ditolak 413 dan instalasi lama tidak perlu diubah.
-     *
-     * @var array<string, string>
+     * Pesan siap tampil saat Midtrans menolak transaksi karena kanal belum
+     * aktif (402) — yang bisa diperbaiki pemilik hanya aktivasi kanal di
+     * dashboard, jadi pesannya menyebut itu, bukan "Coba lagi.".
      */
-    private const QRIS_ACQUIRER_ALIASES = ['other_qris' => 'airpay shopee'];
-
-    /**
-     * Pesan siap tampil saat SEMUA kanal QRIS ditolak Midtrans dengan 402
-     * `Payment channel is not activated` — yang bisa diperbaiki pemilik hanya
-     * aktivasi kanal di dashboard, jadi pesannya harus menyebut itu (bukan
-     * "Coba lagi." yang menyuruh pembeli mengulang hal yang sama).
-     */
-    public const CHANNEL_INACTIVE_MESSAGE = 'Pembayaran QRIS belum bisa dibuat karena kanal QRIS belum aktif di akun Midtrans penjual. Hubungi penjual.';
+    public const CHANNEL_INACTIVE_MESSAGE = 'Pembayaran belum bisa dibuat karena kanal pembayaran belum aktif di akun Midtrans penjual. Hubungi penjual.';
 
     public function __construct(
         private readonly StockService $stock,
@@ -102,8 +85,8 @@ class MidtransService
     ) {}
 
     /**
-     * Status mode pembayaran efektif untuk UI (kontrak §7.5 — bentuk baku yang
-     * juga dipakai §7.7 dan §10.7): menjelaskan kenapa QRIS tidak bisa ditransfer.
+     * Status mode pembayaran efektif untuk UI (kontrak §7.5, baku juga dipakai
+     * §7.7 dan §10.7).
      *
      * @return array<string, mixed>
      */
@@ -138,12 +121,9 @@ class MidtransService
     }
 
     /**
-     * Masa berlaku tagihan QRIS dalam menit — SATU sumber untuk `custom_expiry`
-     * Midtrans (`chargeParams()`) dan kolom `payments.expires_at` (`expiresAt()`)
-     * supaya keduanya tidak pernah berbeda (kartu `t_e35050e8`).
-     *
-     * Nilai diatur `MIDTRANS_EXPIRY_MINUTES` → `config('midtrans.expiry_minutes')`;
-     * nilai hilang/tidak sah jatuh ke `DEFAULT_EXPIRY_MINUTES`.
+     * Masa berlaku tagihan dalam menit — SATU sumber untuk parameter Snap
+     * (`expiry`) dan kolom `payments.expires_at` supaya keduanya tidak pernah
+     * berbeda.
      */
     public function expiryMinutes(): int
     {
@@ -153,9 +133,9 @@ class MidtransService
     }
 
     /**
-     * Buat tagihan QRIS untuk sebuah order.
+     * Buat transaksi Snap untuk sebuah order — pengganti charge QRIS Core API.
      */
-    public function createQrisCharge(Order $order): Payment
+    public function createSnapTransaction(Order $order): Payment
     {
         $expiresAt = $this->expiresAt();
 
@@ -165,6 +145,9 @@ class MidtransService
                 'provider' => 'midtrans',
                 'transaction_id' => 'fake-'.$order->code,
                 'order_id_midtrans' => $order->code,
+                'snap_token' => null,
+                'snap_redirect_url' => null,
+                'payment_type' => null,
                 'qris_url' => null,
                 'qr_string' => $this->fakeQrString($order),
                 'gross_amount' => (int) $order->total,
@@ -176,15 +159,18 @@ class MidtransService
         }
 
         $midtransOrderId = $this->nextMidtransOrderId($order);
-        $response = $this->chargeOrder($order, $midtransOrderId);
+        $response = $this->snapOrder($order, $midtransOrderId);
 
         return Payment::create([
             'order_id' => $order->id,
             'provider' => 'midtrans',
             'transaction_id' => isset($response['transaction_id']) ? (string) $response['transaction_id'] : null,
             'order_id_midtrans' => $midtransOrderId,
-            'qris_url' => $this->qrUrl($response),
-            'qr_string' => $response['qr_string'] ?? null,
+            'snap_token' => isset($response['token']) ? (string) $response['token'] : null,
+            'snap_redirect_url' => isset($response['redirect_url']) ? (string) $response['redirect_url'] : null,
+            'payment_type' => $this->paymentTypeFrom($response),
+            'qris_url' => null,
+            'qr_string' => null,
             'gross_amount' => (int) $order->total,
             'status' => $this->mapStatus((string) ($response['transaction_status'] ?? 'pending')) ?? Order::PAYMENT_PENDING,
             'payload' => $response,
@@ -208,7 +194,7 @@ class MidtransService
 
     /**
      * Tagihan tersimpan masih mode uji padahal mode efektif sudah asli:
-     * tagihan harus dibuat ulang supaya QRIS benar-benar bisa dibayar.
+     * tagihan harus dibuat ulang supaya pembayaran benar-benar bisa dilakukan.
      */
     public function needsRegeneration(?Payment $payment): bool
     {
@@ -221,12 +207,9 @@ class MidtransService
     }
 
     /**
-     * Buat ulang tagihan pada BARIS `payments` YANG SAMA (kontrak §7.5: satu
-     * tagihan per pesanan). Dipakai saat mode asli aktif tetapi tagihan
-     * tersimpan masih dibuat mode uji.
-     *
-     * Baris dikunci lebih dulu agar dua permintaan sekaligus tidak membuat dua
-     * tagihan Midtrans untuk order yang sama. Gagal menghubungi Midtrans →
+     * Buat ulang tagihan pada BARIS `payments` YANG SAMA (satu tagihan per
+     * pesanan). Baris dikunci agar dua permintaan sekaligus tidak membuat dua
+     * transaksi Snap untuk order yang sama. Gagal menghubungi Midtrans →
      * `CheckoutException` (pemanggil menampilkan galat, baris lama dibiarkan).
      */
     public function regenerateCharge(Payment $payment, Order $order): Payment
@@ -243,13 +226,16 @@ class MidtransService
             }
 
             $midtransOrderId = $this->nextMidtransOrderId($order);
-            $response = $this->chargeOrder($order, $midtransOrderId);
+            $response = $this->snapOrder($order, $midtransOrderId);
 
             $locked->forceFill([
                 'transaction_id' => isset($response['transaction_id']) ? (string) $response['transaction_id'] : null,
                 'order_id_midtrans' => $midtransOrderId,
-                'qris_url' => $this->qrUrl($response),
-                'qr_string' => $response['qr_string'] ?? null,
+                'snap_token' => isset($response['token']) ? (string) $response['token'] : null,
+                'snap_redirect_url' => isset($response['redirect_url']) ? (string) $response['redirect_url'] : null,
+                'payment_type' => $this->paymentTypeFrom($response),
+                'qris_url' => null,
+                'qr_string' => null,
                 'gross_amount' => (int) $order->total,
                 'status' => $this->mapStatus((string) ($response['transaction_status'] ?? 'pending')) ?? Order::PAYMENT_PENDING,
                 'payload' => $response,
@@ -258,6 +244,31 @@ class MidtransService
 
             return $locked;
         });
+    }
+
+    /**
+     * Simulasi pembayaran berhasil (mode fake) — satu-satunya jalur yang boleh
+     * menandai tagihan uji lunas; dipanggil server dari panel simulasi, bukan
+     * nilai dari frontend. Menolak tagihan Midtrans asli dan mode asli.
+     */
+    public function simulateSuccess(Payment $payment): void
+    {
+        if (! $this->isFake()) {
+            throw new CheckoutException('Simulasi pembayaran hanya tersedia dalam mode uji Midtrans.');
+        }
+
+        if (! $this->isFakeCharge($payment)) {
+            throw new CheckoutException('Tagihan ini dibuat Midtrans asli, jadi tidak bisa disimulasikan.');
+        }
+
+        $this->applyStatus($payment, 'settlement', [
+            'order_id' => $payment->order_id_midtrans,
+            'transaction_id' => $payment->transaction_id,
+            'transaction_status' => 'settlement',
+            'payment_type' => 'qris',
+            'gross_amount' => number_format((int) $payment->gross_amount, 2, '.', ''),
+            'simulated' => true,
+        ]);
     }
 
     /**
@@ -349,18 +360,8 @@ class MidtransService
     }
 
     /**
-     * Sama dengan `syncStatus()`, tetapi kegagalannya DILAPORKAN ke pemanggil —
-     * dipakai aksi admin "Sinkronkan status pembayaran" (kontrak §12.24) supaya
-     * admin melihat galat, bukan tombol yang diam saja.
-     *
-     * Semua pesan berupa kalimat Bahasa Indonesia siap tampil di `flash.error`.
-     * Yang dilempar:
-     * - `CheckoutException` bila tagihan tidak bisa ditanyakan ke Midtrans
-     *   (mode uji aktif atau `order_id_midtrans` kosong);
-     * - `CheckoutException` dari `MidtransApi::status()` bila Midtrans tidak bisa
-     *   dihubungi — status tersimpan tidak berubah.
-     *
-     * Perilaku `syncStatus()` (best-effort untuk polling pembeli) sengaja tidak diubah.
+     * Seperti `syncStatus()`, tetapi kegagalan DILAPORKAN ke pemanggil — dipakai
+     * aksi admin "Sinkronkan status pembayaran" supaya admin melihat galat.
      */
     public function syncStatusOrFail(Payment $payment): void
     {
@@ -379,6 +380,9 @@ class MidtransService
 
     /**
      * Terapkan status transaksi ke `payments` + `orders` secara idempoten.
+     *
+     * `payment_type` dari payload selalu disimpan (walau status sama) dan
+     * `orders.payment_method` diisi saat settlement — PRD-v1.1 §2.
      */
     public function applyStatus(Payment $payment, string $transactionStatus, array $payload = []): void
     {
@@ -388,7 +392,9 @@ class MidtransService
             return;
         }
 
-        DB::transaction(function () use ($payment, $newStatus, $payload): void {
+        $paymentType = $this->paymentTypeFrom($payload);
+
+        DB::transaction(function () use ($payment, $newStatus, $payload, $paymentType): void {
             $locked = Payment::query()->lockForUpdate()->find($payment->id);
 
             if (! $locked) {
@@ -403,11 +409,23 @@ class MidtransService
 
             $current = (string) $locked->status;
 
-            // Idempoten: status sama → hanya simpan payload terbaru.
+            // Idempoten: status sama → simpan payload/tipe terbaru saja.
             if ($current === $newStatus) {
+                $attributes = [];
+
                 if ($payload !== []) {
-                    $locked->forceFill(['payload' => $payload])->save();
+                    $attributes['payload'] = $payload;
                 }
+
+                if ($paymentType !== null) {
+                    $attributes['payment_type'] = $paymentType;
+                }
+
+                if ($attributes !== []) {
+                    $locked->forceFill($attributes)->save();
+                }
+
+                $this->fillOrderPaymentMethod($order, $newStatus, $paymentType);
 
                 return;
             }
@@ -425,6 +443,10 @@ class MidtransService
 
             if ($payload !== []) {
                 $paymentAttributes['payload'] = $payload;
+            }
+
+            if ($paymentType !== null) {
+                $paymentAttributes['payment_type'] = $paymentType;
             }
 
             if (filled($payload['transaction_id'] ?? null)) {
@@ -449,6 +471,10 @@ class MidtransService
                     $orderAttributes['paid_at'] = $locked->paid_at ?? now();
                 }
 
+                if ($paymentType !== null) {
+                    $orderAttributes['payment_method'] = $paymentType;
+                }
+
                 $order->forceFill($orderAttributes)->save();
 
                 return;
@@ -465,6 +491,23 @@ class MidtransService
                 $this->restoreStock($order, $newStatus);
             }
         });
+    }
+
+    /**
+     * Notifikasi ulang saat status sudah settlement: `payment_type` tetap
+     * disimpan dan `orders.payment_method` diganti dari `midtrans` ke tipe asli.
+     */
+    private function fillOrderPaymentMethod(Order $order, string $newStatus, ?string $paymentType): void
+    {
+        if ($newStatus !== Order::PAYMENT_SETTLEMENT || $paymentType === null) {
+            return;
+        }
+
+        if ((string) $order->payment_method === $paymentType) {
+            return;
+        }
+
+        $order->forceFill(['payment_method' => $paymentType])->save();
     }
 
     /**
@@ -495,6 +538,8 @@ class MidtransService
 
     /**
      * Padanan `transaction_status` Midtrans → status pembayaran PRD §6.
+     * `bank_transfer`/`echannel`/`qris` hanya memengaruhi `payment_type`, bukan
+     * status: settlement tetap settlement.
      */
     public function mapStatus(string $transactionStatus): ?string
     {
@@ -514,16 +559,10 @@ class MidtransService
     }
 
     /**
-     * `order_id` Midtrans untuk SATU panggilan charge: `orders.code` + sufiks
-     * acak 6 karakter hex (contoh `TK-20261022-0001-A1B2C3`).
-     *
-     * Kode pesanan yang tampil ke pembeli/admin tetap `orders.code` tanpa
-     * sufiks. Sufiks hanya hidup di jalur Midtrans supaya percobaan charge
-     * ulang — termasuk checkout ulang setelah gagal SESUDAH charge — tidak
-     * memakai `order_id` yang sudah terpakai (Midtrans menolaknya 406).
-     *
-     * Nilai dihitung sekali per panggilan charge dan dipakai untuk
-     * `chargeParams()` maupun kolom `payments.order_id_midtrans`.
+     * `order_id` Midtrans untuk SATU panggilan Snap: `orders.code` + sufiks
+     * acak 6 karakter hex. Kode pesanan yang tampil ke pembeli/admin tetap
+     * tanpa sufiks; sufiks mencegah `order_id` terpakai saat Snap dipanggil
+     * ulang (Midtrans menolaknya 406).
      */
     private function nextMidtransOrderId(Order $order): string
     {
@@ -547,27 +586,18 @@ class MidtransService
     }
 
     /**
-     * Parameter Core API `charge` (PRD §8) — dipakai pembuatan tagihan awal
-     * maupun pembuatan ulang tagihan yang masih mode uji.
-     *
-     * `qris.acquirer` adalah satu-satunya penentu kanal QRIS di Core API.
-     * `enabled_payments` milik Snap dan TIDAK PERNAH dikirim: nilainya
-     * `["other_qris"]` (warisan PRD §8) bertabrakan dengan `acquirer = gopay`
-     * dan dijawab Midtrans **402 Payment channel is not activated** — penyebab
-     * notif "Gagal membuat pembayaran QRIS. Coba lagi." (kartu `t_2f443b75`).
-     * Acquirer yang sah hanya `gopay` dan `airpay shopee` (kartu `t_56062a5c`).
+     * Parameter Snap. Tanpa `enabled_payments` (A21): Snap menampilkan semua
+     * kanal yang aktif di akun Midtrans pemilik.
      *
      * @return array<string, mixed>
      */
-    private function chargeParams(Order $order, string $midtransOrderId, string $acquirer): array
+    private function snapParams(Order $order, string $midtransOrderId): array
     {
-        $params = [
-            'payment_type' => 'qris',
+        return [
             'transaction_details' => [
                 'order_id' => $midtransOrderId,
                 'gross_amount' => (int) $order->total,
             ],
-            'qris' => ['acquirer' => $acquirer],
             'customer_details' => [
                 'first_name' => $order->customer_name,
                 'email' => $order->customer_email,
@@ -580,105 +610,60 @@ class MidtransService
                     'country_code' => 'IDN',
                 ],
             ],
-            'custom_expiry' => [
-                'expiry_duration' => $this->expiryMinutes(),
+            'expiry' => [
                 'unit' => 'minute',
+                'duration' => $this->expiryMinutes(),
             ],
         ];
-
-        return $params;
     }
 
     /**
-     * Urutan acquirer QRIS yang dicoba: nilai `MIDTRANS_QRIS_ACQUIRER`
-     * (bawaan `gopay`; alias lama `other_qris` → `airpay shopee`), lalu
-     * acquirer sah satunya sebagai cadangan.
-     *
-     * @return array<int, string>
-     */
-    private function qrisAcquirers(): array
-    {
-        $configured = strtolower(trim((string) config('midtrans.qris_acquirer', self::QRIS_ACQUIRER_DEFAULT)));
-        $configured = self::QRIS_ACQUIRER_ALIASES[$configured] ?? $configured;
-
-        $primary = in_array($configured, self::QRIS_ACQUIRERS, true)
-            ? $configured
-            : self::QRIS_ACQUIRER_DEFAULT;
-
-        $fallback = array_values(array_diff(self::QRIS_ACQUIRERS, [$primary]))[0];
-
-        return [$primary, $fallback];
-    }
-
-    /**
-     * Panggil Midtrans Core API `charge`; kegagalan jadi `CheckoutException`
-     * dengan pesan siap tampil (kontrak §7.7 `pembayaran.galat`).
-     *
-     * Bila Midtrans menjawab **402 kanal belum aktif**, percobaan diulang SATU
-     * kali dengan acquirer QRIS sah lainnya memakai `order_id` yang sama
-     * (transaksi 402 tidak pernah dibuat, jadi tidak ada transaksi ganda).
-     * Kegagalan lain tidak diulang.
-     *
-     * Bila SALAH SATU percobaan 402, pesan akhir tetap pesan aktivasi kanal —
-     * juga ketika cadangan gagal dengan galat lain (mis. 413 payload ditolak).
-     * Kanal yang belum aktif adalah satu-satunya hal yang bisa diperbaiki
-     * pemilik; pesan generik akan menutupi diagnosis itu (kartu `t_56062a5c`).
-     *
-     * Sebab teknis asli — HTTP status + badan respons yang dibawa SDK di
-     * `getPrevious()` — ikut dicatat lewat `exception`, `code`, dan `previous`.
-     * Sebelumnya hanya pesan siap tampil yang tercatat sehingga 401 (kunci
-     * server berubah), 400 (payload ditolak), dan 5xx tidak bisa dibedakan
-     * (`docs/review-2.md` §6 "Putaran 4", kartu `t_1f72a2d1`). Parameter
-     * charge, header Authorization, dan kredensial tidak pernah ditulis ke log.
+     * Panggil Snap; kegagalan jadi `CheckoutException` dengan pesan siap
+     * tampil. 402 kanal belum aktif → pesan aktivasi, bukan "coba lagi".
      *
      * @return array<string, mixed>
      */
-    private function chargeOrder(Order $order, string $midtransOrderId): array
+    private function snapOrder(Order $order, string $midtransOrderId): array
     {
-        $acquirers = $this->qrisAcquirers();
-        $lastIndex = count($acquirers) - 1;
-        $failure = null;
-        $channelInactiveSeen = false;
+        try {
+            return $this->api->snap($this->snapParams($order, $midtransOrderId));
+        } catch (\Throwable $exception) {
+            $channelInactive = $this->isChannelInactive($exception);
 
-        foreach ($acquirers as $index => $acquirer) {
-            try {
-                return $this->api->charge($this->chargeParams($order, $midtransOrderId, $acquirer));
-            } catch (\Throwable $exception) {
-                $failure = $exception;
-                $channelInactive = $this->isChannelInactive($exception);
-                $channelInactiveSeen = $channelInactiveSeen || $channelInactive;
+            Log::error('Midtrans Snap gagal', [
+                'order' => $order->code,
+                'midtrans_order_id' => $midtransOrderId,
+                'channel_inactive' => $channelInactive,
+                'error' => $this->redactSecret($exception->getMessage()),
+                'exception' => $exception::class,
+                'code' => $exception->getCode(),
+                'previous' => $this->previousExceptions($exception->getPrevious()),
+            ]);
 
-                Log::error('Midtrans charge gagal', [
-                    'order' => $order->code,
-                    'midtrans_order_id' => $midtransOrderId,
-                    'qris_acquirer' => $acquirer,
-                    'attempt' => $index + 1,
-                    'channel_inactive' => $channelInactive,
-                    'error' => $this->redactSecret($exception->getMessage()),
-                    'exception' => $exception::class,
-                    'code' => $exception->getCode(),
-                    'previous' => $this->previousExceptions($exception->getPrevious()),
-                ]);
-
-                if (! $channelInactive || $index === $lastIndex) {
-                    break;
-                }
+            if ($channelInactive) {
+                throw new CheckoutException(self::CHANNEL_INACTIVE_MESSAGE, 0, $exception);
             }
-        }
 
-        if ($channelInactiveSeen) {
-            throw new CheckoutException(self::CHANNEL_INACTIVE_MESSAGE, 0, $failure);
+            throw $exception instanceof CheckoutException
+                ? $exception
+                : new CheckoutException('Gagal membuat pembayaran. Coba lagi.', 0, $exception);
         }
+    }
 
-        throw $failure instanceof CheckoutException
-            ? $failure
-            : new CheckoutException('Gagal membuat pembayaran QRIS. Coba lagi.', 0, $failure);
+    /**
+     * `payment_type` dari payload Midtrans, dibatasi panjang kolom. Nilai
+     * contoh: `bank_transfer`, `echannel`, `qris`, `gopay`.
+     */
+    private function paymentTypeFrom(array $payload): ?string
+    {
+        $type = strtolower(trim((string) ($payload['payment_type'] ?? '')));
+
+        return $type === '' ? null : mb_substr($type, 0, self::PAYMENT_TYPE_MAX_LENGTH);
     }
 
     /**
      * Apakah kegagalan berarti kanal pembayaran belum aktif di akun merchant
-     * (HTTP 402 / "Payment channel is not activated") — satu-satunya jenis
-     * kegagalan yang aman dicoba ulang dengan acquirer lain.
+     * (HTTP 402 / "Payment channel is not activated").
      */
     private function isChannelInactive(\Throwable $exception): bool
     {
@@ -697,8 +682,7 @@ class MidtransService
 
     /**
      * Rantai `getPrevious()` sebagai daftar kelas/kode/pesan (maks 5 tingkat),
-     * supaya sebab asli dari SDK (`Midtrans\Exception`: "HTTP status code: 401
-     * API response: …") terbaca di log tanpa membuka argumen panggilan.
+     * supaya sebab asli dari SDK terbaca di log tanpa membuka argumen panggilan.
      *
      * @return array<int, array{class: string, code: int|string, message: string}>
      */
@@ -716,8 +700,7 @@ class MidtransService
     }
 
     /**
-     * Buang kredensial Midtrans dari teks yang akan dilog (jaring pengaman:
-     * pesan SDK saat ini tidak memuat kunci, tetapi header tidak boleh bocor).
+     * Buang kredensial Midtrans dari teks yang akan dilog.
      */
     private function redactSecret(string $text): string
     {
@@ -731,23 +714,7 @@ class MidtransService
     }
 
     /**
-     * URL gambar QR dari respons Midtrans (`actions.generate-qr-code`).
-     *
-     * @param  array<string, mixed>  $response
-     */
-    private function qrUrl(array $response): ?string
-    {
-        foreach ((array) ($response['actions'] ?? []) as $action) {
-            if (($action['name'] ?? null) === 'generate-qr-code') {
-                return $action['url'] ?? null;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * QRIS dummy berformat EMVCo (tag 00/01/26/52/53/54/58/59/60/62/63 + CRC16).
+     * QRIS dummy berformat EMVCo untuk panel simulasi mode uji.
      */
     private function fakeQrString(Order $order): string
     {

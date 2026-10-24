@@ -6,52 +6,35 @@ use App\Services\Midtrans\MidtransApi;
 use RuntimeException;
 
 /**
- * Pengganti jaringan Midtrans untuk test (kartu t_9f4b6aee).
+ * Pengganti jaringan Midtrans untuk test.
  *
  * Dipakai lewat `$this->app->instance(MidtransApi::class, new FakeMidtransApi)`
- * sehingga alur charge/status bisa diuji penuh tanpa kredensial dan tanpa
- * panggilan keluar (PRD §8, kontrak props §7.7/§7.8).
+ * sehingga alur Snap/status bisa diuji penuh tanpa kredensial dan tanpa
+ * panggilan keluar (PRD-v1.1 §2, kontrak props §7.7/§7.8).
  */
 class FakeMidtransApi implements MidtransApi
 {
-    /** @var array<int, array<string, mixed>> Parameter tiap charge yang diterima. */
-    public array $charges = [];
+    /** @var array<int, array<string, mixed>> Parameter tiap Snap yang diterima. */
+    public array $snaps = [];
 
     /** @var array<string, array<string, mixed>> Jawaban status per order_id. */
     public array $statuses = [];
 
-    public int $chargeCount = 0;
+    public int $snapCount = 0;
 
     public int $statusCount = 0;
 
-    /** Bila true, `charge` menolak `order_id` yang sudah pernah dipakai (simulasi HTTP 406). */
+    /** Bila true, Snap menolak `order_id` yang sudah pernah dipakai (simulasi HTTP 406). */
     public bool $rejectDuplicateOrderIds = false;
 
-    /** @var array<int, string> `order_id` yang sudah diterima `charge`. */
+    /** @var array<int, string> `order_id` yang sudah diterima Snap. */
     public array $usedOrderIds = [];
 
-    /** Bila diisi, setiap `charge` melempar exception kelas ini (simulasi jaringan gagal). */
-    public ?string $chargeException = null;
+    /** Bila diisi, setiap Snap melempar exception kelas ini (simulasi jaringan gagal). */
+    public ?string $snapException = null;
 
-    /**
-     * Daftar exception yang dilempar berurutan pada panggilan `charge` pertama,
-     * kedua, … (kosong = perilaku normal). Dipakai test fallback kanal QRIS
-     * (kartu t_2f443b75): kegagalan 402 lalu berhasil, atau 402 dua kali.
-     *
-     * @var array<int, \Throwable>
-     */
-    public array $chargeFailures = [];
-
-    /**
-     * Parameter SEMUA panggilan `charge` — termasuk yang gagal — supaya urutan
-     * acquirer (`gopay` lalu `airpay shopee`) bisa diperiksa.
-     *
-     * @var array<int, array<string, mixed>>
-     */
-    public array $chargeAttempts = [];
-
-    /** `transaction_status` yang dikembalikan saat charge berhasil. */
-    public string $chargeStatus = 'pending';
+    /** `transaction_status` yang dikembalikan saat Snap berhasil. */
+    public string $snapStatus = 'pending';
 
     /** `transaction_status` bawaan bila `status()` dipanggil untuk order_id yang tidak ada di `$statuses`. */
     public string $defaultTransactionStatus = 'pending';
@@ -60,17 +43,13 @@ class FakeMidtransApi implements MidtransApi
      * @param  array<string, mixed>  $params
      * @return array<string, mixed>
      */
-    public function charge(array $params): array
+    public function snap(array $params): array
     {
-        $this->chargeCount++;
-        $this->chargeAttempts[] = $params;
+        $this->snapCount++;
+        $this->snaps[] = $params;
 
-        if ($this->chargeFailures !== []) {
-            throw array_shift($this->chargeFailures);
-        }
-
-        if ($this->chargeException !== null) {
-            $class = $this->chargeException;
+        if ($this->snapException !== null) {
+            $class = $this->snapException;
 
             throw new $class('Simulasi kegagalan jaringan Midtrans (test).');
         }
@@ -82,24 +61,12 @@ class FakeMidtransApi implements MidtransApi
         }
 
         $this->usedOrderIds[] = $orderId;
-        $this->charges[] = $params;
 
-        $amount = (int) ($params['transaction_details']['gross_amount'] ?? 0);
-
+        // Bentuk respons Snap: token + redirect_url, tanpa qr_string.
         return [
-            'transaction_id' => 'trx-'.strtolower(str_replace('-', '', $orderId)),
-            'order_id' => $orderId,
-            'gross_amount' => $amount.'.00',
-            'payment_type' => 'qris',
-            'transaction_status' => $this->chargeStatus,
-            'qr_string' => '00020101021226610014ID.CO.QRIS.WWW'.$amount.'5802ID6304ABCD',
-            'actions' => [
-                [
-                    'name' => 'generate-qr-code',
-                    'method' => 'GET',
-                    'url' => 'https://api.sandbox.midtrans.test/v2/qris/'.$orderId.'/qr-code',
-                ],
-            ],
+            'token' => 'snap-'.strtolower(str_replace('-', '', $orderId)),
+            'redirect_url' => 'https://app.sandbox.midtrans.com/snap/v4/redirection/snap-'.strtolower(str_replace('-', '', $orderId)),
+            'transaction_status' => $this->snapStatus,
         ];
     }
 

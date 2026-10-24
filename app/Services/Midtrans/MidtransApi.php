@@ -12,12 +12,13 @@ namespace App\Services\Midtrans;
 interface MidtransApi
 {
     /**
-     * Core API `charge` (PRD §8, `payment_type = qris`).
+     * Snap `POST /snap/v1/transactions` — semua kanal yang aktif di akun
+     * merchant (PRD-v1.1 §2).
      *
      * @param  array<string, mixed>  $params
-     * @return array<string, mixed>
+     * @return array<string, mixed> `token`, `redirect_url`
      */
-    public function charge(array $params): array;
+    public function snap(array $params): array;
 
     /**
      * `Transaction::status` untuk satu `order_id` (polling halaman bayar).
