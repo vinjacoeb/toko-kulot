@@ -11,6 +11,7 @@ use App\Services\MidtransService;
 use App\Services\SettingService;
 use App\Support\MediaStorage;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\UploadedFile;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -110,13 +111,108 @@ class SettingController extends Controller
     public function landing(UpdateLandingRequest $request): RedirectResponse
     {
         $hero = $this->onlyKeys((array) $request->input('landing_hero'), ['title', 'subtitle', 'cta_label', 'cta_url', 'image']);
+        $sections = $this->knownSections((array) $request->input('landing_sections'));
+        $gallery = $this->galleryFromRequest($request);
+        $oldPaths = $gallery !== null ? $this->galleryPaths($this->settings->get('landing_gallery')) : [];
 
-        $this->settings->putMany([
+        if ($request->hasFile('landing_hero.image')) {
+            $old = $this->settings->get('landing_hero.image');
+            $hero['image'] = MediaStorage::store($request->file('landing_hero.image'), 'landing');
+            MediaStorage::delete(is_string($old) ? $old : null);
+        }
+
+        if ($request->hasFile('landing_sections.promo.image')) {
+            $old = $this->settings->get('landing_sections.promo.image');
+            $sections['promo']['image'] = MediaStorage::store($request->file('landing_sections.promo.image'), 'landing');
+            MediaStorage::delete(is_string($old) ? $old : null);
+        }
+
+        $values = [
             'landing_hero' => $hero,
-            'landing_sections' => $this->knownSections((array) $request->input('landing_sections')),
-        ]);
+            'landing_sections' => $sections,
+        ];
+
+        if ($gallery !== null) {
+            $values['landing_gallery'] = $gallery['items'];
+        }
+
+        $this->settings->putMany($values);
+
+        // Berkas galeri yang tidak lagi dipakai (item dihapus atau gambarnya
+        // diganti) dihapus dari disk supaya tidak menumpuk yatim.
+        if ($gallery !== null) {
+            foreach (array_diff($oldPaths, $gallery['paths']) as $path) {
+                MediaStorage::delete($path);
+            }
+        }
 
         return back()->with('success', 'Konten landing disimpan.');
+    }
+
+    /**
+     * Galeri dari request, atau `null` bila form tidak mengelola galeri
+     * (form lama tanpa field ini tidak boleh menghapus data).
+     *
+     * @return array{items: array<int, array{image: string, caption: ?string, alt: ?string}>, paths: array<int, string>}|null
+     */
+    private function galleryFromRequest(UpdateLandingRequest $request): ?array
+    {
+        $present = $request->boolean('landing_gallery_present')
+            || $request->exists('landing_gallery')
+            || $request->hasFile('landing_gallery');
+
+        if (! $present) {
+            return null;
+        }
+
+        $items = [];
+        $paths = [];
+
+        foreach ((array) ($request->all()['landing_gallery'] ?? []) as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $path = $item['image'] ?? null;
+
+            if ($path instanceof UploadedFile) {
+                $path = MediaStorage::store($path, 'landing');
+            }
+
+            if (! is_string($path) || $path === '') {
+                continue;
+            }
+
+            $items[] = [
+                'image' => $path,
+                'caption' => $this->cleanText($item['caption'] ?? null),
+                'alt' => $this->cleanText($item['alt'] ?? null),
+            ];
+            $paths[] = $path;
+        }
+
+        return ['items' => $items, 'paths' => $paths];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function galleryPaths(mixed $gallery): array
+    {
+        $paths = [];
+
+        foreach (is_array($gallery) ? $gallery : [] as $item) {
+            if (is_array($item) && is_string($item['image'] ?? null)) {
+                $paths[] = $item['image'];
+            }
+        }
+
+        return $paths;
+    }
+
+    private function cleanText(mixed $value): ?string
+    {
+        return is_string($value) && trim($value) !== '' ? trim($value) : null;
     }
 
     /**

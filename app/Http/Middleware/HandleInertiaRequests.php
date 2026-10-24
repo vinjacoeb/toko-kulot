@@ -20,7 +20,7 @@ class HandleInertiaRequests extends Middleware
      *
      * @var array<int, string>
      */
-    private const REQUIRED_PUBLIC_KEYS = ['store_name', 'store_logo', 'store_favicon', 'footer_copyright'];
+    private const REQUIRED_PUBLIC_KEYS = ['store_name', 'store_logo', 'store_favicon', 'footer_copyright', 'landing_gallery'];
 
     /**
      * Key yang hanya catatan panel admin dan tidak boleh masuk props publik

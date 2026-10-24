@@ -9,8 +9,8 @@ use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
- * 21 key `settings`: 19 key minimum PRD §6 ditambah `store_favicon` dan
- * `footer_copyright` (kartu t_101b9145). Bentuk JSON mengikuti
+ * 24 key `settings`: 19 key minimum PRD §6 ditambah `store_favicon`, `footer_copyright`,
+ * `landing_gallery` (kartu t_71f1e7a9), dan key pendukung lain. Bentuk JSON mengikuti
  * docs/kontrak-props.md §2 sehingga frontend bisa langsung memakainya.
  *
  * Seeder idempoten: memakai `firstOrCreate` supaya nilai yang sudah diubah
@@ -32,6 +32,13 @@ class SettingSeeder extends Seeder
             $favicon = $this->seedImage('images/seed/favicon.png', 64, 64, 'TK');
             $heroImage = $this->seedImage('images/seed/landing/hero.png', 1600, 900, 'DASTER & KULOT HARIAN');
             $promoImage = $this->seedImage('images/seed/landing/promo-grosir.png', 1600, 900, 'HARGA GROSIR 4 PCS');
+
+            // Galeri contoh (addendum v1.1 §6): placeholder lokal, bukan aset internet.
+            $galleryImages = [];
+
+            foreach (range(1, 4) as $index) {
+                $galleryImages[] = $this->seedImage("images/seed/landing/galeri-{$index}.png", 1200, 900, "GALERI {$index}");
+            }
 
             // Favicon cadangan untuk root domain (`/favicon.ico`): hanya ditulis
             // bila belum ada atau masih 0 byte, supaya berkas milik pemilik aman.
@@ -211,13 +218,25 @@ class SettingSeeder extends Seeder
                         ],
                         'newsletter' => [
                             'title' => 'Dapat Info Diskon',
-                            'subtitle' => 'Tinggalkan email Anda untuk kabar koleksi baru.',
-                            'button_text' => 'Kirim',
+                            'subtitle' => 'Gratis ongkir untuk belanja min. Rp300.000 — khusus pengiriman reguler.',
+                            'button_text' => 'Hubungi Kami',
                         ],
                     ]),
                     'group' => 'landing',
                     'type' => 'json',
                     'label' => 'Bagian landing page',
+                ],
+                [
+                    'key' => 'landing_gallery',
+                    'value' => $this->json([
+                        ['image' => $galleryImages[0], 'caption' => '[CONTOH] Detail jahitan rapi', 'alt' => 'Jahitan rapi pada daster rayon'],
+                        ['image' => $galleryImages[1], 'caption' => '[CONTOH] Bahan rayon adem', 'alt' => 'Kain rayon adem warna lembut'],
+                        ['image' => $galleryImages[2], 'caption' => '[CONTOH] Motif pilihan', 'alt' => 'Ragam motif daster dan kulot'],
+                        ['image' => $galleryImages[3], 'caption' => '[CONTOH] Dikemas rapi', 'alt' => 'Paket pesanan dikemas rapi'],
+                    ]),
+                    'group' => 'landing',
+                    'type' => 'json',
+                    'label' => 'Galeri landing',
                 ],
                 [
                     'key' => 'seo_default_title',
@@ -240,6 +259,20 @@ class SettingSeeder extends Seeder
                     'group' => 'pembayaran',
                     'type' => 'text',
                     'label' => 'Ongkos kirim default (rupiah)',
+                ],
+                [
+                    'key' => 'product_care_note',
+                    'value' => '[CONTOH] Cuci dengan air dingin, jemur di tempat teduh, setrika dengan suhu rendah.',
+                    'group' => 'produk',
+                    'type' => 'textarea',
+                    'label' => 'Catatan perawatan produk',
+                ],
+                [
+                    'key' => 'product_shipping_note',
+                    'value' => '[CONTOH] Pengiriman setiap hari kerja. Produk dikemas aman dengan plastik tebal.',
+                    'group' => 'produk',
+                    'type' => 'textarea',
+                    'label' => 'Catatan pengiriman produk',
                 ],
                 [
                     'key' => 'midtrans_client_key',
@@ -274,7 +307,7 @@ class SettingSeeder extends Seeder
     private function restoreMissingSeedImages(): void
     {
         $stored = Setting::query()
-            ->whereIn('key', ['store_logo', 'store_favicon', 'landing_hero', 'landing_sections'])
+            ->whereIn('key', ['store_logo', 'store_favicon', 'landing_hero', 'landing_sections', 'landing_gallery'])
             ->get();
 
         foreach ($stored as $setting) {
@@ -302,7 +335,7 @@ class SettingSeeder extends Seeder
             return $this->isSeedPath($setting->value) ? [$setting->value] : [];
         }
 
-        if (! in_array($setting->key, ['landing_hero', 'landing_sections'], true)) {
+        if (! in_array($setting->key, ['landing_hero', 'landing_sections', 'landing_gallery'], true)) {
             return [];
         }
 
@@ -312,9 +345,15 @@ class SettingSeeder extends Seeder
             return [];
         }
 
-        $candidates = $setting->key === 'landing_hero'
-            ? [$decoded['image'] ?? null]
-            : [$decoded['promo']['image'] ?? null];
+        $candidates = match ($setting->key) {
+            'landing_hero' => [$decoded['image'] ?? null],
+            'landing_sections' => [$decoded['promo']['image'] ?? null],
+            // Galeri: tiap item punya `image` sendiri.
+            'landing_gallery' => array_map(
+                fn ($item): mixed => is_array($item) ? ($item['image'] ?? null) : null,
+                $decoded,
+            ),
+        };
 
         return array_values(array_filter($candidates, fn ($path) => $this->isSeedPath($path)));
     }

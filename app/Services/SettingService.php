@@ -16,7 +16,7 @@ use InvalidArgumentException;
 class SettingService
 {
     /** Urutan tab panel admin (PRD §9). */
-    public const GROUPS = ['umum', 'landing', 'header', 'footer', 'kontak', 'seo', 'pembayaran'];
+    public const GROUPS = ['umum', 'landing', 'header', 'footer', 'kontak', 'seo', 'pembayaran', 'shipping'];
 
     /**
      * Daftar putih key pengaturan (PRD §6) beserta grup dan tipe simpannya.
@@ -41,11 +41,19 @@ class SettingService
         'contact_map_embed' => ['group' => 'kontak', 'type' => 'textarea'],
         'landing_hero' => ['group' => 'landing', 'type' => 'json'],
         'landing_sections' => ['group' => 'landing', 'type' => 'json'],
+        'landing_gallery' => ['group' => 'landing', 'type' => 'json'],
         'seo_default_title' => ['group' => 'seo', 'type' => 'text'],
         'seo_default_description' => ['group' => 'seo', 'type' => 'textarea'],
         'shipping_cost_default' => ['group' => 'pembayaran', 'type' => 'text', 'format' => 'int'],
         'midtrans_client_key' => ['group' => 'pembayaran', 'type' => 'text'],
         'midtrans_is_production' => ['group' => 'pembayaran', 'type' => 'text', 'format' => 'bool'],
+        'shipping_origin_name' => ['group' => 'shipping', 'type' => 'text'],
+        'shipping_origin_phone' => ['group' => 'shipping', 'type' => 'text'],
+        'shipping_origin_address' => ['group' => 'shipping', 'type' => 'textarea'],
+        'shipping_origin_postal_code' => ['group' => 'shipping', 'type' => 'text'],
+        'shipping_couriers' => ['group' => 'shipping', 'type' => 'json'],
+        'free_shipping_enabled' => ['group' => 'shipping', 'type' => 'text', 'format' => 'bool'],
+        'free_shipping_min' => ['group' => 'shipping', 'type' => 'text', 'format' => 'int'],
     ];
 
     /**
