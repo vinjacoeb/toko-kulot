@@ -1,49 +1,93 @@
 import React from 'react';
-import { cn, rupiah } from '../lib/format';
+import { cn, formatNumber, rupiah } from '../lib/format';
 import Button from './Button';
 
 /**
- * Ringkasan pesanan — design §4.28, docs/komponen.md §3.
- * Kartu `rounded-xl` 320px sticky, baris Subtotal / Ongkir / Total (20px 700),
- * CTA `primary` full-width, catatan "Pembayaran QRIS".
+ * Ringkasan pesanan — design §5.1, §6.2; docs/komponen.md §3.
+ * Baris opsional daftar item (gambar 48px, nama, varian, qty, line total) lalu
+ * Subtotal / Ongkir / Total, CTA `primary` full-width, catatan di bawah CTA.
  *
  * Angka selalu dari server (kontrak §7.0/§7.5/§7.7/§7.9); nilai kosong tampil "-".
  * `ctaHref` = tombol tautan Inertia, `onSubmit` + `formId` = tombol kirim formulir.
+ * `shippingText` mengganti nominal ongkir dengan teks ("Dihitung saat checkout",
+ * "Belum dipilih"); `shippingBadge` = badge di samping nominal; `totalLabel` menjadi
+ * "Subtotal" bila ongkir belum final; `helper` = penjelas di bawah total.
+ * `items` = `keranjang.items` (§7.0), hanya dirender bila diberikan.
  */
 export default function OrderSummary({
+    items = null,
     subtotal = null,
     shipping = null,
     total = null,
+    shippingText = null,
+    shippingBadge = null,
+    totalLabel = 'Total',
+    helper = null,
     ctaLabel = null,
     ctaHref = null,
     onSubmit = null,
     formId = null,
     loading = false,
     disabled = false,
-    note = 'Pembayaran QRIS',
+    note = null,
     className = '',
     children = null,
 }) {
     const row = 'flex items-baseline justify-between gap-4';
+    const teksOngkir = typeof shippingText === 'string' && shippingText.trim() !== '' ? shippingText : null;
+    const daftarItem = Array.isArray(items) ? items : [];
 
     return (
         <section className={cn('card p-6', className)} aria-label="Ringkasan pesanan">
             <h2 className="text-h3 text-ink">Ringkasan Pesanan</h2>
 
-            <dl className="mt-4 flex flex-col gap-3">
+            {daftarItem.length > 0 && (
+                <ul className="mt-4 flex flex-col gap-3 border-b border-line pb-4">
+                    {daftarItem.map((item, index) => (
+                        <li key={item?.id ?? index} className="flex items-start gap-3">
+                            <span className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-surface">
+                                {item?.image ? (
+                                    <img src={item.image} alt="" className="h-full w-full object-cover" loading="lazy" />
+                                ) : null}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                                <span className="block text-body text-ink">{item?.name ?? '-'}</span>
+                                {item?.variant_label ? (
+                                    <span className="block text-meta text-slate-500">{item.variant_label}</span>
+                                ) : null}
+                                <span className="block text-meta text-slate-500">
+                                    {formatNumber(item?.qty ?? 0) ?? '-'} × {rupiah(item?.unit_price) ?? '-'}
+                                </span>
+                            </span>
+                            <span className="shrink-0 text-body font-semibold text-ink">
+                                {rupiah(item?.line_total) ?? '-'}
+                            </span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+
+            <dl className={cn('flex flex-col gap-3', daftarItem.length > 0 ? 'mt-4' : 'mt-4')}>
                 <div className={row}>
                     <dt className="text-body text-ink-soft">Subtotal</dt>
                     <dd className="text-body text-ink">{rupiah(subtotal) ?? '-'}</dd>
                 </div>
                 <div className={row}>
                     <dt className="text-body text-ink-soft">Ongkir</dt>
-                    <dd className="text-body text-ink">{rupiah(shipping) ?? '-'}</dd>
+                    <dd className="flex flex-wrap items-center justify-end gap-2 text-body text-ink">
+                        <span aria-live="polite">{teksOngkir ?? rupiah(shipping) ?? '-'}</span>
+                        {shippingBadge}
+                    </dd>
                 </div>
                 <div className={cn(row, 'mt-1 border-t border-line pt-4')}>
-                    <dt className="text-body font-bold text-ink">Total</dt>
-                    <dd className="text-[20px] font-bold leading-none text-ink">{rupiah(total) ?? '-'}</dd>
+                    <dt className="text-body font-bold text-ink">{totalLabel}</dt>
+                    <dd className="text-[20px] font-bold leading-none text-ink" aria-live="polite">
+                        {rupiah(total) ?? '-'}
+                    </dd>
                 </div>
             </dl>
+
+            {helper && <p className="mt-2 text-meta text-slate-500">{helper}</p>}
 
             {children}
 

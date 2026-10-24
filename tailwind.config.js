@@ -66,6 +66,8 @@ export default {
                 sans: ['Inter', ...defaultTheme.fontFamily.sans],
             },
             fontSize: {
+                // design-v1.1 §2.1: satu statement editorial why-us di desktop.
+                'display-xl': ['72px', { lineHeight: '0.95', letterSpacing: '0.01em' }],
                 display: ['clamp(40px, 2.55vw + 30.8px, 64px)', { lineHeight: '1', letterSpacing: '0.02em' }],
                 h1: ['clamp(32px, 1.28vw + 27.4px, 44px)', { lineHeight: '1.05', letterSpacing: '0.02em' }],
                 h2: ['clamp(26px, 0.64vw + 23.7px, 32px)', { lineHeight: '1.1', letterSpacing: '0.02em' }],
@@ -86,6 +88,11 @@ export default {
                 lg: '9px',
                 xl: '12px',
                 full: '999px',
+            },
+            // design-v1.1 §2.1: rasio potret konsisten (tile galeri, gambar why-us).
+            aspectRatio: {
+                portrait: '4 / 5',
+                editorial: '16 / 10',
             },
             boxShadow: {
                 card: '0 1px 2px rgba(0,0,0,.04)',

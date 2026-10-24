@@ -14,6 +14,7 @@ import {
     MailIcon,
     MenuIcon,
     StarIcon,
+    TruckIcon,
     UserIcon,
 } from '../Components/icons';
 
@@ -35,6 +36,7 @@ export const ADMIN_NAV = [
     { key: 'kategori', label: 'Kategori', href: '/admin/kategori', icon: LayersIcon },
     { key: 'stok', label: 'Stok', href: '/admin/stok', icon: ArchiveIcon },
     { key: 'pesanan', label: 'Pesanan', href: '/admin/pesanan', icon: CartIcon },
+    { key: 'ekspedisi', label: 'Ekspedisi', href: '/admin/ekspedisi', icon: TruckIcon },
     { key: 'pesan', label: 'Pesan', href: '/admin/pesan-masuk', icon: MailIcon },
     { key: 'penilaian', label: 'Penilaian', href: '/admin/penilaian', icon: StarIcon },
     { key: 'pengaturan', label: 'Pengaturan', href: '/admin/pengaturan', icon: GearIcon },

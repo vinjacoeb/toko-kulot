@@ -433,3 +433,38 @@ sehingga tidak ada jalur XSS dari isian admin.
     dan hint "Kosongkan agar otomatis menjadi © {tahun} {nama toko}. Placeholder {tahun} dan {toko}
     diisi otomatis." dipilih sendiri. Perilaku dan batas 200 karakter mengikuti kontrak §10.7/§10.8;
     teks ini hanya membantu admin dan tidak mengubah aturan bisnis.
+34. **Midtrans Snap menggantikan Core API QRIS** (kartu `t_04da18e0`, 24 Okt 2026). PRD-v1.1 §2/D1
+    meminta semua kanal yang aktif di akun merchant tampil; Snap `POST /snap/v1/transactions` dipakai
+    tanpa `enabled_payments` (asumsi #27 tetap berlaku: daftar kanal diatur di dashboard Midtrans).
+    `payments.payment_type` tidak tersedia saat transaksi dibuat — nilainya diisi dari payload webhook,
+    sehingga `orders.payment_method` bernilai `midtrans` sampai settlement dan berubah menjadi tipe kanal
+    asli (`bank_transfer`, `echannel`, `qris`, `gopay`, …) saat settlement. `qris_url`/`qr_string` tidak
+    lagi diisi jalur asli; keduanya tinggal dipakai mode uji (QRIS dummy) dan baris lama.
+
+## Kartu t_f22c8d46 — ongkir Biteship (24 Okt 2026)
+
+- Mode `fake` dipakai saat `BITESHIP_API_KEY` kosong; tarifnya `settings.shipping_cost_default`
+  (sudah ada sejak kartu keranjang) dan **bukan** key baru. Nilai 0 berarti ongkir gratis;
+  pemilik mengubahnya di `/admin/ekspedisi`.
+- `shipping_cost_default` tetap bergrup `pembayaran` di registry setting agar tab Pembayaran
+  tidak kehilangan field; halaman Ekspedisi menyunting nilai yang sama.
+- Label layanan kurir opsional di form admin (kontrak §10.13); kosong → dipakai kode layanan
+  huruf besar supaya checkout tetap punya teks.
+- Mode `fake` tanpa pilihan kurir menyimpan `shipping_courier = null` + tarif datar, agar alur
+  checkout lama (dan test lama) tetap jalan tanpa memanggil Biteship.
+- Tombol "Hubungi Penjual" pada galat pembayaran (design-v1.1 §7.5) menaut ke halaman
+  `/kontak-kami` — rute kontak publik yang sudah ada; design tidak menyebut nomor WhatsApp langsung.
+- Peta kode galat rates Biteship (kartu `t_1b711d26`): `40001001` → pesan kode pos (menyebut
+  kemungkinan kode pos tujuan salah dan saran hubungi penjual, karena Biteship tidak membedakan
+  kode pos asal/tujuan), `40001002` → pesan pengaturan Biteship belum lengkap (masalah akun/key
+  di sisi pemilik, bukan pembeli), `40001010` → memakai pesan lama
+  `Tidak ada layanan kurir untuk kode pos ini. Coba kode pos lain.` (`BiteshipService::GALAT_TANPA_KURIR`).
+  Kode lain dan jawaban tanpa `code` tetap `GALAT_API`; `docs/design.md` tidak memuat teks ini,
+  jadi teks ditulis di service + kontrak §7.12.
+- `40001007` (J&T Cargo wajib `items[].value`) sengaja tidak dipetakan khusus: kurir seed bukan
+  `jntcargo`, dan body permintaan sudah mengirim `value` per item → jatuh ke `GALAT_API`.
+- 24 Okt 2026 (kartu `t_1b711d26`): Biteship juga membalas `400` dengan `error`
+  `No sufficient balance to call rates API…` dan `code` `null`. Karena halaman error resmi Biteship
+  tidak mencantumkan `code` untuk kasus saldo, pesan `GALAT_SALDO` dideteksi dari kata `balance` di
+  `error` (case-insensitive), bukan dari kode. Bila Biteship kelak memberi `code` untuk kasus ini,
+  tambahkan pasangan kode di `pesanGalat()` dan baris tabel kontrak §7.12.

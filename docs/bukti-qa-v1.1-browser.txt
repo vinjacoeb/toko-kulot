@@ -1,0 +1,33 @@
+# Bukti uji browser — landing v1.1 (kartu `t_4c147c9f`)
+
+Tanggal: 2026-10-24. Server: `http://127.0.0.1:8000` (sudah berjalan, QA tidak menyalakan server).
+Alat: Chromium via browser tool (CDP `Emulation.setDeviceMetricsOverride`).
+
+## Viewport & horizontal scroll
+
+| Viewport | innerWidth | scrollWidth | Horizontal scroll | Gambar | Gambar rusak (naturalWidth=0) |
+|---|---|---|---|---|---|
+| 360×900 | 360 | 360 | tidak | 24 | 0 |
+| 768×900 | 768 | 753 | tidak | 24 | 0 |
+| 1280×900 | 1280 | 1265 | tidak | 24 | 0 |
+
+Seksi `#galeri` ada; 4 item galeri dirender (`.gallery img` = 4, sesuai `settings.landing_gallery` di DB).
+
+## `prefers-reduced-motion: reduce`
+
+- `window.matchMedia('(prefers-reduced-motion: reduce)').matches` = `true`.
+- Elemen dengan kelas `opacity-0.translate-y-3` (state awal Reveal) = **0** → konten langsung terlihat tanpa scroll.
+- Galeri tetap 4 item.
+
+## Teks CTA/newsletter live
+
+- Teks yang terlihat: `Dapat Info Diskon Tinggalkan email Anda untuk kabar koleksi baru. Kirim`.
+- Tidak memuat kata **reguler**; CTA memakai `sections.newsletter.subtitle` dari DB yang masih versi lama.
+- `database/seeders/SettingSeeder.php:223` sudah berisi kalimat yang benar:
+  `Gratis ongkir untuk belanja min. Rp300.000 — khusus pengiriman reguler.`
+- Kesimpulan: kode lulus; **data DB pemilik tertinggal** (perlu simpan ulang tab Landing / jalankan seeder). Bukan defect kode.
+
+## Catatan
+
+- Login admin tidak diuji dari browser (kredensial tidak tersedia dan tidak boleh ditebak). Tab Landing/ekspedisi diverifikasi lewat Feature test + inspeksi kode.
+- Pengujian visual (kontras, fokus, zoom 200%, Safari/iOS) tidak dilakukan pada kartu ini.

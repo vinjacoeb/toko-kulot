@@ -71,6 +71,10 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('checkout-status', fn (Request $request) => Limit::perMinute(60)
             ->by('checkout-status|'.$request->session()->getId().'|'.$request->ip()));
 
+        // Ongkir: 30 permintaan/menit per sesi + IP (panggilan keluar ke Biteship).
+        RateLimiter::for('checkout-shipping', fn (Request $request) => Limit::perMinute(30)
+            ->by('checkout-shipping|'.$request->session()->getId().'|'.$request->ip()));
+
         // K9: ulasan dibatasi per pembeli + IP (5 per menit) — menulis DB.
         RateLimiter::for('review', fn (Request $request) => Limit::perMinute(5)
             ->by('review|'.($request->user()?->getAuthIdentifier() ?? 'guest').'|'.$request->ip()));

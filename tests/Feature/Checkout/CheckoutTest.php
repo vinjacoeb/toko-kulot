@@ -45,6 +45,8 @@ class CheckoutTest extends TestCase
             'midtrans.fake' => true,
             'midtrans.server_key' => 'test-server-key',
             'midtrans.expiry_minutes' => 5,
+            // Ongkir mode uji: tanpa key Biteship agar tidak ada panggilan jaringan.
+            'biteship.key' => '',
         ]);
 
         Setting::create([

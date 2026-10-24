@@ -31,6 +31,7 @@ Semua uang = integer rupiah tanpa desimal. Semua tabel: `id` bigint auto-increme
 | 20 | `2026_10_20_000017_create_faqs_table` | `faqs` |
 | 21 | `2026_10_20_000018_add_compare_price_to_products_table` | kolom `compare_price` pada `products` (K11) |
 | 22 | `2026_10_21_000019_add_tracking_number_to_orders_table` | kolom `tracking_number` pada `orders` (PRD A15) |
+| 23 | `2026_10_24_000001_add_snap_columns_to_payments_table` | kolom `snap_token`, `snap_redirect_url`, `payment_type` pada `payments` (Snap, kartu `t_04da18e0`) |
 
 ## 2. Tabel & kolom
 
@@ -87,7 +88,10 @@ Index: (`category_id`,`is_active`), (`is_active`,`is_featured`).
 `payment_status` string(20) default `pending`, `customer_name` (120), `customer_phone` (30),
 `customer_email` (180, null), `shipping_address` text, `city` (100), `postal_code` (10, null),
 `notes` text null, `paid_at` timestamp null, `tracking_number` string(60) null
-(diisi manual admin — PRD A15; migrasi `2026_10_21_000019`), `timestamps`.
+(diisi manual admin — PRD A15; migrasi `2026_10_21_000019`), `shipping_courier` (40, null),
+`shipping_service` (60, null), `shipping_etd` (30, null), `shipping_weight_gram` uint null,
+`shipping_is_free` bool default false (migrasi `2026_10_24_000002`, kartu `t_f22c8d46`),
+`timestamps`.
 Index: (`status`,`created_at`), (`payment_status`,`created_at`), (`user_id`).
 
 Nilai `status` (PRD §7): `pending` → `dibayar` → `diproses` → `dikirim` → `selesai` | `batal`.
@@ -102,9 +106,14 @@ Konstanta PHP: `App\Models\Order::STATUS_*` dan `App\Models\Order::PAYMENT_*`.
 ### payments
 `id`, `order_id` → `orders` **CASCADE**, `provider` (20) default `midtrans`,
 `transaction_id` (100, null, index), `order_id_midtrans` (60, null, index),
+`snap_token` (255, null), `snap_redirect_url` text null, `payment_type` (40, null),
 `qris_url` text null, `qr_string` text null, `gross_amount` ubigint default 0,
 `status` string(20) default `pending`, `payload` json null, `paid_at` timestamp null,
 `expires_at` timestamp null, `timestamps`.
+
+`snap_token`/`snap_redirect_url` diisi jalur Midtrans Snap; `payment_type` diisi dari webhook
+(`bank_transfer`, `echannel`, `qris`, `gopay`, …). `qris_url`/`qr_string` tinggal dipakai mode uji
+(QRIS dummy) dan baris lama Core API QRIS.
 
 ### reviews
 `id`, `order_id` → `orders` **CASCADE**, `product_id` → `products` **CASCADE**,
@@ -130,8 +139,15 @@ Key minimum (PRD §6): `store_name`, `store_logo`, `store_tagline`, `header_nav`
 Tambahan di luar PRD §6 (kartu `t_101b9145`, 23 Okt 2026): `store_favicon` (grup `umum`,
 type `image`, dipakai tag `<link rel="icon">`; kosong → `/favicon.ico`) dan
 `footer_copyright` (grup `footer`, type `text`, nullable, maks 200; kosong → frontend
-memakai `© {tahun} {store_name}`). Keduanya di-seed oleh `SettingSeeder` (21 key total)
-dan tidak menimpa nilai yang sudah diubah pemilik (`firstOrCreate`).
+memakai `© {tahun} {store_name}`).
+
+Grup `shipping` (kartu `t_f22c8d46`, 24 Okt 2026, PRD v1.1 D2/D3): `shipping_origin_name`,
+`shipping_origin_phone`, `shipping_origin_address` (textarea), `shipping_origin_postal_code`
+(5 angka), `shipping_couriers` (json: daftar `courier_code`, `courier_name`, `service_code`,
+`service_name`, `label`, `is_regular`, `is_active`), `free_shipping_enabled` (0/1),
+`free_shipping_min` (rupiah). `shipping_cost_default` (grup `pembayaran`) dipakai sebagai
+tarif datar mode `fake`. `SettingSeeder` sekarang menulis 31 key; tetap `firstOrCreate`
+sehingga nilai pemilik tidak tertimpa.
 
 ### carousels
 `id`, `title` (150), `subtitle` (255, null), `image`, `link` (255, null),
@@ -285,6 +301,7 @@ Verifikasi baca-saja di DB test (SQLite `:memory:` dari `phpunit.xml`, DB pemili
 
 ```
 Schema::getColumnListing('payments') -> id, order_id, provider, transaction_id, order_id_midtrans,
+                                        snap_token, snap_redirect_url, payment_type,
                                         qris_url, qr_string, gross_amount, status, payload,
                                         paid_at, expires_at, created_at, updated_at
 Schema::getColumnListing('orders')   -> ... payment_status, paid_at, tracking_number ...

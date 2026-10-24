@@ -36,13 +36,19 @@ class AdminSettingTest extends TestCase
         return $this->app->make(SettingService::class);
     }
 
-    public function test_halaman_pengaturan_menampilkan_tujuh_grup(): void
+    public function test_halaman_pengaturan_menampilkan_tujuh_grup_kontrak(): void
     {
         $this->get(route('admin.settings.index'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Admin/Settings/Index', false)
-                ->has('pengaturan', 7)
+                ->has('pengaturan.umum')
+                ->has('pengaturan.landing')
+                ->has('pengaturan.header')
+                ->has('pengaturan.footer')
+                ->has('pengaturan.kontak')
+                ->has('pengaturan.seo')
+                ->has('pengaturan.pembayaran')
                 ->has('carousels')
                 ->has('faqs')
             );

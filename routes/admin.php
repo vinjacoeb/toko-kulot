@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\ReviewController;
 use App\Http\Controllers\Admin\SettingController;
+use App\Http\Controllers\Admin\ShippingController;
 use App\Http\Controllers\Admin\StockController;
 use Illuminate\Support\Facades\Route;
 
@@ -91,6 +92,12 @@ Route::middleware('admin')->group(function () {
     Route::delete('/pengaturan/faq/{faq}', [FaqController::class, 'destroy'])
         ->middleware('throttle:admin-write')
         ->name('faqs.destroy');
+
+    // Ekspedisi: asal kirim, tarif uji, gratis ongkir, daftar kurir (§10.13).
+    Route::get('/ekspedisi', [ShippingController::class, 'index'])->name('shipping.index');
+    Route::put('/ekspedisi', [ShippingController::class, 'update'])
+        ->middleware('throttle:admin-write')
+        ->name('shipping.update');
 
     // Produk + varian + galeri (kontrak props §12.1–§12.7).
     Route::get('/produk', [ProductController::class, 'index'])->name('products.index');

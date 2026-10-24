@@ -232,6 +232,7 @@ class MidtransSnapTest extends TestCase
             'midtrans.client_key' => 'test-client-key',
             'midtrans.is_production' => false,
             'midtrans.expiry_minutes' => 5,
+            'biteship.key' => null,
         ]);
 
         $this->api = new FakeMidtransApi;

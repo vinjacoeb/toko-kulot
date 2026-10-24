@@ -90,6 +90,27 @@ class Order extends Model
     }
 
     /**
+     * Label metode bayar dari `payment_type` Midtrans (PRD-v1.1 §2). Nilai
+     * `midtrans` (belum ada ketikan kanal) tampil sebagai "Midtrans".
+     */
+    public static function paymentMethodLabel(?string $method): string
+    {
+        $labels = [
+            'bank_transfer' => 'Transfer Bank',
+            'echannel' => 'Transfer Bank',
+            'qris' => 'QRIS',
+            'gopay' => 'E-Wallet',
+            'shopeepay' => 'E-Wallet',
+            'dana' => 'E-Wallet',
+            'linkaja' => 'E-Wallet',
+            'sakuku' => 'E-Wallet',
+            'jeniuspay' => 'E-Wallet',
+        ];
+
+        return $labels[strtolower(trim((string) $method))] ?? 'Midtrans';
+    }
+
+    /**
      * Status yang boleh dipilih dari status sekarang (panel admin, kontrak props §12.17).
      *
      * @return list<string>
@@ -141,6 +162,11 @@ class Order extends Model
         'shipping_address',
         'city',
         'postal_code',
+        'shipping_courier',
+        'shipping_service',
+        'shipping_etd',
+        'shipping_weight_gram',
+        'shipping_is_free',
         'notes',
         'paid_at',
         'tracking_number',
@@ -154,6 +180,8 @@ class Order extends Model
             'shipping_cost' => 'integer',
             'discount' => 'integer',
             'total' => 'integer',
+            'shipping_weight_gram' => 'integer',
+            'shipping_is_free' => 'boolean',
             'paid_at' => 'datetime',
         ];
     }

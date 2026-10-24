@@ -1,0 +1,45 @@
+Bukti kerja — kartu t_7bca843e (uiux, desain v1.1)
+Tanggal: 24 Oktober 2026 (run 178)
+Keluaran: docs/design-v1.1.md
+
+1. Status berkas
+   wc -l docs/design-v1.1.md  -> 1046 baris
+   grep -c '^## '             -> 15 seksi (Ringkasan .. Serah terima)
+   grep -c '^| QA-'            -> 74 baris checklist uji (QA-L/C/P/A/G/X)
+   grep -c '```'               -> 0 (tidak ada blok kode/JSX di dokumen)
+
+2. Cakupan layar (DoD PRD v1.1 §2–§6)
+   - §4 Landing "/"        : trust strip (4.2), galeri 1–8 (4.3), why-us editorial (4.4),
+                             CTA/newsletter Rp300.000 + reguler (4.5), reveal/lazy (4.6)
+   - §5 Keranjang          : ongkir "Dihitung saat checkout" vs mode fake, badge Tarif uji
+   - §6 Checkout           : layout, field, state Cek Ongkir lengkap (6.4), opsi kurir + gratis (6.5),
+                             submit + error "Ongkir berubah, pilih ulang kurir." (6.6), a11y/responsif
+   - §7 Bayar              : Snap redirect (7.2), state kembali dari Snap, panel simulasi mode uji (7.3),
+                             status final, galat kanal belum aktif, polling
+   - §8 Admin ekspedisi    : layout, asal kirim, gratis ongkir, tabel layanan, tambah manual, simpan
+   - §9 Admin galeri       : tab Landing, kartu, item/kontrol, state lengkap (9.4)
+   Tiap layar punya tabel state kosong/loading/error + aturan 360/768/1280 (§10 matriks responsif).
+
+3. Verifikasi terhadap sumber (bukan karangan)
+   - Kunci settings di dokumen dicocokkan dengan kode nyata:
+     database/seeders/SettingSeeder.php:187-241 (landing_sections: announcement, trust_strip, featured,
+     promo, why_us, newsletter; landing_gallery) dan :323 (shipping_couriers).
+   - Validasi field dicocokkan dengan app/Http/Requests/Admin/UpdateLandingRequest.php:36-90
+     (trust_strip max 6, why_us.items max 6, gallery max 8, caption 80, alt 120, mimes jpg/png/webp, max 2048).
+   - Nama prop dicocokkan dengan docs/kontrak-props.md:
+     §7.5 pengiriman {mode, key_terisi, tarif_uji, berat_gram, gratis, asal, galat};
+     §7.12 opsi {label, etd, cost, is_regular, gratis}, galat, rate limit 30/menit;
+     §7.7 pembayaran {snap_token, snap_redirect_url, fake, galat, status};
+     §10.9 PUT /admin/pengaturan/landing (landing_gallery_present); §10.13 ekspedisi.
+   - Tidak ada aset baru: semua contoh gambar memakai penanda [CONTOH] / path seeder yang sudah ada.
+
+4. Perbaikan pada run ini (berkas dari run sebelumnya ditinjau ulang)
+   a. Rujukan menggantung "§10.14" (tidak ada di kontrak) -> §10.9 pada header dan tabel traceability.
+   b. Kalimat ambigu di §4.3 ("nomor tetap tampil? Tidak —") -> aturan tegas: caption kosong =
+      seluruh baris caption disembunyikan.
+   c. Tambahan §14 butir 11: copy trust strip seeder "Bayar QRIS" dicatat sebagai usulan copy (P4),
+      bukan bug, karena berada di landing dan AC D1 #4 hanya mengikat checkout/bayar.
+
+5. Yang tidak dilakukan (sesuai batasan kartu)
+   - Tidak menulis kode/JSX, tidak mengubah seeder, tidak menyentuh .env, tidak membuat aset gambar.
+   - Tidak ada klaim build/test aplikasi: kartu ini dokumen desain.

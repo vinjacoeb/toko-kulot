@@ -33,6 +33,9 @@ class CartTest extends TestCase
     {
         parent::setUp();
 
+        // Ongkir mode uji agar ringkasan keranjang tidak memanggil Biteship.
+        config(['biteship.key' => '']);
+
         $this->user = User::factory()->create();
         $this->actingAs($this->user);
 

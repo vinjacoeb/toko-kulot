@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import PublicLayout from '../../Layouts/PublicLayout';
+import Badge from '../../Components/Badge';
 import Breadcrumb from '../../Components/Breadcrumb';
 import Button from '../../Components/Button';
 import Field from '../../Components/Field';
@@ -8,10 +9,14 @@ import InlineNotice from '../../Components/InlineNotice';
 import Input from '../../Components/Input';
 import OrderSummary from '../../Components/OrderSummary';
 import Textarea from '../../Components/Textarea';
+import { cn, formatNumber, rupiah } from '../../lib/format';
 
 const PHONE_PATTERN = /^(\+62|62|0)8[0-9]{7,12}$/;
 const POSTAL_PATTERN = /^\d{5}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Batas tunggu Cek Ongkir (design §6.4: maks 10 detik). */
+const CEK_TIMEOUT_MS = 10000;
 
 /** Urutan kolom formulir — dipakai menentukan "kolom pertama" yang bermasalah (design §5.7 state `error-field`). */
 const URUTAN_KOLOM = [
@@ -77,32 +82,52 @@ function validate(values) {
     return errors;
 }
 
-/** Gulir (opsional: sekalian fokuskan) satu kolom formulir; gerak dihormati `prefers-reduced-motion` (design §6). */
-function gulirKeKolom(id, { fokus = true } = {}) {
+/** Gulir (opsional: sekalian fokuskan) satu elemen; gerak dihormati `prefers-reduced-motion` (design §6). */
+function gulirKe(id, { fokus = true } = {}) {
     if (!id || typeof document === 'undefined') return;
 
     const elemen = document.getElementById(id);
-    if (!elemen || typeof elemen.scrollIntoView !== 'function') return;
+    if (!elemen) return;
 
     const gerakDikurangi =
         typeof window !== 'undefined' && typeof window.matchMedia === 'function'
             ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
             : false;
 
-    elemen.scrollIntoView({ behavior: gerakDikurangi ? 'instant' : 'smooth', block: 'center' });
+    if (typeof elemen.scrollIntoView === 'function') {
+        elemen.scrollIntoView({ behavior: gerakDikurangi ? 'instant' : 'smooth', block: 'center' });
+    }
 
     if (fokus && typeof elemen.focus === 'function') elemen.focus({ preventScroll: true });
 }
 
+/** Skeleton dua baris opsi (design §6.4 state loading). */
+function SkeletonOpsi() {
+    return (
+        <div aria-busy="true" aria-live="polite" className="mt-4 flex flex-col gap-3">
+            <span className="sr-only">Mengecek ongkir…</span>
+            {[0, 1].map((baris) => (
+                <div key={baris} className="flex items-start gap-3 rounded-md border border-line p-4 motion-safe:animate-pulse">
+                    <span className="mt-1 h-4 w-4 shrink-0 rounded-full bg-line" aria-hidden="true" />
+                    <span className="flex min-w-0 flex-1 flex-col gap-2">
+                        <span className="h-3 w-2/5 rounded bg-line" aria-hidden="true" />
+                        <span className="h-3 w-3/5 rounded bg-line" aria-hidden="true" />
+                    </span>
+                </div>
+            ))}
+        </div>
+    );
+}
+
 /**
- * `/checkout` — kontrak props §7.5/§7.6, design §5.7.
- * Props: `{ keranjang, prefill, pembayaran, midtrans }`. Formulir dua kolom,
- * `OrderSummary` sticky mengirim formulir yang sama lewat atribut `form` (anti kirim ganda
- * dijaga `processing`). State `error-field` (§5.7): kolom bermasalah diumumkan lewat
- * `InlineNotice` di atas formulir **dan** tepat di atas CTA, dengan tombol "Perbaiki kolom"
- * yang menggulir dan memfokuskan kolom pertama.
+ * `/checkout` — kontrak props §7.5/§7.6/§7.12, design §6.
+ * Props: `{ keranjang, prefill, pengiriman, pembayaran, flash }`. Formulir 7/12 + `OrderSummary`
+ * sticky 5/12 (mobile: ringkasan tepat di atas tombol). Ongkir baru diketahui setelah **Cek Ongkir**
+ * (`GET /checkout/ongkir?postal_code=`) → radio satu layanan → total final; submit mengirim
+ * `shipping_courier`/`shipping_service`/`shipping_cost` (§7.6). Mode fake: tarif uji datar boleh tanpa
+ * memilih layanan; mode api wajib memilih.
  */
-export default function Checkout({ keranjang = null, prefill = null, pembayaran = null, flash = null }) {
+export default function Checkout({ keranjang = null, prefill = null, pengiriman = null, flash = null }) {
     const [clientErrors, setClientErrors] = useState({});
     const [throttle, setThrottle] = useState(null);
 
@@ -114,11 +139,52 @@ export default function Checkout({ keranjang = null, prefill = null, pembayaran 
         customer_city: prefill?.customer_city ?? '',
         customer_postal_code: prefill?.customer_postal_code ?? '',
         note: prefill?.note ?? '',
+        shipping_courier: null,
+        shipping_service: null,
+        shipping_cost: null,
     });
+
+    const [opsi, setOpsi] = useState([]);
+    const [gratis, setGratis] = useState(pengiriman?.gratis ?? null);
+    const [pilihan, setPilihan] = useState(null);
+    const [opsiGalat, setOpsiGalat] = useState(null);
+    const [cekLoading, setCekLoading] = useState(false);
+    /** Kode pos yang dipakai daftar opsi saat ini; kosong = belum pernah cek. */
+    const [kodePosOpsi, setKodePosOpsi] = useState(null);
+    /** Opsi lama ditandai kedaluwarsa karena kode pos berubah (design §6.3–§6.4). */
+    const [kedaluwarsa, setKedaluwarsa] = useState(false);
+
+    const abortRef = useRef(null);
+    const timerRef = useRef(null);
+    const legendRef = useRef(null);
 
     const items = Array.isArray(keranjang?.items) ? keranjang.items : [];
     const isEmpty = keranjang?.is_empty === true || items.length === 0;
-    const expiryMinutes = Number(pembayaran?.expiry_minutes ?? 0) || null;
+    const subtotal = Number(keranjang?.subtotal ?? 0) || 0;
+
+    const modeFake = pengiriman?.mode === 'fake';
+    const galatKonfig = pengiriman?.galat ?? null;
+    const asal = pengiriman?.asal ?? null;
+    const beratGram = Number(pengiriman?.berat_gram ?? 0) || 0;
+    const tarifUji = Number(pengiriman?.tarif_uji ?? 0) || 0;
+    const gratisAktif = gratis?.aktif === true;
+    const gratisTerpenuhi = gratis?.terpenuhi === true;
+    const gratisMin = Number(gratis?.min ?? 0) || 0;
+
+    const postalValid = POSTAL_PATTERN.test(String(form.data.customer_postal_code ?? ''));
+    /** Design §6.4/§6.6: mode fake pun memilih opsi eksplisit — total final hanya setelah satu opsi dipilih. */
+    const ongkirFinal = Boolean(pilihan);
+    const biayaOngkir = pilihan ? (pilihan.gratis === true ? 0 : Number(pilihan.cost ?? 0) || 0) : 0;
+    const total = subtotal + biayaOngkir;
+
+    /** Submit butuh data wajib terisi; mode api juga butuh satu layanan dipilih (§7.6). */
+    const wajibTerisi =
+        String(form.data.customer_name ?? '').trim() !== '' &&
+        String(form.data.customer_phone ?? '').trim() !== '' &&
+        String(form.data.customer_email ?? '').trim() !== '' &&
+        String(form.data.customer_address ?? '').trim() !== '' &&
+        String(form.data.customer_city ?? '').trim() !== '' &&
+        postalValid;
 
     const fieldError = (key) => clientErrors[key] ?? form.errors?.[key] ?? null;
 
@@ -136,12 +202,151 @@ export default function Checkout({ keranjang = null, prefill = null, pembayaran 
     useEffect(() => {
         if (kunciGalatServer === '') return;
 
-        gulirKeKolom(kunciGalatServer.split(',')[0], { fokus: false });
+        gulirKe(kunciGalatServer.split(',')[0], { fokus: false });
     }, [kunciGalatServer]);
+
+    /** design §6.6: `flash.error` "Ongkir berubah, pilih ulang kurir." → kosongkan pilihan + fokus Cek Ongkir. */
+    useEffect(() => {
+        if (typeof flash?.error !== 'string' || !flash.error.includes('Ongkir berubah')) return;
+
+        setPilihan(null);
+        setKedaluwarsa(true);
+        form.setData((data) => ({ ...data, shipping_courier: null, shipping_service: null, shipping_cost: null }));
+        // Kartu: "tampilkan pesan + muat ulang opsi" — tarif server berubah, jadi langsung cek ulang.
+        cekOngkir();
+        gulirKe('cek-ongkir');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [flash?.error]);
+
+    /** Bersihkan permintaan & timer saat halaman ditinggalkan. */
+    useEffect(
+        () => () => {
+            if (abortRef.current) abortRef.current.abort();
+            if (timerRef.current) window.clearTimeout(timerRef.current);
+        },
+        []
+    );
 
     const update = (key, value) => {
         form.setData(key, value);
         if (clientErrors[key]) setClientErrors((prev) => ({ ...prev, [key]: undefined }));
+    };
+
+    /**
+     * Kode pos berubah setelah opsi tampil → daftar ditandai kedaluwarsa, pilihan dikosongkan,
+     * total kembali subtotal (design §6.3–§6.4). Tarif lama tidak pernah dikirim.
+     */
+    const updateKodePos = (value) => {
+        update('customer_postal_code', value);
+
+        if (kodePosOpsi && value !== kodePosOpsi) {
+            setPilihan(null);
+            setKedaluwarsa(true);
+            form.setData((data) => ({ ...data, shipping_courier: null, shipping_service: null, shipping_cost: null }));
+        }
+    };
+
+    const hentikanCek = () => {
+        if (abortRef.current) abortRef.current.abort();
+        if (timerRef.current) window.clearTimeout(timerRef.current);
+        abortRef.current = null;
+        timerRef.current = null;
+        setCekLoading(false);
+    };
+
+    /** `GET /checkout/ongkir?postal_code=` (§7.12) — hanya lewat tombol, respons lama dibatalkan. */
+    const cekOngkir = async () => {
+        if (cekLoading) return;
+
+        if (!postalValid) {
+            setClientErrors((prev) => ({ ...prev, customer_postal_code: 'Kode pos harus 5 angka.' }));
+            setOpsi([]);
+            setPilihan(null);
+            setOpsiGalat(null);
+            setKodePosOpsi(null);
+            gulirKe('customer_postal_code');
+            return;
+        }
+
+        hentikanCek();
+        const controller = new AbortController();
+        abortRef.current = controller;
+        setCekLoading(true);
+        setOpsiGalat(null);
+
+        timerRef.current = window.setTimeout(() => {
+            if (abortRef.current === controller) {
+                controller.abort();
+                abortRef.current = null;
+                setCekLoading(false);
+                setOpsiGalat('Ongkir belum bisa dihitung.');
+            }
+        }, CEK_TIMEOUT_MS);
+
+        try {
+            const response = await fetch(`/checkout/ongkir?postal_code=${encodeURIComponent(form.data.customer_postal_code)}`, {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+                signal: controller.signal,
+            });
+
+            let data = null;
+            try {
+                data = await response.json();
+            } catch {
+                data = null;
+            }
+
+            if (abortRef.current !== controller) return;
+
+            if (!response.ok) {
+                const pesanKolom = data?.errors?.postal_code?.[0] ?? data?.errors?.customer_postal_code?.[0] ?? null;
+                setOpsi([]);
+                setPilihan(null);
+                setKodePosOpsi(null);
+                setOpsiGalat(pesanKolom ?? data?.message ?? 'Ongkir belum bisa dihitung.');
+                return;
+            }
+
+            const daftar = Array.isArray(data?.opsi) ? data.opsi : [];
+            setOpsi(daftar);
+            setKodePosOpsi(String(form.data.customer_postal_code ?? ''));
+            setKedaluwarsa(false);
+            setPilihan(null);
+            if (data?.gratis) setGratis(data.gratis);
+            setOpsiGalat(typeof data?.galat === 'string' && data.galat.trim() !== '' ? data.galat : null);
+            form.setData((nilai) => ({ ...nilai, shipping_courier: null, shipping_service: null, shipping_cost: null }));
+
+            if (daftar.length > 0) {
+                window.setTimeout(() => legendRef.current?.focus?.(), 0);
+            }
+        } catch (error) {
+            if (error?.name === 'AbortError') return;
+            if (abortRef.current !== controller) return;
+
+            setOpsi([]);
+            setPilihan(null);
+            setKodePosOpsi(null);
+            setOpsiGalat('Ongkir belum bisa dihitung.');
+        } finally {
+            if (abortRef.current === controller) {
+                if (timerRef.current) window.clearTimeout(timerRef.current);
+                timerRef.current = null;
+                abortRef.current = null;
+                setCekLoading(false);
+            }
+        }
+    };
+
+    /** Pilih satu layanan; `shipping_cost` 0 untuk layanan gratis (§7.12). */
+    const pilihOpsi = (opsiDipilih) => {
+        setPilihan(opsiDipilih);
+        form.setData((nilai) => ({
+            ...nilai,
+            shipping_courier: opsiDipilih?.courier_code ?? null,
+            shipping_service: opsiDipilih?.service_code ?? null,
+            shipping_cost: opsiDipilih ? (opsiDipilih.gratis === true ? 0 : Number(opsiDipilih.cost ?? 0) || 0) : null,
+        }));
     };
 
     const submit = (event) => {
@@ -150,7 +355,16 @@ export default function Checkout({ keranjang = null, prefill = null, pembayaran 
 
         const found = validate(form.data);
         setClientErrors(found);
-        if (Object.keys(found).length > 0) return;
+        if (Object.keys(found).length > 0) {
+            gulirKe(URUTAN_KOLOM.find((key) => found[key]) ?? null);
+            return;
+        }
+
+        if (!pilihan) {
+            setOpsiGalat('Pilih layanan pengiriman.');
+            gulirKe('cek-ongkir');
+            return;
+        }
 
         setThrottle(null);
         form.post('/checkout', {
@@ -178,18 +392,49 @@ export default function Checkout({ keranjang = null, prefill = null, pembayaran 
         const ringkas = jumlahBermasalah === 1 ? `Kolom ${label}: ${pesan}` : `Kolom pertama ${label}: ${pesan}`;
 
         return (
-            <InlineNotice
-                tone="error"
-                className={className}
-                title={`Ada ${jumlahBermasalah} kolom yang perlu diperbaiki`}
-            >
+            <InlineNotice tone="error" className={className} title={`Ada ${jumlahBermasalah} kolom yang perlu diperbaiki`}>
                 <p>{ringkas}</p>
-                <Button variant="secondary" className="mt-3" onClick={() => gulirKeKolom(kolomPertama)}>
+                <Button variant="secondary" className="mt-3" onClick={() => gulirKe(kolomPertama)}>
                     Perbaiki kolom
                 </Button>
             </InlineNotice>
         );
     };
+
+    const sisaGratis = gratisAktif && !gratisTerpenuhi && gratisMin > subtotal ? gratisMin - subtotal : 0;
+
+    /** design §6.2: helper ringkasan berubah mengikuti pilihan kurir, bukan error merah. */
+    const helperRingkasan = pilihan
+        ? pilihan.gratis === true
+            ? 'Gratis ongkir reguler aktif.'
+            : gratisTerpenuhi && pilihan.is_regular !== true
+              ? 'Layanan ini tidak termasuk gratis ongkir.'
+              : sisaGratis > 0
+                ? `Tambah ${rupiah(sisaGratis) ?? '-'} lagi untuk gratis ongkir reguler.`
+                : null
+        : 'Ongkir ditambahkan setelah kurir dipilih.';
+
+    const ringkasan = (className) => (
+        <OrderSummary
+            className={className}
+            items={items}
+            subtotal={keranjang?.subtotal ?? null}
+            shipping={pilihan ? biayaOngkir : null}
+            shippingText={ongkirFinal ? null : 'Belum dipilih'}
+            shippingBadge={pilihan?.gratis === true ? <Badge tone="success">Gratis Ongkir</Badge> : null}
+            totalLabel={ongkirFinal ? 'Total' : 'Subtotal'}
+            total={ongkirFinal ? total : subtotal}
+            helper={helperRingkasan}
+            ctaLabel={form.processing ? 'Membuat pesanan…' : 'Buat Pesanan'}
+            formId="checkout-form"
+            onSubmit={submit}
+            loading={form.processing}
+            disabled={form.processing || isEmpty || Boolean(galatKonfig) || !wajibTerisi || !pilihan}
+            note="Pembayaran dipilih di langkah berikutnya."
+        >
+            {noticeValidasi('mt-4')}
+        </OrderSummary>
+    );
 
     return (
         <PublicLayout>
@@ -197,25 +442,34 @@ export default function Checkout({ keranjang = null, prefill = null, pembayaran 
 
             <div className="container py-4">
                 <Breadcrumb
-                    items={[
-                        { label: 'Beranda', href: '/' },
-                        { label: 'Keranjang', href: '/keranjang' },
-                        { label: 'Checkout' },
-                    ]}
+                    items={[{ label: 'Beranda', href: '/' }, { label: 'Keranjang', href: '/keranjang' }, { label: 'Checkout' }]}
                 />
 
                 <header className="mt-2">
                     <h1 className="text-h1 text-ink">Checkout</h1>
-                    <p className="mt-1 text-body text-ink-soft">
-                        Lengkapi data penerima, lalu selesaikan pembayaran QRIS.
-                    </p>
+                    <p className="mt-1 text-body text-ink-soft">Lengkapi data penerima, pilih pengiriman, lalu buat pesanan.</p>
                 </header>
+
+                {galatKonfig && (
+                    <InlineNotice tone="error" className="mt-4" title="Pengiriman belum siap">
+                        <p>{galatKonfig}</p>
+                        <p className="mt-1">
+                            <Link href="/kontak-kami" className="underline underline-offset-4">
+                                Hubungi penjual
+                            </Link>{' '}
+                            untuk menyelesaikan pesanan.
+                        </p>
+                    </InlineNotice>
+                )}
 
                 {isEmpty && (
                     <InlineNotice tone="warning" className="mt-4">
                         <p>
-                            Keranjang masih kosong. <Link href="/keranjang" className="underline underline-offset-4">Kembali ke keranjang</Link> untuk
-                            menambah produk.
+                            Keranjang masih kosong.{' '}
+                            <Link href="/keranjang" className="underline underline-offset-4">
+                                Kembali ke keranjang
+                            </Link>{' '}
+                            untuk menambah produk.
                         </p>
                     </InlineNotice>
                 )}
@@ -234,16 +488,11 @@ export default function Checkout({ keranjang = null, prefill = null, pembayaran 
 
                 {noticeValidasi('mt-4')}
 
-                <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-10">
-                    <form
-                        id="checkout-form"
-                        className="min-w-0 flex-1 lg:basis-[60%]"
-                        onSubmit={submit}
-                        noValidate
-                    >
+                <div className="mt-6 flex flex-col gap-6 lg:grid lg:grid-cols-12 lg:items-start lg:gap-10">
+                    <form id="checkout-form" className="min-w-0 lg:col-span-7" onSubmit={submit} noValidate>
                         <section className="card p-6" aria-labelledby="judul-penerima">
                             <h2 id="judul-penerima" className="text-h3 text-ink">
-                                Data Penerima
+                                Kontak &amp; Penerima
                             </h2>
 
                             <div className="mt-4 flex flex-col gap-4">
@@ -252,6 +501,7 @@ export default function Checkout({ keranjang = null, prefill = null, pembayaran 
                                         id="customer_name"
                                         name="customer_name"
                                         autoComplete="name"
+                                        required
                                         maxLength={100}
                                         value={form.data.customer_name}
                                         error={fieldError('customer_name')}
@@ -259,7 +509,13 @@ export default function Checkout({ keranjang = null, prefill = null, pembayaran 
                                     />
                                 </Field>
 
-                                <Field label="Nomor WhatsApp" htmlFor="customer_phone" required error={fieldError('customer_phone')}>
+                                <Field
+                                    label="Nomor WhatsApp"
+                                    htmlFor="customer_phone"
+                                    required
+                                    error={fieldError('customer_phone')}
+                                    hint="Format 08…, 62…, atau +62…"
+                                >
                                     <Input
                                         id="customer_phone"
                                         name="customer_phone"
@@ -268,6 +524,7 @@ export default function Checkout({ keranjang = null, prefill = null, pembayaran 
                                         autoComplete="tel"
                                         placeholder="08xxxxxxxxxx"
                                         maxLength={20}
+                                        required
                                         value={form.data.customer_phone}
                                         error={fieldError('customer_phone')}
                                         onChange={(event) => update('customer_phone', event.target.value)}
@@ -335,13 +592,174 @@ export default function Checkout({ keranjang = null, prefill = null, pembayaran 
                                             maxLength={5}
                                             value={form.data.customer_postal_code}
                                             error={fieldError('customer_postal_code')}
-                                            onChange={(event) => update('customer_postal_code', event.target.value.replace(/[^0-9]/g, ''))}
+                                            onChange={(event) => updateKodePos(event.target.value.replace(/[^0-9]/g, ''))}
                                         />
                                     </Field>
                                 </div>
+                            </div>
+                        </section>
 
+                        <section className="card mt-6 p-6" aria-labelledby="judul-pengiriman">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <h2 id="judul-pengiriman" className="text-h3 text-ink">
+                                    Pengiriman
+                                </h2>
+                                {modeFake ? <Badge tone="warning">Tarif uji</Badge> : <Badge tone="success">Tarif Biteship</Badge>}
+                            </div>
+
+                            <p className="mt-2 text-meta text-slate-500">
+                                {asal?.nama
+                                    ? `Dikirim dari ${asal.nama}${asal.kode_pos ? ` (${asal.kode_pos})` : ''}.`
+                                    : 'Asal pengiriman belum diatur penjual.'}
+                                {beratGram > 0 ? ` Berat ${formatNumber(beratGram)} g.` : ''}
+                            </p>
+
+                            <div className="mt-4 flex flex-wrap items-center gap-3">
+                                <Button
+                                    id="cek-ongkir"
+                                    variant="secondary"
+                                    onClick={cekOngkir}
+                                    disabled={cekLoading || !postalValid || Boolean(galatKonfig)}
+                                >
+                                    {cekLoading ? 'Mengecek ongkir…' : 'Cek Ongkir'}
+                                </Button>
+                                {!kodePosOpsi && !cekLoading && (
+                                    <p className="text-meta text-slate-500">Masukkan kode pos untuk melihat layanan.</p>
+                                )}
+                                {modeFake && !kodePosOpsi && !cekLoading && (
+                                    <p className="text-meta text-slate-500">
+                                        Mode uji: semua layanan memakai tarif {rupiah(tarifUji) ?? '-'} dari pengaturan toko.
+                                    </p>
+                                )}
+                            </div>
+
+                            {cekLoading && <SkeletonOpsi />}
+
+                            {!cekLoading && opsiGalat && (
+                                <InlineNotice tone="error" className="mt-4">
+                                    <p>{opsiGalat}</p>
+                                    {!galatKonfig && (
+                                        <Button variant="secondary" className="mt-3" onClick={cekOngkir}>
+                                            Coba Lagi
+                                        </Button>
+                                    )}
+                                </InlineNotice>
+                            )}
+
+                            {!cekLoading && kedaluwarsa && opsi.length > 0 && (
+                                <InlineNotice tone="warning" className="mt-4">
+                                    <p>Kode pos berubah. Cek ongkir lagi.</p>
+                                </InlineNotice>
+                            )}
+
+                            {!cekLoading && !opsiGalat && opsi.length === 0 && kodePosOpsi && (
+                                <p className="mt-4 text-body text-ink-soft">
+                                    Belum ada layanan aktif untuk kode pos ini.{' '}
+                                    <Link href="/kontak-kami" className="underline underline-offset-4">
+                                        Hubungi penjual
+                                    </Link>
+                                    .
+                                </p>
+                            )}
+
+                            {!cekLoading && opsi.length > 0 && (
+                                <fieldset className="mt-4" aria-describedby="pilih-layanan-hint">
+                                    <legend
+                                        ref={legendRef}
+                                        tabIndex={-1}
+                                        className="text-label uppercase text-slate-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-500"
+                                    >
+                                        Pilih layanan pengiriman
+                                    </legend>
+                                    <p id="pilih-layanan-hint" className="mt-1 text-meta text-slate-500">
+                                        Satu layanan per pesanan. Harga dan estimasi dari server.
+                                    </p>
+
+                                    <div className="mt-3 flex flex-col gap-3">
+                                        {opsi.map((item) => {
+                                            const kunci = `${item?.courier_code ?? '-'}-${item?.service_code ?? '-'}`;
+                                            const dipilih =
+                                                pilihan?.courier_code === item?.courier_code &&
+                                                pilihan?.service_code === item?.service_code;
+                                            const harga = Number(item?.cost ?? 0) || 0;
+
+                                            return (
+                                                <label
+                                                    key={kunci}
+                                                    className={cn(
+                                                        'flex cursor-pointer items-start gap-3 rounded-md border-2 p-4 transition-colors',
+                                                        dipilih ? 'border-brand bg-brand-100' : 'border-line bg-white hover:border-brand/40',
+                                                        kedaluwarsa && 'cursor-not-allowed opacity-60',
+                                                        'focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent-500'
+                                                    )}
+                                                >
+                                                    <input
+                                                        type="radio"
+                                                        name="shipping_service"
+                                                        value={kunci}
+                                                        className="mt-1 h-4 w-4 shrink-0 accent-brand"
+                                                        checked={dipilih}
+                                                        disabled={kedaluwarsa}
+                                                        onChange={() => pilihOpsi(item)}
+                                                    />
+                                                    <span className="min-w-0 flex-1">
+                                                        <span className="flex flex-wrap items-center gap-2">
+                                                            <span className="text-body font-semibold text-ink">
+                                                                {item?.label ??
+                                                                    [item?.courier_name, item?.service_name].filter(Boolean).join(' ')}
+                                                            </span>
+                                                            {item?.is_regular === true && <Badge tone="brand">Reguler</Badge>}
+                                                            {item?.gratis === true && <Badge tone="success">Gratis Ongkir</Badge>}
+                                                        </span>
+                                                        <span className="mt-1 block text-meta text-slate-500">
+                                                            {item?.etd ? `${item.etd}` : 'Estimasi tidak tersedia'}
+                                                        </span>
+                                                        <span className="mt-1 flex flex-wrap items-baseline gap-2 text-body text-ink">
+                                                            {item?.gratis === true ? (
+                                                                <>
+                                                                    <span className="text-meta text-slate-500 line-through">
+                                                                        {rupiah(harga) ?? '-'}
+                                                                    </span>
+                                                                    <span className="font-semibold">Rp0</span>
+                                                                    <span className="text-meta text-success-strong">
+                                                                        Hemat {rupiah(harga) ?? '-'}
+                                                                    </span>
+                                                                </>
+                                                            ) : (
+                                                                <span className="font-semibold">{rupiah(harga) ?? '-'}</span>
+                                                            )}
+                                                        </span>
+                                                        {gratisTerpenuhi && item?.is_regular !== true && (
+                                                            <span className="mt-1 block text-meta text-slate-500">
+                                                                Layanan ini tidak termasuk gratis ongkir.
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {gratisAktif && gratisTerpenuhi && (
+                                        <p className="mt-3 text-meta text-success-strong">Gratis ongkir reguler aktif.</p>
+                                    )}
+                                    {sisaGratis > 0 && pilihan && (
+                                        <p className="mt-3 text-meta text-slate-500">
+                                            Tambah {rupiah(sisaGratis) ?? '-'} lagi untuk gratis ongkir reguler.
+                                        </p>
+                                    )}
+                                </fieldset>
+                            )}
+                        </section>
+
+                        <section className="card mt-6 p-6" aria-labelledby="judul-catatan">
+                            <h2 id="judul-catatan" className="text-h3 text-ink">
+                                Catatan (opsional)
+                            </h2>
+
+                            <div className="mt-4">
                                 <Field
-                                    label="Catatan (opsional)"
+                                    label="Catatan"
                                     htmlFor="note"
                                     error={fieldError('note')}
                                     hint="Contoh: ukuran atau warna alternatif bila stok habis."
@@ -355,57 +773,22 @@ export default function Checkout({ keranjang = null, prefill = null, pembayaran 
                                         onChange={(event) => update('note', event.target.value)}
                                     />
                                 </Field>
+                                <p className="mt-1 text-right text-meta text-slate-500" aria-live="polite">
+                                    {String(form.data.note ?? '').length}/500
+                                </p>
                             </div>
                         </section>
 
-                        <section className="card mt-6 p-6" aria-labelledby="judul-pembayaran">
-                            <h2 id="judul-pembayaran" className="text-h3 text-ink">
-                                Metode Pembayaran
-                            </h2>
-
-                            <label className="mt-3 block rounded-md border-2 border-brand p-4">
-                                <span className="flex items-center gap-3">
-                                    <input
-                                        type="radio"
-                                        name="payment_method"
-                                        value="qris"
-                                        defaultChecked
-                                        disabled
-                                        aria-describedby="metode-qris-hint"
-                                        className="h-4 w-4 accent-brand"
-                                    />
-                                    <span className="text-body font-semibold text-ink">
-                                        {pembayaran?.label ?? 'QRIS (semua e-wallet & m-banking)'}
-                                    </span>
-                                </span>
-                                <span id="metode-qris-hint" className="mt-1 block pl-7 text-meta text-slate-500">
-                                    Pindai kode QR dengan aplikasi e-wallet atau m-banking
-                                    {expiryMinutes ? `, lalu bayar dalam ${expiryMinutes} menit.` : '.'}
-                                </span>
-                            </label>
-
-                            <p className="mt-2 text-meta text-slate-500">Metode pembayaran lain belum tersedia.</p>
-                        </section>
-
+                        <div className="mt-6 lg:hidden">{ringkasan()}</div>
                     </form>
 
-                    <div className="lg:w-summary lg:shrink-0">
-                        <OrderSummary
-                            className="lg:sticky lg:top-20"
-                            subtotal={keranjang?.subtotal ?? null}
-                            shipping={keranjang?.shipping_cost ?? null}
-                            total={keranjang?.total ?? null}
-                            ctaLabel="Buat Pesanan"
-                            formId="checkout-form"
-                            onSubmit={submit}
-                            loading={form.processing}
-                            disabled={form.processing || isEmpty}
-                            note="Pembayaran QRIS"
-                        >
-                            {noticeValidasi('mt-4')}
-                        </OrderSummary>
-                    </div>
+                    <div className="hidden lg:col-span-5 lg:block">{ringkasan('lg:sticky lg:top-[88px]')}</div>
                 </div>
+
+                <p className="mt-4 text-meta text-slate-500">
+                    Pembayaran aman lewat Midtrans.
+                    {asal?.nama ? ` Dikirim dari ${asal.nama}.` : ''}
+                </p>
             </div>
         </PublicLayout>
     );

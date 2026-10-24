@@ -24,6 +24,7 @@ class OrderService
         private readonly StockService $stock,
         private readonly MidtransService $midtrans,
         private readonly CartService $carts,
+        private readonly BiteshipService $biteship,
     ) {}
 
     /**
@@ -40,18 +41,32 @@ class OrderService
 
             $lines = $this->lockLines($items);
 
-            $subtotal = array_sum(array_column($lines, 'line_total'));
-            $shippingCost = $this->carts->shippingCost();
+            $subtotal = (int) array_sum(array_column($lines, 'line_total'));
+            $weight = 0;
+            $biteshipItems = [];
+
+            foreach ($lines as $line) {
+                $unitWeight = max(500, (int) $line['product']->weight_gram);
+                $weight += $unitWeight * $line['qty'];
+                $biteshipItems[] = [
+                    'name' => $line['product']->name,
+                    'value' => $line['unit_price'],
+                    'quantity' => $line['qty'],
+                    'weight' => $unitWeight,
+                ];
+            }
+
+            $shipping = $this->resolveShipping($data, $biteshipItems, $subtotal);
 
             $order = Order::create([
                 'user_id' => auth('web')->id(),
                 'code' => $this->nextCode(),
                 'status' => Order::STATUS_PENDING,
-                'subtotal' => (int) $subtotal,
-                'shipping_cost' => $shippingCost,
+                'subtotal' => $subtotal,
+                'shipping_cost' => $shipping['cost'],
                 'discount' => 0,
-                'total' => (int) $subtotal + $shippingCost,
-                'payment_method' => 'qris',
+                'total' => $subtotal + $shipping['cost'],
+                'payment_method' => 'midtrans',
                 'payment_status' => Order::PAYMENT_PENDING,
                 'customer_name' => $data['customer_name'],
                 'customer_phone' => $data['customer_phone'],
@@ -59,6 +74,11 @@ class OrderService
                 'shipping_address' => $data['customer_address'],
                 'city' => $data['customer_city'],
                 'postal_code' => $data['customer_postal_code'] ?? null,
+                'shipping_courier' => $shipping['courier'],
+                'shipping_service' => $shipping['service'],
+                'shipping_etd' => $shipping['etd'],
+                'shipping_weight_gram' => $weight,
+                'shipping_is_free' => $shipping['is_free'],
                 'notes' => $data['note'] ?? null,
                 'paid_at' => null,
             ]);
@@ -84,7 +104,7 @@ class OrderService
                 }
             }
 
-            $this->midtrans->createQrisCharge($order);
+            $this->midtrans->createSnapTransaction($order);
 
             $cart->items()->delete();
             $cart->forceFill(['expires_at' => now()->addDays(30)])->save();
@@ -92,6 +112,64 @@ class OrderService
 
             return $order->load(['items', 'payment']);
         });
+    }
+
+    /**
+     * Tarif final dihitung server (PRD v1.1 D3): nilai `shipping_cost` dari
+     * formulir hanya pembanding, bukan sumber kebenaran.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  list<array{name: string, value: int, quantity: int, weight: int}>  $items
+     * @return array{cost: int, is_free: bool, courier: ?string, service: ?string, etd: ?string}
+     */
+    private function resolveShipping(array $data, array $items, int $subtotal): array
+    {
+        $courier = strtolower(trim((string) ($data['shipping_courier'] ?? '')));
+        $service = trim((string) ($data['shipping_service'] ?? ''));
+
+        // Mode uji tanpa pilihan kurir (form lama): tarif datar, tanpa gratis.
+        if ($this->biteship->isFake() && ($courier === '' || $service === '')) {
+            return [
+                'cost' => $this->biteship->fakeRate(),
+                'is_free' => false,
+                'courier' => null,
+                'service' => null,
+                'etd' => null,
+            ];
+        }
+
+        $postalCode = trim((string) ($data['customer_postal_code'] ?? ''));
+
+        if (! preg_match('/^\d{5}$/', $postalCode)) {
+            throw new CheckoutException('Kode pos harus 5 angka.');
+        }
+
+        $quote = $this->biteship->quote(
+            $courier,
+            $service,
+            $postalCode,
+            $items,
+            $subtotal,
+            $data['customer_city'] ?? null,
+        );
+
+        if ($quote === null) {
+            throw new CheckoutException('Ongkir berubah, pilih ulang kurir.');
+        }
+
+        $expected = $quote['gratis'] ? 0 : (int) $quote['cost'];
+
+        if (isset($data['shipping_cost']) && (int) $data['shipping_cost'] !== $expected) {
+            throw new CheckoutException('Ongkir berubah, pilih ulang kurir.');
+        }
+
+        return [
+            'cost' => $expected,
+            'is_free' => (bool) $quote['gratis'],
+            'courier' => $courier,
+            'service' => $service,
+            'etd' => $quote['etd'],
+        ];
     }
 
     /**

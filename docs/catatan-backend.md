@@ -1268,4 +1268,204 @@ Berkas disentuh: `app/Services/SettingService.php`,
   sehingga pemilik belum bisa mengubahnya dari UI meski backend menerima. Tambahkan field
   (textarea/text, maks 200) di tab Footer — pekerjaan frontend, bukan diubah di kartu ini.
 
+## Rencana kartu t_04da18e0 — Snap semua kanal (PRD-v1.1 §2)
 
+1. Migrasi baru `payments`: `snap_token`, `snap_redirect_url`, `payment_type` (migrasi lama tidak diubah).
+2. `MidtransApi::snap()` + `SdkMidtransApi` (SDK `Snap::createTransaction`) + `FakeMidtransApi::snap()`.
+3. `MidtransService`: `createSnapTransaction()` menggantikan `createQrisCharge()`; simpan token/redirect;
+   webhook simpan `payment_type`, isi `orders.payment_method` saat settlement; `simulateSuccess()` mode fake.
+4. `OrderService` set `payment_method='midtrans'`; `CheckoutController::pay` kirim prop Snap; rute
+   `POST /checkout/{order}/simulasi-bayar` (`checkout.simulate`) hanya mode fake.
+5. Test: `MidtransSnapTest` (Snap, webhook bank_transfer idempoten, echannel, fake simulasi, signature).
+   Test Core-API-QRIS lama dihapus karena perilakunya diganti; `CheckoutTest` disesuaikan.
+6. Kontrak §7.5–§7.7/§7.10/§7.12, `docs/db.md`, `docs/asumsi.md` diperbarui.
+
+
+
+## Rencana kartu t_71f1e7a9 — galeri landing + copy CTA
+
+- Key baru `landing_gallery` (json, maks 8 `{image,caption,alt}`) di `SettingService::DEFINITIONS`.
+- Unggah lewat `PUT /admin/pengaturan/landing` yang sudah ada; hapus berkas lama saat item
+  dihapus/diganti. Penanda `landing_gallery_present` supaya form lama yang belum mengenal galeri
+  tidak menghapus data.
+- Seed 4 gambar [CONTOH] `/images/seed/landing/galeri-*.png` + CTA akhir
+  `landing_sections.newsletter.subtitle` = kalimat gratis ongkir (idempoten, tidak menimpa pemilik).
+- Berkas tersentuh: SettingService, UpdateLandingRequest, SettingController,
+  HandleInertiaRequests, SettingSeeder, SettingSeederTest, test baru AdminLandingGalleryTest,
+  docs/kontrak-props.md §2/§10.9, docs/langkah-pemilik-v1.1.md.
+
+## Rencana kartu t_f22c8d46 — Biteship + admin ekspedisi (PRD v1.1 D2/D3)
+
+- Migrasi `add_shipping_columns_to_orders_table` (6 kolom ongkir di `orders`).
+- `config/biteship.php` (key dari `.env`), `app/Services/BiteshipService.php` (mode fake bila key kosong).
+- `CheckoutController@shipping` + rute `GET /checkout/ongkir` (`checkout.shipping`), `CheckoutRequest` +
+  `OrderService` memakai tarif server (tolak tamper / layanan hilang), gratis ongkir layanan reguler.
+- `CartService::summary()`: ongkir `null` + blok `shipping` saat mode API; `SettingService` grup `shipping`.
+- Admin: `Admin\ShippingController` + `UpdateShippingRequest`, rute `admin.shipping.index/update`,
+  seeder 7 key ekspedisi (idempoten), kartu kontrak §7.0/§7.5/§7.6/§7.12/§10.13.
+- Berkas: migrasi, config/biteship.php, BiteshipService, CheckoutController, CheckoutRequest, OrderService,
+  CartService, SettingService, ShippingController, UpdateShippingRequest, routes/web.php, routes/admin.php,
+  SettingSeeder, SettingSeederTest, tests/Feature/Shipping/*, docs/db.md, docs/kontrak-props.md,
+  docs/langkah-pemilik.md, .env.example.
+
+### Hasil kartu t_71f1e7a9 (galeri landing + copy CTA)
+
+- Kontrak `docs/kontrak-props.md` §2 (key `landing_gallery`, CTA `landing_sections.newsletter`),
+  §4 (tabel settings) dan §10.9 (form admin + penanda `landing_gallery_present`) diperbarui lebih dulu.
+- Kode: `SettingService::DEFINITIONS` (+`landing_gallery`), `UpdateLandingRequest` (maks 8 item,
+  jpg/jpeg/png/webp ≤ 2 MB atau path yang sudah ada, caption ≤ 80, alt ≤ 120),
+  `SettingController::landing` (simpan/urutkan/hapus + hapus berkas yatim, skip bila form tanpa
+  field galeri), `HandleInertiaRequests` (galeri ikut props `settings`), `SettingSeeder`
+  (4 gambar `[CONTOH]`, CTA default, 24 baris settings, restore gambar seed ikut galeri).
+- Test: `tests/Feature/Admin/AdminLandingGalleryTest.php` (9 kasus) + `SettingSeederTest` diperluas.
+  Dijalankan: `php -d extension=pdo_sqlite -d extension=sqlite3 vendor/bin/phpunit
+  --filter='AdminLandingGalleryTest|SettingSeederTest|AdminSettingTest|StorefrontSettingsTest'`
+  → 30/31 lulus. `migrate:fresh --seed` diuji pada sqlite sementara (bukan DB pengembangan) → bersih,
+  `landing_gallery` berisi 4 item.
+- Di luar lingkup (belum diubah): `AdminSettingTest::test_halaman_pengaturan_menampilkan_tujuh_grup`
+  masih menuntut 7 grup padahal `SettingService::GROUPS` sekarang 8 (grup `shipping` dari kartu
+  ekspedisi). Gagal sebelum perubahan kartu ini; pemilik kartu shipping perlu memperbarui angkanya.
+- Catatan: `php -d extension=...` dipakai karena `pdo_sqlite` belum aktif di `php.ini`
+  (sudah tercatat di `docs/langkah-pemilik.md`).
+
+## Hasil kartu t_04da18e0 — Snap semua kanal (24 Okt 2026)
+
+- Migrasi baru `2026_10_24_000001_add_snap_columns_to_payments_table` (`snap_token` 255 null,
+  `snap_redirect_url` text null, `payment_type` 40 null); migrasi lama tidak diubah.
+  `php artisan migrate --pretend` menampilkan 3 `ALTER TABLE` (belum dijalankan ke DB pengembangan).
+- `MidtransApi` sekarang `snap(array): array`; `SdkMidtransApi` memanggil `Midtrans\Snap::createTransaction`.
+  `MidtransService::createSnapTransaction()` menggantikan `createQrisCharge()`; `order_id` Midtrans =
+  `orders.code` + sufiks 6 hex per panggilan; `payment_type` diisi dari webhook; `orders.payment_method`
+  = `midtrans` saat checkout lalu tipe kanal saat settlement.
+- `CheckoutController`: props `pembayaran` + `snap_token`, `snap_redirect_url`, `type`, `type_label`;
+  `qr_string`/`qris_url` tinggal mode uji; aksi baru `simulate()` + route `POST /checkout/{order}/simulasi-bayar`
+  (`checkout.simulate`, throttle 10/menit, hanya pemilik order). Flash sukses checkout jadi
+  `Pesanan dibuat. Selesaikan pembayaran.`
+- `Admin\OrderController`: detail pesanan mengirim `snap_token`, `snap_redirect_url`, `payment_type`,
+  `payment_method_label` (menggantikan `qris_url`/`qr_string` di kontrak §12.17).
+- Test: 5 test Core-API-QRIS lama dihapus; `tests/Feature/Checkout/MidtransSnapTest.php` (6 test) mencakup
+  bentuk Snap, order_id unik, webhook `bank_transfer`/`echannel`/`qris` + idempoten, signature salah,
+  simulasi mode uji, dan otorisasi 404. `FakeMidtransApi` diganti ke `snap()`.
+- Verifikasi: `php -d extension=pdo_sqlite vendor/bin/phpunit` → **269 lulus, 1 gagal (2098 assertion)**.
+  Satu-satunya gagal: `AdminSettingTest::test_halaman_pengaturan_menampilkan_tujuh_grup` (masih menuntut
+  7 grup, padahal sudah 8 sejak kartu ongkir) — gagal sebelum kartu ini, di luar lingkup.
+- Belum dicek: migrasi dijalankan ke DB pengembangan (menunggu pemilik); halaman bayar frontend belum
+  memakai `snap_token` (kartu frontend).
+- Commit `9fe945b` (`t_04da18e0: …`) hanya berisi berkas eksklusif Snap (service, seam API, model
+  `Payment`, migrasi, test, detail pesanan admin). Berkas bersama yang juga memuat pekerjaan kartu
+  Biteship yang belum selesai (`CheckoutController`, `Order`, `OrderService`, `routes/web.php`, docs)
+  sengaja tidak di-commit agar commit tidak merujuk kelas/route tanpa berkasnya.
+
+## Hasil kartu t_f22c8d46 — Biteship + ekspedisi (24 Okt 2026)
+
+Dibuat/diubah:
+- `database/migrations/2026_10_24_000002_add_shipping_columns_to_orders_table.php` — 5 kolom
+  pengiriman di `orders` (courier, service, etd, berat, is_free).
+- `config/biteship.php` — `key`, `base_url`, `timeout` (dari `.env`, tidak pernah dikirim ke frontend).
+- `app/Services/BiteshipService.php` — satu pintu tarif: `rates()` (opsi checkout), `quote()`
+  (harga final), `catalog()` (panel admin), `freeShipping()`, `origin()`, `fakeRate()`.
+  Tanpa `BITESHIP_API_KEY` → mode `fake` tarif datar `settings.shipping_cost_default`.
+- `CheckoutController`: aksi `shipping()` + blok props `pengiriman`; props pesanan mendapat
+  `shipping_courier`, `shipping_service`, `shipping_etd`, `shipping_is_free`.
+- `routes/web.php` — `GET /checkout/ongkir` (`checkout.shipping`), throttle 30/menit
+  (`checkout-shipping` di `AppServiceProvider`), statis sebelum `checkout/{order}`.
+- `CheckoutRequest` — `shipping_courier`/`shipping_service` wajib di mode `api`, `nullable`
+  di mode `fake`; `shipping_cost` hanya pembanding.
+- `OrderService::resolveShipping()` — tarif final dihitung ulang server; `shipping_cost` klien
+  yang berbeda → `Ongkir berubah, pilih ulang kurir.`; gratis ongkir hanya layanan `is_regular`.
+- `CartService` — DI `BiteshipService`, `summary()` memuat `shipping` + `berat_gram`,
+  `shippingItems()` untuk Biteship; pembaca lama `shippingCost()` dihapus.
+- `SettingService` — grup `shipping` + 7 key; `SettingSeeder` menulis 31 key (idempoten).
+- `app/Http/Controllers/Admin/ShippingController.php` + `Admin/UpdateShippingRequest.php`,
+  rute `GET/PUT /admin/ekspedisi` (`admin.shipping.index|update`).
+- Kontrak: `docs/kontrak-props.md` §7.0, blok `pengiriman` (§7.5), §7.6, §7.12, §10.13 — DRAFT.
+- Test baru `tests/Feature/Checkout/CheckoutShippingTest.php` (10 kasus); batas jumlah key
+  `SettingSeederTest` diperbarui 24 → 31.
+
+Verifikasi yang sudah dijalankan:
+- `php -l` bersih untuk 10 berkas yang disentuh.
+- `php artisan route:list --name=checkout` dan `--name=admin.shipping` menampilkan rute baru.
+- `php artisan migrate --force` sukses (termasuk migrasi lama `2026_10_24_000001` yang masih
+  tertunda); `php artisan db:seed --class=SettingSeeder` dua kali sukses — 31 baris, 7 grup
+  `shipping`, JSON `shipping_couriers` valid.
+- `tinker`: `BiteshipService::rates()` mode `fake` mengembalikan 6 opsi bertarif datar; controller
+  checkout bisa di-resolve container.
+
+Belum dicek / catatan:
+- `php artisan test` GAGAL dijalankan: PHP CLI tidak punya `pdo_sqlite` ("could not find driver"),
+  padahal `phpunit.xml` memakai SQLite in-memory. Langkah pemilik ada di `docs/langkah-pemilik.md`.
+  Semua test kartu ini berstatus belum dieksekusi.
+- Halaman `Admin/Shipping/Index` (JSX) belum ada — milik kartu frontend; controller sudah mengirim
+  props sesuai §10.13.
+- Baris `shipping_cost_default` di database pengembangan bernilai `0` dari pekerjaan sebelumnya,
+  sehingga mode `fake` memberi ongkir Rp0 sampai pemilik mengisi tarif uji di `/admin/ekspedisi`.
+  Seeder sengaja tidak menimpa nilai lama (`firstOrCreate`).
+- `shipping_cost_default` tetap bergrup `pembayaran` di registry setting agar tab Pembayaran lama
+  tidak kehilangan field; halaman Ekspedisi juga menyunting nilai yang sama.
+
+Penyesuaian setelah verifikasi:
+- `Admin/ShippingController@index` sekarang mengirim key `pengaturan` persis nama setting
+  (`shipping_origin_*`, `free_shipping_enabled`, `free_shipping_min`, `shipping_cost_default`)
+  sesuai kontrak §10.13; pesan galat `UpdateShippingRequest` disamakan dengan tabel kontrak.
+- `couriers[].label` opsional (maks 80) → fallback kode layanan huruf besar; `is_regular` dan
+  `is_active` wajib boolean; `free_shipping_enabled` wajib boolean.
+- `checkout/pengiriman` sudah dikirim dari `shippingPayload()` dan pesanan menyertakan 4 key
+  pengiriman; `CartService::shippingItems()` memberi item berat ke Biteship.
+- `CheckoutTest` dan `CartTest` memaksa `biteship.key = ''` agar suite tidak pernah memanggil API.
+- Kontrak §7.12 diperbaiki: mode fake tanpa kurir = tarif datar + `shipping_courier = null`
+  (bukan "layanan reguler uji pertama"), dan §10.13 menambah baris `shipping_cost_default`.
+
+## Ongkir: petakan galat Biteship 400 (kartu `t_1b711d26`, 24 Okt 2026)
+
+Rencana (maks 10 baris): catat `status`/`success`/`error`/`code` + kode pos asal & tujuan pada
+dua titik log (`rates()` dan `catalog()`), petakan kode rates `40001001`/`40001002`/`40001010`
+ke pesan Indonesia (kode lain tetap `GALAT_API`), tambah test 400 di
+`QaV11OngkirPembayaranTest`, perbarui kontrak §7.12 + langkah pemilik.
+Berkas: `app/Services/BiteshipService.php`,
+`tests/Feature/Checkout/QaV11OngkirPembayaranTest.php`, `docs/kontrak-props.md`,
+`docs/langkah-pemilik.md`, `docs/catatan-backend.md`.
+
+Hasil (24 Okt 2026):
+- `BiteshipService`: helper `logGagalBiteship()` mencatat `status`, `success`, `error`, `code`
+  (plus `origin_postal_code`/`destination_postal_code` di `rates()`, tanpa header/kunci) dan
+  `pesanGalat()` memetakan `40001001` → `GALAT_KODE_POS`, `40001002` → `GALAT_PARAMETER`,
+  `40001010` → `GALAT_TANPA_KURIR` (pesan lama), kode lain/tanpa `code` → `GALAT_API`.
+  Dipakai di `rates()` (log + pesan) dan `catalog()` (log saja, panel Ekspedisi tetap fallback).
+  Branch exception `rates()` juga mencatat kedua kode pos.
+- Test: `QaV11OngkirPembayaranTest` +2 kasus — `40001001` (pesan spesifik + log memuat
+  `code`/`success`/kedua kode pos) dan peta `40001002`/`40001010`/kode tak dikenal; kasus 500 lama
+  tetap `GALAT_API`. `php artisan test --filter=Ongkir` → 17 lulus, 126 assertion.
+- Catatan lingkungan: `pdo_sqlite` tidak aktif di `php.ini` mesin ini; `php artisan test` menjalankan
+  phpunit sebagai proses anak sehingga `php -d extension=pdo_sqlite` tidak ikut. Jalankan dengan
+  `PHP_INI_SCAN_DIR` berisi `extension=php_pdo_sqlite.dll` (atau aktifkan ekstensi di `php.ini`).
+  Tidak ada perubahan `php.ini`/`.env`; test tetap SQLite in-memory.
+- Kontrak §7.12 diperbarui (tabel peta kode + catatan log), `docs/langkah-pemilik.md` dan
+  `docs/asumsi.md` ditambah. Bukti: `docs/bukti-ongkir-t_1b711d26.txt`.
+- Belum dicek: jawaban Biteship asli dengan kunci + kode pos pemilik (perlu klik "Cek Ongkir" oleh
+  pemilik; baris log baru diminta lewat komentar kartu).
+
+## Akar masalah ongkir: saldo Biteship habis (kartu `t_1b711d26`, 24 Okt 2026)
+
+Bukti log asli (bukan hipotesis), `storage/logs/laravel.log` setelah pemilik menekan **Cek Ongkir**
+kode pos 60184 dengan asal 50148:
+
+```
+[2026-10-24 17:35:08] local.WARNING: Biteship rates menjawab tidak sukses {"origin_postal_code":50148,"destination_postal_code":60184,"status":400,"success":false,"error":"No sufficient balance to call rates API. Please top up your balance","code":null}
+```
+
+Jadi kegagalan `400` bukan kode pos/parameter: `code` `null` dan `error` menyebut saldo akun
+Biteship. Peta kode `40001001`/`40001002`/`40001010` tidak pernah kena. Tindakan:
+
+- `BiteshipService::GALAT_SALDO` baru: 400 tanpa `code` dengan `error` memuat `balance` →
+  `Ongkir tidak bisa dihitung karena saldo Biteship penjual habis. Hubungi penjual.`
+  (`pesanGalat()` sekarang menerima `error`; kode lain tetap `GALAT_API`).
+- Test baru `test_galat_biteship_400_saldo_habis_memberi_pesan_saldo` (400, `code` null, `error`
+  asli) + kasus 500 lama tetap `GALAT_API`.
+- `php artisan test --filter=Ongkir` → 18 lulus, 130 assertion (SQLite in-memory).
+- Pemilik harus mengisi saldo akun Biteship (atau memakai akun/kunci yang ber-saldo) — tidak bisa
+  diselesaikan dari kode. Setelah saldo masuk, ulangi **Cek Ongkir**; bila masih 400, baris log baru
+  akan menunjukkan kode pos/parameter.
+- Catatan lingkungan: `pdo_sqlite` tidak aktif di `php.ini`; jalankan test dengan
+  `PHP_INI_SCAN_DIR='C:\Users\LENOVO\AppData\Local\hermes\profiles\backenddeveloper\cache\scratch\phpini'`
+  (berisi `extension=C:/laragon/bin/php/php-8.3.32-Win32-vs16-x64/ext/php_pdo_sqlite.dll`).
+  `php.ini` dan `.env` tidak disentuh.

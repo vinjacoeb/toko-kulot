@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { router, useForm } from '@inertiajs/react';
 import AdminLayout, { ADMIN_NAV } from '../../../Layouts/AdminLayout';
 import PageHeader from '../../../Components/PageHeader';
@@ -18,7 +18,7 @@ import DataTable from '../../../Components/DataTable';
 import IconButton from '../../../Components/IconButton';
 import Skeleton from '../../../Components/Skeleton';
 import { ImageOffIcon, SOCIAL_ICONS, TRUST_ICONS, TrashIcon } from '../../../Components/icons';
-import { cn, rupiah } from '../../../lib/format';
+import { cn } from '../../../lib/format';
 
 /**
  * Pengaturan toko — docs/design.md §5.13, docs/kontrak-props.md §10.7–§10.11.
@@ -52,7 +52,7 @@ const TAB_KEYS = {
     footer: ['footer_about', 'footer_copyright', 'footer_links', 'footer_social'],
     kontak: ['contact_email', 'contact_phone', 'contact_whatsapp', 'contact_address', 'contact_map_embed'],
     seo: ['seo_default_title', 'seo_default_description'],
-    pembayaran: ['shipping_cost_default', 'midtrans_client_key', 'midtrans_is_production'],
+    pembayaran: ['midtrans_client_key', 'midtrans_is_production'],
 };
 
 const MAX_NAV = 8;
@@ -207,6 +207,353 @@ function StickySave({ dirty, processing, resetLabel = null, onReset = null, save
                 </div>
             </div>
         </div>
+    );
+}
+
+/** Thumb galeri: fallback blok netral saat gambar gagal dimuat (design v1.1 §9.4). */
+function GalleryThumb({ src, alt, removed }) {
+    const [failed, setFailed] = useState(false);
+
+    useEffect(() => {
+        setFailed(false);
+    }, [src]);
+
+    if (!src || failed) {
+        return (
+            <span className="flex aspect-portrait w-16 shrink-0 items-center justify-center rounded-md border border-line bg-surface text-slate-400 sm:w-20">
+                <ImageOffIcon size={20} />
+                <span className="sr-only">Gambar tidak tersedia</span>
+            </span>
+        );
+    }
+
+    return (
+        <img
+            src={src}
+            alt={alt}
+            className={cn('aspect-portrait w-16 shrink-0 rounded-md object-cover sm:w-20', removed && 'opacity-60')}
+            onError={() => setFailed(true)}
+        />
+    );
+}
+
+function GalleryCard({ items = [], onChange, errors = {}, disabled = false }) {
+    const fileRef = useRef(null);
+    const [uploadErrors, setUploadErrors] = useState([]);
+    const [announce, setAnnounce] = useState('');
+    const previews = useRef(new Set());
+    const active = items.filter((item) => !item.removed);
+    const count = active.length;
+    const maxed = count >= 8;
+
+    useEffect(
+        () => () => {
+            previews.current.forEach((src) => URL.revokeObjectURL(src));
+        },
+        []
+    );
+
+    const update = (uid, patch) => {
+        onChange(items.map((item) => (item.uid === uid ? { ...item, ...patch } : item)));
+    };
+
+    const addFiles = (fileList) => {
+        const files = Array.from(fileList ?? []);
+        const nextErrors = [];
+        const nextItems = [];
+        let slots = 8 - count;
+
+        files.forEach((file) => {
+            if (slots <= 0) {
+                nextErrors.push(`${file.name}: Maksimal 8 gambar.`);
+                return;
+            }
+            if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                nextErrors.push(`${file.name}: Format harus JPG, PNG, atau WebP.`);
+                return;
+            }
+            if (file.size > 2 * 1024 * 1024) {
+                nextErrors.push(`${file.name}: Ukuran maksimal 2 MB.`);
+                return;
+            }
+            const preview = URL.createObjectURL(file);
+            previews.current.add(preview);
+            nextItems.push({
+                uid: `new-${Date.now()}-${nextItems.length}`,
+                image: file,
+                caption: '',
+                alt: '',
+                removed: false,
+                preview,
+            });
+            slots -= 1;
+        });
+
+        setUploadErrors(nextErrors);
+        if (nextItems.length > 0) {
+            onChange([...items, ...nextItems]);
+            requestAnimationFrame(() =>
+                document.getElementById(`gallery-caption-${nextItems[0].uid}`)?.focus()
+            );
+        }
+        if (fileRef.current) fileRef.current.value = '';
+    };
+
+    const replaceFile = (uid, file) => {
+        if (!file) return;
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+            setUploadErrors([`${file.name}: Format harus JPG, PNG, atau WebP.`]);
+            return;
+        }
+        if (file.size > 2 * 1024 * 1024) {
+            setUploadErrors([`${file.name}: Ukuran maksimal 2 MB.`]);
+            return;
+        }
+        const preview = URL.createObjectURL(file);
+        previews.current.add(preview);
+        setUploadErrors([]);
+        update(uid, { image: file, preview, removed: false });
+    };
+
+    const move = (index, direction) => {
+        const target = index + direction;
+        if (target < 0 || target >= items.length) return;
+        const next = [...items];
+        [next[index], next[target]] = [next[target], next[index]];
+        onChange(next);
+        setAnnounce(`Gambar dipindah ke posisi ${target + 1}.`);
+        requestAnimationFrame(() => {
+            document.getElementById(`gallery-${direction < 0 ? 'up' : 'down'}-${next[target].uid}`)?.focus();
+        });
+    };
+
+    const remove = (item, index) => {
+        update(item.uid, { removed: true });
+        setAnnounce(`Gambar ${index + 1} akan dihapus saat simpan.`);
+        requestAnimationFrame(() => document.getElementById('gallery-add-bottom')?.focus());
+    };
+
+    const undoRemove = (item, index) => {
+        update(item.uid, { removed: false });
+        setAnnounce(`Gambar ${index + 1} batal dihapus.`);
+    };
+
+    const firstError = Object.keys(errors).find((key) => key.startsWith('landing_gallery'));
+
+    return (
+        <section className="card p-6">
+            <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h2 className="text-h3 text-ink">Galeri landing</h2>
+                    <p className="mt-1 text-meta text-slate-500">
+                        Tampil di beranda setelah produk unggulan. Maksimal 8 gambar; urutan ini yang tampil.
+                    </p>
+                </div>
+                <StatusBadge status={maxed ? 'selesai' : null} label={`${count}/8`} />
+            </header>
+
+            <p className="sr-only" aria-live="polite">
+                {announce}
+            </p>
+
+            {firstError ? (
+                <InlineNotice tone="error" title="Galeri belum tersimpan" className="mb-4">
+                    {errors[firstError]}
+                </InlineNotice>
+            ) : null}
+            {uploadErrors.length > 0 ? (
+                <InlineNotice tone="error" title="Berkas tidak ditambahkan" className="mb-4">
+                    <ul className="list-disc pl-4">
+                        {uploadErrors.map((message) => (
+                            <li key={message}>{message}</li>
+                        ))}
+                    </ul>
+                </InlineNotice>
+            ) : null}
+
+            <div className="flex flex-col gap-3">
+                <div>
+                    <input
+                        ref={fileRef}
+                        id="gallery-add"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        multiple
+                        className="sr-only"
+                        disabled={disabled || maxed}
+                        onChange={(event) => addFiles(event.target.files)}
+                    />
+                    <label
+                        htmlFor="gallery-add"
+                        className={cn(
+                            'inline-flex h-11 cursor-pointer items-center justify-center rounded-md border border-dashed border-slate-400 px-5 text-label font-semibold text-ink transition-colors duration-hover hover:border-brand hover:text-brand',
+                            (disabled || maxed) && 'pointer-events-none opacity-45'
+                        )}
+                    >
+                        Tambah gambar
+                    </label>
+                    <p className="mt-1.5 text-meta text-slate-500">JPG, PNG, atau WebP; maksimal 2 MB per gambar.</p>
+                </div>
+
+                {items.length === 0 ? (
+                    <EmptyState
+                        title="Belum ada gambar galeri."
+                        description="Seksi galeri disembunyikan di beranda sampai ada gambar."
+                        actionLabel="Tambah gambar"
+                        onAction={() => fileRef.current?.click()}
+                    />
+                ) : (
+                    <ul className="flex flex-col gap-3">
+                        {items.map((item, index) => {
+                            const src = item.preview || (typeof item.image === 'string' ? item.image : '');
+                            const number = String(index + 1).padStart(2, '0');
+                            const label = number;
+                            const sentIndex = active.indexOf(item);
+                            const itemError =
+                                errors[`landing_gallery.${sentIndex}.caption`] ??
+                                errors[`landing_gallery.${sentIndex}.alt`] ??
+                                errors[`landing_gallery.${sentIndex}.image`];
+
+                            return (
+                                <li
+                                    key={item.uid}
+                                    className={cn(
+                                        'rounded-md border border-line p-4',
+                                        item.removed && 'bg-surface/70 opacity-75'
+                                    )}
+                                >
+                                    <div className="flex flex-col gap-4 sm:flex-row">
+                                        <div className="relative shrink-0">
+                                            <GalleryThumb src={src} alt={item.alt} removed={item.removed} />
+                                            <span className="mt-1 block text-meta text-slate-500">{label}</span>
+                                        </div>
+
+                                        <div className="grid min-w-0 flex-1 grid-cols-1 gap-3">
+                                            <Field
+                                                label={`Caption gambar ${index + 1}`}
+                                                htmlFor={`gallery-caption-${item.uid}`}
+                                                error={errors[`landing_gallery.${sentIndex}.caption`]}
+                                                hint={item.removed ? 'Akan dihapus saat simpan.' : 'Tampil di bawah gambar. Boleh kosong.'}
+                                            >
+                                                <Input
+                                                    id={`gallery-caption-${item.uid}`}
+                                                    value={item.caption}
+                                                    maxLength={80}
+                                                    disabled={disabled || item.removed}
+                                                    error={errors[`landing_gallery.${sentIndex}.caption`]}
+                                                    onChange={(event) => update(item.uid, { caption: event.target.value })}
+                                                />
+                                            </Field>
+                                            <Field
+                                                label={`Alt gambar ${index + 1}`}
+                                                htmlFor={`gallery-alt-${item.uid}`}
+                                                error={errors[`landing_gallery.${sentIndex}.alt`]}
+                                                hint="Deskripsi untuk pembaca layar. Kosongkan bila dekoratif."
+                                            >
+                                                <Input
+                                                    id={`gallery-alt-${item.uid}`}
+                                                    value={item.alt}
+                                                    maxLength={120}
+                                                    disabled={disabled || item.removed}
+                                                    error={errors[`landing_gallery.${sentIndex}.alt`]}
+                                                    onChange={(event) => update(item.uid, { alt: event.target.value })}
+                                                />
+                                            </Field>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="text-meta text-slate-500">
+                                                    {item.caption.length}/80 · {item.alt.length}/120
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex shrink-0 flex-wrap items-start gap-2 sm:flex-col">
+                                            <Button
+                                                id={`gallery-up-${item.uid}`}
+                                                variant="ghost"
+                                                size="sm"
+                                                disabled={disabled || index === 0 || item.removed}
+                                                aria-label={`Naikkan gambar ${index + 1}`}
+                                                onClick={() => move(index, -1)}
+                                            >
+                                                Naik
+                                            </Button>
+                                            <Button
+                                                id={`gallery-down-${item.uid}`}
+                                                variant="ghost"
+                                                size="sm"
+                                                disabled={disabled || index === items.length - 1 || item.removed}
+                                                aria-label={`Turunkan gambar ${index + 1}`}
+                                                onClick={() => move(index, 1)}
+                                            >
+                                                Turun
+                                            </Button>
+                                            {!item.removed ? (
+                                                <>
+                                                    <label
+                                                        className={cn(
+                                                            'inline-flex h-10 cursor-pointer items-center justify-center rounded-sm px-4 text-label text-brand underline underline-offset-4 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand',
+                                                            disabled && 'pointer-events-none opacity-45'
+                                                        )}
+                                                    >
+                                                        Ganti gambar
+                                                        <input
+                                                            type="file"
+                                                            accept="image/jpeg,image/png,image/webp"
+                                                            className="sr-only"
+                                                            disabled={disabled}
+                                                            onChange={(event) => replaceFile(item.uid, event.target.files?.[0])}
+                                                        />
+                                                    </label>
+                                                    <Button
+                                                        variant="danger"
+                                                        size="sm"
+                                                        disabled={disabled}
+                                                        aria-label={`Hapus gambar ${index + 1}`}
+                                                        onClick={() => remove(item, index)}
+                                                    >
+                                                        Hapus
+                                                    </Button>
+                                                </>
+                                            ) : (
+                                                <Button
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    disabled={disabled}
+                                                    onClick={() => undoRemove(item, index)}
+                                                >
+                                                    Batalkan
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {itemError ? (
+                                        <p className="mt-2 text-meta text-danger-strong" role="alert">
+                                            {itemError}
+                                        </p>
+                                    ) : null}
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )}
+
+                <div className="flex flex-wrap items-center gap-3">
+                    <Button
+                        id="gallery-add-bottom"
+                        variant="secondary"
+                        disabled={disabled || maxed}
+                        onClick={() => fileRef.current?.click()}
+                    >
+                        Tambah gambar
+                    </Button>
+                    {maxed ? (
+                        <p className="text-meta text-slate-500">Batas 8 gambar tercapai. Hapus salah satu untuk menambah.</p>
+                    ) : count > 0 && count < 4 ? (
+                        <p className="text-meta text-slate-500">Tambahkan minimal 4 gambar agar komposisi galeri rapi.</p>
+                    ) : null}
+                </div>
+            </div>
+        </section>
     );
 }
 
@@ -448,7 +795,6 @@ export default function SettingsIndex({ auth = null, pengaturan = null, carousel
         contact_map_embed: text(groups.kontak.contact_map_embed),
         seo_default_title: text(groups.seo.seo_default_title),
         seo_default_description: text(groups.seo.seo_default_description),
-        shipping_cost_default: text(groups.pembayaran.shipping_cost_default),
         midtrans_client_key: text(groups.pembayaran.midtrans_client_key),
         midtrans_is_production: Boolean(groups.pembayaran.midtrans_is_production),
     });
@@ -494,6 +840,14 @@ export default function SettingsIndex({ auth = null, pengaturan = null, carousel
             subtitle: text(asObject(sections.newsletter).subtitle),
             button_text: text(asObject(sections.newsletter).button_text),
         },
+        landing_gallery: asList(asObject(groups.landing).landing_gallery).map((item, index) => ({
+            uid: `saved-${index}`,
+            image: text(asObject(item).image),
+            caption: text(asObject(item).caption),
+            alt: text(asObject(item).alt),
+            removed: false,
+            preview: '',
+        })),
     });
 
     const carouselForm = useForm({
@@ -639,10 +993,6 @@ export default function SettingsIndex({ auth = null, pengaturan = null, carousel
                     payload[key] = data[key] ? 1 : 0;
                     return;
                 }
-                if (key === 'shipping_cost_default') {
-                    payload[key] = clampInt(data[key], 0, 1000000, 0);
-                    return;
-                }
                 if (key === 'header_nav') {
                     payload[key] = cleanRows(data.header_nav, ['label', 'url']).map((row) => ({
                         label: trimmed(row.label),
@@ -715,74 +1065,81 @@ export default function SettingsIndex({ auth = null, pengaturan = null, carousel
         const data = landingForm.data;
 
         landingForm.transform(() => {
-            const payload = { landing_hero: {}, landing_sections: {} };
-            payload.landing_hero = {
-                title: trimmed(data.landing_hero.title),
-                subtitle: orNull(data.landing_hero.subtitle),
-                cta_label: orNull(data.landing_hero.cta_label),
-                cta_url: orNull(data.landing_hero.cta_url),
-                image: orNull(data.landing_hero.image),
-            };
+            const payload = new FormData();
+            payload.append('landing_hero[title]', trimmed(data.landing_hero.title));
+            payload.append('landing_hero[subtitle]', orNull(data.landing_hero.subtitle) ?? '');
+            payload.append('landing_hero[cta_label]', orNull(data.landing_hero.cta_label) ?? '');
+            payload.append('landing_hero[cta_url]', orNull(data.landing_hero.cta_url) ?? '');
+            if (isFileValue(data.landing_hero.image)) payload.append('landing_hero[image]', data.landing_hero.image);
+            else payload.append('landing_hero[image]', orNull(data.landing_hero.image) ?? '');
 
             if (sectionKeys.announcement) {
-                payload.landing_sections.announcement = {
-                    text: orNull(data.announcement.text),
-                    url: orNull(data.announcement.url),
-                    is_active: data.announcement.is_active ? 1 : 0,
-                };
+                payload.append('landing_sections[announcement][text]', orNull(data.announcement.text) ?? '');
+                payload.append('landing_sections[announcement][url]', orNull(data.announcement.url) ?? '');
+                payload.append('landing_sections[announcement][is_active]', data.announcement.is_active ? '1' : '0');
             }
             if (sectionKeys.trust_strip) {
-                payload.landing_sections.trust_strip = asList(data.trust_strip)
+                asList(data.trust_strip)
                     .filter((row) => trimmed(asObject(row).title) !== '')
-                    .map((row) => {
+                    .forEach((row, i) => {
                         const entry = asObject(row);
-                        return {
-                            icon: orNull(entry.icon),
-                            title: trimmed(entry.title),
-                            subtitle: orNull(entry.subtitle),
-                        };
+                        payload.append(`landing_sections[trust_strip][${i}][icon]`, orNull(entry.icon) ?? '');
+                        payload.append(`landing_sections[trust_strip][${i}][title]`, trimmed(entry.title));
+                        payload.append(`landing_sections[trust_strip][${i}][subtitle]`, orNull(entry.subtitle) ?? '');
                     });
             }
             if (sectionKeys.featured) {
-                payload.landing_sections.featured = {
-                    title: orNull(data.featured.title),
-                    subtitle: orNull(data.featured.subtitle),
-                    limit: clampInt(data.featured.limit, 1, 12, 8),
-                };
+                payload.append('landing_sections[featured][title]', orNull(data.featured.title) ?? '');
+                payload.append('landing_sections[featured][subtitle]', orNull(data.featured.subtitle) ?? '');
+                payload.append('landing_sections[featured][limit]', clampInt(data.featured.limit, 1, 12, 8));
             }
             if (sectionKeys.promo) {
-                payload.landing_sections.promo = {
-                    title: orNull(data.promo.title),
-                    subtitle: orNull(data.promo.subtitle),
-                    cta_label: orNull(data.promo.cta_label),
-                    cta_url: orNull(data.promo.cta_url),
-                    image: orNull(data.promo.image),
-                    is_active: data.promo.is_active ? 1 : 0,
-                };
+                payload.append('landing_sections[promo][title]', orNull(data.promo.title) ?? '');
+                payload.append('landing_sections[promo][subtitle]', orNull(data.promo.subtitle) ?? '');
+                payload.append('landing_sections[promo][cta_label]', orNull(data.promo.cta_label) ?? '');
+                payload.append('landing_sections[promo][cta_url]', orNull(data.promo.cta_url) ?? '');
+                if (isFileValue(data.promo.image)) payload.append('landing_sections[promo][image]', data.promo.image);
+                else payload.append('landing_sections[promo][image]', orNull(data.promo.image) ?? '');
+                payload.append('landing_sections[promo][is_active]', data.promo.is_active ? '1' : '0');
             }
             if (sectionKeys.why_us) {
-                payload.landing_sections.why_us = {
-                    title: orNull(data.why_us_title),
-                    items: asList(data.why_us_items)
-                        .filter((row) => trimmed(asObject(row).title) !== '' && trimmed(asObject(row).body) !== '')
-                        .map((row) => {
-                            const entry = asObject(row);
-                            return { title: trimmed(entry.title), body: trimmed(entry.body) };
-                        }),
-                };
+                payload.append('landing_sections[why_us][title]', orNull(data.why_us_title) ?? '');
+                asList(data.why_us_items)
+                    .filter((row) => trimmed(asObject(row).title) !== '' && trimmed(asObject(row).body) !== '')
+                    .forEach((row, i) => {
+                        const entry = asObject(row);
+                        payload.append(`landing_sections[why_us][items][${i}][title]`, trimmed(entry.title));
+                        payload.append(`landing_sections[why_us][items][${i}][body]`, trimmed(entry.body));
+                    });
             }
             if (sectionKeys.newsletter) {
-                payload.landing_sections.newsletter = {
-                    title: orNull(data.newsletter.title),
-                    subtitle: orNull(data.newsletter.subtitle),
-                    button_text: orNull(data.newsletter.button_text),
-                };
+                payload.append('landing_sections[newsletter][title]', orNull(data.newsletter.title) ?? '');
+                payload.append('landing_sections[newsletter][subtitle]', orNull(data.newsletter.subtitle) ?? '');
+                payload.append('landing_sections[newsletter][button_text]', orNull(data.newsletter.button_text) ?? '');
             }
 
+            asList(data.landing_gallery)
+                .filter((row) => !asObject(row).removed)
+                .forEach((row, i) => {
+                    const entry = asObject(row);
+                    if (isFileValue(entry.image)) {
+                        payload.append(`landing_gallery[${i}][image]`, entry.image);
+                    } else {
+                        payload.append(`landing_gallery[${i}][image]`, text(entry.image));
+                    }
+                    payload.append(`landing_gallery[${i}][caption]`, text(entry.caption));
+                    payload.append(`landing_gallery[${i}][alt]`, text(entry.alt));
+                });
+            // Penanda wajib: tanpa ini server menganggap form tidak mengelola galeri
+            // dan tidak menghapus gambar saat semua item dibuang (kontrak §10.9).
+            payload.append('landing_gallery_present', '1');
+
+            payload.append('_method', 'PUT');
             return payload;
         });
 
-        landingForm.put(LANDING_URL, {
+        landingForm.post(LANDING_URL, {
+            forceFormData: true,
             preserveScroll: true,
             onFinish: () => landingForm.transform((data) => data),
         });
@@ -1154,22 +1511,14 @@ export default function SettingsIndex({ auth = null, pengaturan = null, carousel
             <Field
                 label="Gambar hero"
                 htmlFor="landing_hero_image"
-                hint="Path berkas di penyimpanan, contoh /storage/landing/hero.webp."
+                accept={LOGO_ACCEPT}
+                maxKb={2048}
+                extensions={LOGO_EXTENSIONS}
+                file={isFileValue(landingForm.data.landing_hero.image) ? landingForm.data.landing_hero.image : null}
+                currentPath={text(landingForm.data.landing_hero.image) || null}
                 error={landingForm.errors['landing_hero.image']}
-            >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <Thumb src={text(landingForm.data.landing_hero.image) || null} size={112} className="rounded-lg" />
-                    <Input
-                        id="landing_hero_image"
-                        maxLength={255}
-                        value={landingForm.data.landing_hero.image}
-                        error={landingForm.errors['landing_hero.image']}
-                        onChange={(event) =>
-                            landingForm.setData('landing_hero', { ...landingForm.data.landing_hero, image: event.target.value })
-                        }
-                    />
-                </div>
-            </Field>
+                onSelect={(file) => landingForm.setData('landing_hero', { ...landingForm.data.landing_hero, image: file })}
+            />
         </SectionCard>
     );
 
@@ -1390,20 +1739,14 @@ export default function SettingsIndex({ auth = null, pengaturan = null, carousel
                     <Field
                         label="Gambar promo"
                         htmlFor="promo_image"
-                        hint="Path berkas di penyimpanan, contoh /storage/landing/promo.webp."
+                        accept={LOGO_ACCEPT}
+                        maxKb={2048}
+                        extensions={LOGO_EXTENSIONS}
+                        file={isFileValue(landingForm.data.promo.image) ? landingForm.data.promo.image : null}
+                        currentPath={text(landingForm.data.promo.image) || null}
                         error={landingForm.errors['landing_sections.promo.image']}
-                    >
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                            <Thumb src={text(landingForm.data.promo.image) || null} size={112} className="rounded-lg" />
-                            <Input
-                                id="promo_image"
-                                maxLength={255}
-                                value={landingForm.data.promo.image}
-                                error={landingForm.errors['landing_sections.promo.image']}
-                                onChange={(event) => landingForm.setData('promo', { ...landingForm.data.promo, image: event.target.value })}
-                            />
-                        </div>
-                    </Field>
+                        onSelect={(file) => landingForm.setData('promo', { ...landingForm.data.promo, image: file })}
+                    />
                     <Field label="Status promo" htmlFor="promo_active" error={landingForm.errors['landing_sections.promo.is_active']}>
                         <Select
                             id="promo_active"
@@ -1537,6 +1880,13 @@ export default function SettingsIndex({ auth = null, pengaturan = null, carousel
                     </Field>
                 </SectionCard>
             ) : null}
+
+            <GalleryCard
+                items={asList(landingForm.data.landing_gallery)}
+                onChange={(items) => landingForm.setData('landing_gallery', items)}
+                errors={landingForm.errors}
+                disabled={landingForm.processing}
+            />
 
             <StickySave
                 dirty={landingForm.isDirty}
@@ -2019,27 +2369,10 @@ export default function SettingsIndex({ auth = null, pengaturan = null, carousel
     );
 
     const renderPembayaran = () => {
-        const shipping = Number.parseInt(settingsForm.data.shipping_cost_default, 10);
-        const shippingHint = Number.isNaN(shipping) ? 'Angka rupiah, contoh 20000.' : `Tampil sebagai ${rupiah(shipping)}.`;
         const mode = midtransMode(midtrans);
 
         return (
             <form onSubmit={(event) => submitSettings('pembayaran', event)}>
-                <SectionCard title="Pengiriman">
-                    <Field label="Ongkos kirim default (rupiah)" htmlFor="shipping_cost_default" hint={shippingHint} error={settingsForm.errors.shipping_cost_default}>
-                        <Input
-                            id="shipping_cost_default"
-                            type="number"
-                            min={0}
-                            max={1000000}
-                            className="max-w-[240px]"
-                            value={settingsForm.data.shipping_cost_default}
-                            error={settingsForm.errors.shipping_cost_default}
-                            onChange={(event) => setField('shipping_cost_default', event.target.value)}
-                        />
-                    </Field>
-                </SectionCard>
-
                 <SectionCard title="Midtrans" description={mode.catatan}>
                     {mode.diketahui ? (
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">

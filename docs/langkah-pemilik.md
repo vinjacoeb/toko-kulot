@@ -439,3 +439,95 @@ test bisa dijalankan tanpa mengubah `php.ini`:
 php -d extension=pdo_sqlite -d extension=sqlite3 vendor/bin/phpunit
 ```
 
+
+## Galeri landing + copy CTA akhir (kartu `t_71f1e7a9`, 24 Okt 2026)
+
+Tidak ada isian `.env` baru. Setelah kode terbaru terpasang, jalankan sekali (aman diulang,
+`firstOrCreate` — galeri yang sudah Anda ubah tidak ditimpa):
+
+```
+php artisan db:seed --class=SettingSeeder
+```
+
+Perintah itu menambah baris `settings` `landing_gallery` (4 gambar contoh `[CONTOH]` di
+`public/images/seed/landing/galeri-1..4.png`) dan mengisi CTA akhir
+`landing_sections.newsletter.subtitle` dengan kalimat gratis ongkir. Total baris `settings`
+menjadi 24. Gambar galeri bisa diganti/diurutkan/dihapus dari `/admin/pengaturan` tab
+**Landing** (maks 8 gambar, JPG/PNG/WEBP ≤ 2 MB); berkas lama otomatis dihapus dari
+`storage/app/public/landing` saat item dihapus atau gambarnya diganti.
+
+Gambar unggahan tampil lewat `/storage/...`, jadi symlink `public/storage` harus ada
+(sudah ada di mesin ini). Bila belum: `php artisan storage:link`.
+
+## Kolom Snap pada `payments` (kartu `t_04da18e0`, 24 Okt 2026)
+
+Jalankan sekali di folder proyek setelah menarik perubahan:
+
+```bash
+php artisan migrate
+```
+
+Migrasi `2026_10_24_000001_add_snap_columns_to_payments_table` hanya menambah tiga kolom null
+(`snap_token`, `snap_redirect_url`, `payment_type`) — tidak mengubah/menghapus data. Setelah itu
+`MIDTRANS_FAKE=false` + `MIDTRANS_CLIENT_KEY`/`MIDTRANS_SERVER_KEY` terisi agar pembayaran memakai
+Snap asli. URL webhook Midtrans tetap `https://<domain>/midtrans/notification`.
+
+## Ongkir Biteship + halaman Ekspedisi (kartu `t_f22c8d46`, 24 Okt 2026)
+
+1. Migrasi kolom pengiriman pada `orders` (tambah 5 kolom, tidak menghapus data):
+
+```bash
+php artisan migrate
+php artisan db:seed --class=SettingSeeder
+```
+
+`SettingSeeder` sekarang menulis 31 key (7 key grup `shipping` baru). Nilai yang sudah ada
+tidak ditimpa, jadi baris `shipping_cost_default` yang lama tetap dipakai sebagai tarif uji.
+
+2. Isi pengaturan di `/admin/ekspedisi`: nama/telepon/alamat/kode pos asal, tarif uji
+   (dipakai saat mode `fake`), minimal belanja gratis ongkir, dan centang layanan kurir aktif.
+
+3. Mode Biteship:
+   - Tanpa `BITESHIP_API_KEY` di `.env` → mode `fake`: ongkir datar = tarif uji, checkout tetap jalan.
+   - Isi `BITESHIP_API_KEY` di `.env` → mode `api`: tarif asli dari Biteship. Kode pos asal wajib
+     5 angka; gagal API menampilkan pesan galat, bukan tarif tebakan.
+
+4. Test fitur memakai SQLite in-memory (`phpunit.xml`), tetapi PHP CLI di mesin ini belum punya
+   `pdo_sqlite` (`php -m` tidak memuatnya). Aktifkan ekstensi `pdo_sqlite` di `php.ini` lalu
+   jalankan `php artisan test` agar `tests/Feature/Checkout/CheckoutShippingTest.php` bisa dieksekusi.
+   Database pengembangan tidak tersentuh.
+
+## Verifikasi ongkir setelah peta galat Biteship (kartu `t_1b711d26`, 24 Okt 2026)
+
+1. Pastikan alamat asal + kode pos toko terisi di `/admin/ekspedisi` dan `BITESHIP_API_KEY` ada di
+   `.env` (jangan tempel kunci di kartu/chat).
+2. Login sebagai pembeli, isi keranjang, buka checkout dengan kode pos tujuan yang biasa dipakai
+   pelanggan, lalu tekan **Cek Ongkir**.
+3. Buka `storage/logs/laravel.log`, cari baris terbaru `Biteship rates menjawab tidak sukses`.
+   Sekarang baris itu memuat `status`, `success`, `error`, `code`, `origin_postal_code`,
+   `destination_postal_code` (tanpa header/kunci). Tempel **satu baris** itu sebagai komentar di
+   kartu `t_1b711d26`.
+4. Arti `code`: `40001001` kode pos asal/tujuan tidak dikenal (cek pengaturan Ekspedisi vs kode pos
+   uji), `40001002` parameter/akun Biteship (kunci/akun `biteship_test`), `40001010` tidak ada kurir
+   untuk lokasi itu. Kode lain → pesan umum `GALAT_API`.
+
+## Saldo akun Biteship (temuan nyata 24 Okt 2026, kartu `t_1b711d26`)
+
+Baris log asli dari percobaan pemilik (60184 → 50148):
+
+```
+Biteship rates menjawab tidak sukses {"origin_postal_code":50148,"destination_postal_code":60184,"status":400,...,"error":"No sufficient balance to call rates API. Please top up your balance","code":null}
+```
+
+Kegagalan ongkir **bukan** kode pos/parameter: saldo akun Biteship habis. Yang harus dilakukan pemilik:
+
+1. Masuk ke dashboard Biteship → isi saldo (top up) pada akun pemilik kunci `BITESHIP_API_KEY`,
+   atau ganti `BITESHIP_API_KEY` di `.env` dengan kunci akun yang ber-saldo (jangan tempel kunci di
+   kartu/chat).
+2. Ulangi **Cek Ongkir** di checkout dengan kode pos tujuan pelanggan.
+3. Bila masih gagal, tempel baris `Biteship rates menjawab tidak sukses` terbaru di kartu
+   `t_1b711d26`; sekarang `error`/`code` menentukan penyebabnya (`code` `40001001` = kode pos,
+   `40001002` = parameter/akun, `40001010` = tak ada kurir).
+
+Tanpa saldo, pembeli melihat `Ongkir tidak bisa dihitung karena saldo Biteship penjual habis.
+Hubungi penjual.` — bukan lagi pesan umum, jadi penyebabnya terlihat dari UI.

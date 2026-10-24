@@ -105,19 +105,27 @@ Route::prefix('keranjang')->name('cart.')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Checkout & pembayaran QRIS — PRD §5.1 langkah 3–7, §8, kontrak §7.5–§7.8
+| Checkout & pembayaran Midtrans — PRD-v1.1 §2, kontrak §7.5–§7.8, §7.12
 |--------------------------------------------------------------------------
 |
 | PRD §5.1 langkah 3: checkout wajib login, tamu diarahkan ke /login
 | dengan intended URL. Akses pesanan dicek per objek di controller.
 |
 */
+
 Route::prefix('checkout')->name('checkout.')->middleware('auth:web')->group(function () {
     Route::get('/', [CheckoutController::class, 'index'])->name('index');
     Route::post('/', [CheckoutController::class, 'store'])
         ->middleware('throttle:checkout')
         ->name('store');
+    // Ongkir dihitung server dari kode pos (kontrak §7.12); statis sebelum {order}.
+    Route::get('/ongkir', [CheckoutController::class, 'shipping'])
+        ->middleware('throttle:checkout-shipping')
+        ->name('shipping');
     Route::get('/{order}/bayar', [CheckoutController::class, 'pay'])->name('pay');
+    Route::post('/{order}/simulasi-bayar', [CheckoutController::class, 'simulate'])
+        ->middleware('throttle:checkout')
+        ->name('simulate');
     Route::get('/{order}/status', [CheckoutController::class, 'status'])
         ->middleware('throttle:checkout-status')
         ->name('status');

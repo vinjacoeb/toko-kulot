@@ -3,15 +3,17 @@
 namespace Database\Seeders;
 
 use App\Models\Setting;
+use App\Services\BiteshipService;
 use Database\Seeders\Concerns\WritesSeedImages;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
- * 24 key `settings`: 19 key minimum PRD §6 ditambah `store_favicon`, `footer_copyright`,
- * `landing_gallery` (kartu t_71f1e7a9), dan key pendukung lain. Bentuk JSON mengikuti
- * docs/kontrak-props.md §2 sehingga frontend bisa langsung memakainya.
+ * 31 key `settings`: 19 key minimum PRD §6 ditambah `store_favicon`, `footer_copyright`,
+ * `landing_gallery` (kartu t_71f1e7a9), 7 key ekspedisi (kartu t_f22c8d46), dan key
+ * pendukung lain. Bentuk JSON mengikuti docs/kontrak-props.md §2 sehingga frontend
+ * bisa langsung memakainya.
  *
  * Seeder idempoten: memakai `firstOrCreate` supaya nilai yang sudah diubah
  * pemilik lewat panel admin TIDAK ditimpa saat seeder dijalankan ulang. Berkas
@@ -287,6 +289,56 @@ class SettingSeeder extends Seeder
                     'group' => 'pembayaran',
                     'type' => 'text',
                     'label' => 'Midtrans mode produksi (0/1)',
+                ],
+                [
+                    'key' => 'shipping_origin_name',
+                    'value' => '[CONTOH] Toko Kulot Pekalongan',
+                    'group' => 'shipping',
+                    'type' => 'text',
+                    'label' => 'Nama asal pengiriman',
+                ],
+                [
+                    'key' => 'shipping_origin_phone',
+                    'value' => '[CONTOH] 0812-0000-0001',
+                    'group' => 'shipping',
+                    'type' => 'text',
+                    'label' => 'Telepon asal pengiriman',
+                ],
+                [
+                    'key' => 'shipping_origin_address',
+                    'value' => '[CONTOH] Jl. Kauman No. 45, Kec. Pekalongan Timur, Kota Pekalongan, Jawa Tengah',
+                    'group' => 'shipping',
+                    'type' => 'textarea',
+                    'label' => 'Alamat asal pengiriman',
+                ],
+                [
+                    'key' => 'shipping_origin_postal_code',
+                    'value' => '51122',
+                    'group' => 'shipping',
+                    'type' => 'text',
+                    'label' => 'Kode pos asal pengiriman',
+                ],
+                [
+                    // Layanan yang boleh dipilih di checkout (addendum v1.1 §D3).
+                    'key' => 'shipping_couriers',
+                    'value' => $this->json(BiteshipService::DEFAULT_COURIERS),
+                    'group' => 'shipping',
+                    'type' => 'json',
+                    'label' => 'Layanan kurir aktif',
+                ],
+                [
+                    'key' => 'free_shipping_enabled',
+                    'value' => '1',
+                    'group' => 'shipping',
+                    'type' => 'text',
+                    'label' => 'Gratis ongkir aktif (0/1)',
+                ],
+                [
+                    'key' => 'free_shipping_min',
+                    'value' => '300000',
+                    'group' => 'shipping',
+                    'type' => 'text',
+                    'label' => 'Minimal belanja gratis ongkir (rupiah)',
                 ],
             ];
 

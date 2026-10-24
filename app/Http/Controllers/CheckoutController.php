@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\ProductImage;
 use App\Models\Review;
+use App\Services\BiteshipService;
 use App\Services\CartService;
 use App\Services\MidtransService;
 use App\Services\OrderService;
@@ -32,6 +33,7 @@ class CheckoutController extends Controller
         private readonly OrderService $orders,
         private readonly MidtransService $midtrans,
         private readonly ReviewService $reviews,
+        private readonly BiteshipService $biteship,
     ) {}
 
     public function index(Request $request): Response|RedirectResponse
@@ -58,6 +60,7 @@ class CheckoutController extends Controller
             ],
             'pembayaran' => $this->paymentMethodPayload(),
             'midtrans' => $this->midtrans->modeInfo(),
+            'pengiriman' => $this->shippingPayload($summary),
         ]);
     }
 
@@ -77,7 +80,58 @@ class CheckoutController extends Controller
 
         return redirect()
             ->route('checkout.pay', $order)
-            ->with('success', 'Pesanan dibuat. Selesaikan pembayaran QRIS.');
+            ->with('success', 'Pesanan dibuat. Selesaikan pembayaran.');
+    }
+
+    /**
+     * Hitung opsi ongkir untuk kode pos pembeli (kontrak §7.12). Server yang
+     * memegang tarif; frontend hanya menampilkan `opsi`.
+     */
+    public function shipping(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'postal_code' => ['required', 'string', 'digits:5'],
+            'city' => ['nullable', 'string', 'max:100'],
+        ], [
+            'postal_code.required' => 'Kode pos wajib diisi.',
+            'postal_code.digits' => 'Kode pos harus 5 angka.',
+        ]);
+
+        $cart = $this->carts->currentCart();
+        $summary = $this->carts->summary($cart);
+        $free = $this->biteship->freeShipping();
+
+        $payload = [
+            'mode' => $this->biteship->mode(),
+            'kode_pos' => $data['postal_code'],
+            'berat_gram' => $summary['shipping']['berat_gram'],
+            'subtotal' => $summary['subtotal'],
+            'gratis' => [
+                'aktif' => $free['aktif'],
+                'min' => $free['min'],
+                'terpenuhi' => $free['aktif'] && $summary['subtotal'] >= $free['min'],
+            ],
+            'opsi' => [],
+            'galat' => null,
+        ];
+
+        if ($summary['is_empty']) {
+            $payload['galat'] = 'Keranjang masih kosong.';
+
+            return response()->json($payload, 422);
+        }
+
+        $result = $this->biteship->rates(
+            $data['postal_code'],
+            $this->carts->shippingItems($cart),
+            $summary['subtotal'],
+            $data['city'] ?? null,
+        );
+
+        $payload['opsi'] = $result['opsi'];
+        $payload['galat'] = $result['galat'];
+
+        return response()->json($payload);
     }
 
     public function pay(Request $request, Order $order): Response|RedirectResponse
@@ -113,6 +167,31 @@ class CheckoutController extends Controller
             'pembayaran' => $this->paymentPayload($payment, $galat),
             'midtrans' => $this->midtrans->modeInfo(),
         ]);
+    }
+
+    /**
+     * Panel simulasi mode uji: tandai tagihan lunas (kontrak §7.12). Hanya
+     * berlaku untuk tagihan yang dibuat mode uji; service menolak sisanya.
+     */
+    public function simulate(Request $request, Order $order): RedirectResponse
+    {
+        $this->authorizeOrder($request, $order);
+
+        $payment = $order->payment;
+
+        if (! $payment) {
+            return redirect()->route('cart.index')->with('error', 'Pesanan ini tidak memiliki tagihan pembayaran.');
+        }
+
+        try {
+            $this->midtrans->simulateSuccess($payment);
+        } catch (CheckoutException $exception) {
+            return redirect()->route('checkout.pay', $order)->with('error', $exception->getMessage());
+        }
+
+        return redirect()
+            ->route('checkout.pay', $order)
+            ->with('success', 'Pembayaran mode uji ditandai lunas.');
     }
 
     /**
@@ -228,6 +307,10 @@ class CheckoutController extends Controller
             'customer_address' => $order->shipping_address,
             'customer_city' => $order->city,
             'customer_postal_code' => $order->postal_code,
+            'shipping_courier' => $order->shipping_courier,
+            'shipping_service' => $order->shipping_service,
+            'shipping_etd' => $order->shipping_etd,
+            'shipping_is_free' => (bool) $order->shipping_is_free,
             'note' => $order->notes,
             'created_at' => $order->created_at?->toIso8601String(),
             'paid_at' => $order->paid_at?->toIso8601String(),
@@ -269,16 +352,52 @@ class CheckoutController extends Controller
     }
 
     /**
+     * Blok `pengiriman` halaman checkout (kontrak §7.5).
+     *
+     * @param  array<string, mixed>  $summary
+     * @return array<string, mixed>
+     */
+    private function shippingPayload(array $summary): array
+    {
+        $free = $this->biteship->freeShipping();
+        $origin = $this->biteship->origin();
+        $galat = null;
+
+        if (! $this->biteship->isFake() && ! preg_match('/^\d{5}$/', (string) $origin['kode_pos'])) {
+            $galat = 'Kode pos asal toko belum diatur. Lengkapi di halaman Ekspedisi.';
+        }
+
+        return [
+            'mode' => $this->biteship->mode(),
+            'key_terisi' => $this->biteship->keyFilled(),
+            'tarif_uji' => $this->biteship->isFake() ? $this->biteship->fakeRate() : null,
+            'berat_gram' => $summary['shipping']['berat_gram'],
+            'gratis' => [
+                'aktif' => $free['aktif'],
+                'min' => $free['min'],
+                'subtotal' => $summary['subtotal'],
+                'terpenuhi' => $free['aktif'] && $summary['subtotal'] >= $free['min'],
+            ],
+            'asal' => $origin,
+            'galat' => $galat,
+        ];
+    }
+
+    /**
      * @param  string|null  $galat  Pesan galat siap tampil bila pembuatan ulang tagihan gagal.
      * @return array<string, mixed>
      */
     private function paymentPayload(?Payment $payment, ?string $galat = null): array
     {
         return [
-            'method' => 'qris',
-            'label' => 'QRIS',
+            'method' => 'midtrans',
+            'label' => 'Semua metode pembayaran (Midtrans)',
             'provider' => $payment?->provider ?? 'midtrans',
+            'type' => $payment?->payment_type,
+            'type_label' => Order::paymentMethodLabel($payment?->payment_type),
             'status' => $payment?->status ?? Order::PAYMENT_PENDING,
+            'snap_token' => $payment?->snap_token,
+            'snap_redirect_url' => $payment?->snap_redirect_url,
             'qr_string' => $payment?->qr_string,
             'qris_url' => $payment?->qris_url,
             'gross_amount' => (int) ($payment?->gross_amount ?? 0),
@@ -295,8 +414,8 @@ class CheckoutController extends Controller
     private function paymentMethodPayload(): array
     {
         return [
-            'method' => 'qris',
-            'label' => 'QRIS (semua e-wallet & m-banking)',
+            'method' => 'midtrans',
+            'label' => 'Semua metode pembayaran (Midtrans)',
             'expiry_minutes' => $this->midtrans->expiryMinutes(),
         ];
     }

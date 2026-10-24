@@ -56,6 +56,7 @@ class UlasanBolehVerifikasiQaTest extends TestCase
             'midtrans.fake' => true,
             'midtrans.server_key' => 'test-server-key',
             'midtrans.expiry_minutes' => 5,
+            'biteship.key' => null,
         ]);
 
         Setting::create([

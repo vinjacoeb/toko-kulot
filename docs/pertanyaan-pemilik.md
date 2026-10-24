@@ -154,3 +154,10 @@ K1-K8 tidak dipakai lagi; keenam butir sudah dikerjakan dan diverifikasi di `doc
 Catatan keamanan: body kartu `t_fe77b3d7` memuat potongan Merchant/Client/Server key (bertopeng).
 Jangan menempel kunci di kartu/chat/dokumen. Bila kartu itu sudah dibagikan ke pihak lain,
 pertimbangkan rotasi kunci produksi di dashboard Midtrans.
+
+## 9. Tindak lanjut pengecekan alur pemesanan — 24 Okt 2026 (kartu `t_8e8bb605`)
+
+| # | Hal | Yang perlu diputuskan / dilakukan pemilik | Dampak bila tidak |
+|---|---|---|---|
+| P16 | Ongkir 400 dari Biteship | Kode pos asal (pengaturan `/admin/ekspedisi`) dan kode pos tujuan yang dipakai saat "Cek Ongkir" gagal. Sebutkan keduanya, lalu setelah kartu perbaikan selesai klik ulang dan tempel satu baris log `Biteship rates ...` terbaru. | Tanpa kode pos + kode error, penyebab (kode pos tak dikenal vs akun/key `biteship_test.*`) tidak bisa dipastikan. |
+| P17 | Kunci `biteship_test.*` | Biteship sandbox: tarif contoh memakai kode pos Jakarta (12440 → 12240). Bila akun uji dibatasi, uji dengan pasangan itu dulu untuk memisahkan masalah akun dari masalah kode pos toko. | Salah simpul: memperbaiki kode padahal batasan ada di akun sandbox. |

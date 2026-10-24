@@ -7,7 +7,6 @@ use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
-use App\Models\Setting;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -30,6 +29,8 @@ class CartService
     private ?Cart $resolved = null;
 
     private bool $resolvedLoaded = false;
+
+    public function __construct(private readonly BiteshipService $biteship) {}
 
     /**
      * Keranjang aktif. `$create = true` membuat baris baru bila belum ada.
@@ -180,6 +181,7 @@ class CartService
         $cart ??= $this->currentCart();
         $items = [];
         $subtotal = 0;
+        $weight = 0;
 
         if ($cart) {
             $rows = $cart->items()
@@ -199,6 +201,7 @@ class CartService
                 $unitPrice = $this->unitPrice($product, $variant, $qty);
                 $lineTotal = $unitPrice * $qty;
                 $subtotal += $lineTotal;
+                $weight += $this->unitWeight($product) * $qty;
 
                 $items[] = [
                     'id' => (int) $row->id,
@@ -217,7 +220,10 @@ class CartService
             }
         }
 
-        $shippingCost = $this->shippingCost();
+        // Ongkir final baru diketahui setelah kode pos diisi (mode API), jadi
+        // `shipping_cost` null dan frontend menampilkan "Dihitung saat checkout".
+        $shippingCost = $this->biteship->isFake() ? $this->biteship->fakeRate() : null;
+        $free = $this->biteship->freeShipping();
         $count = array_sum(array_column($items, 'qty'));
 
         session([self::SESSION_COUNT => (int) $count]);
@@ -227,19 +233,59 @@ class CartService
             'count' => (int) $count,
             'subtotal' => (int) $subtotal,
             'shipping_cost' => $shippingCost,
-            'total' => (int) $subtotal + $shippingCost,
+            'total' => (int) $subtotal + (int) ($shippingCost ?? 0),
             'is_empty' => $items === [],
+            'shipping' => [
+                'mode' => $this->biteship->mode(),
+                'dihitung_saat_checkout' => $shippingCost === null,
+                'tarif_uji' => $shippingCost,
+                'gratis_aktif' => $free['aktif'],
+                'gratis_min' => $free['min'],
+                'berat_gram' => (int) $weight,
+            ],
         ];
     }
 
     /**
-     * Ongkir default dari `settings.shipping_cost_default` (PRD §6).
+     * Baris kiriman untuk Biteship (§7.12): harga & berat per unit.
+     *
+     * @return list<array{name: string, value: int, quantity: int, weight: int}>
      */
-    public function shippingCost(): int
+    public function shippingItems(?Cart $cart = null): array
     {
-        $value = Setting::query()->where('key', 'shipping_cost_default')->value('value');
+        $cart ??= $this->currentCart();
 
-        return (int) ($value ?? 0);
+        if (! $cart) {
+            return [];
+        }
+
+        $items = [];
+
+        foreach ($cart->items()->with(['product', 'variant'])->orderBy('id')->get() as $row) {
+            $product = $row->product;
+            $qty = (int) $row->qty;
+
+            if (! $product || $qty < 1) {
+                continue;
+            }
+
+            $items[] = [
+                'name' => $product->name,
+                'value' => $this->unitPrice($product, $row->variant, $qty),
+                'quantity' => $qty,
+                'weight' => $this->unitWeight($product),
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * Berat per unit; produk tanpa berat dianggap 500 gram (PRD v1.1 A19).
+     */
+    private function unitWeight(Product $product): int
+    {
+        return max(500, (int) $product->weight_gram);
     }
 
     public function count(): int

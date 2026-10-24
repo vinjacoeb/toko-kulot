@@ -30,4 +30,4 @@ Kedua bug ini menghalangi pemilik mengelola catatan produk di panel admin.
 - Potensi ketidakpuasan pemilik jika pengaturan produk tidak bisa disimpan/dikelola.
 
 ## 5. Rekomendasi: No-Go
-Perbaiki 2 bug pada `SettingSeeder` (kartu t_689ec7bb, t_4149ffe0) sebelum merilis fitur ini. Setelah perbaikan, jalankan `migrate:fresh --seed` dan verifikasi kembali.
+Perbaiki 2 bug pada `SettingSeeder`. Kartu perbaikan baru telah dibuat (t_0d85e973, t_cc0e2aa2) sebelum merilis fitur ini. Setelah perbaikan, jalankan `migrate:fresh --seed` dan verifikasi kembali.

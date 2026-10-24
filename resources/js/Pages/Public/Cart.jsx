@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
 import PublicLayout from '../../Layouts/PublicLayout';
+import Badge from '../../Components/Badge';
 import Breadcrumb from '../../Components/Breadcrumb';
 import CartLine from '../../Components/CartLine';
 import EmptyState from '../../Components/EmptyState';
 import InlineNotice from '../../Components/InlineNotice';
 import OrderSummary from '../../Components/OrderSummary';
 import { CartIcon } from '../../Components/icons';
-import { formatNumber } from '../../lib/format';
+import { formatNumber, rupiah } from '../../lib/format';
 
 /**
  * `/keranjang` — kontrak props §7.0/§7.1, design §5.6.
@@ -25,6 +26,25 @@ export default function Cart({ keranjang = null, flash = null }) {
     const count = Number(keranjang?.count ?? 0) || items.length;
 
     const busy = updatingId !== null;
+
+    const ship = keranjang?.shipping ?? null;
+    const gratis = ship?.gratis ?? null;
+    const ongkirApi = ship?.mode === 'api';
+    const tarifUji = ship?.mode === 'fake' ? (ship?.tarif_uji ?? keranjang?.shipping_cost ?? null) : null;
+    /** Ongkir gratis (§7.0: `shipping.gratis` + biaya 0) — chip hijau di samping nominal. */
+    const ongkirGratis = !ongkirApi && gratis?.terpenuhi === true && (Number(keranjang?.shipping_cost ?? 0) || 0) === 0;
+    const badgeOngkir = ongkirGratis ? (
+        <Badge tone="success">Gratis Ongkir</Badge>
+    ) : ship?.mode === 'fake' ? (
+        <Badge tone="warning">Tarif uji</Badge>
+    ) : null;
+    const helperOngkir = ongkirApi
+        ? gratis?.aktif
+            ? `Ongkir dihitung setelah kode pos diisi. Gratis ongkir untuk layanan reguler min. ${rupiah(gratis.min) ?? '-'}.`
+            : 'Ongkir dihitung setelah kode pos diisi di halaman checkout.'
+        : ship?.mode === 'fake'
+          ? `Tarif uji ${rupiah(tarifUji) ?? '-'} dari toko — bukan tarif kurir sebenarnya.`
+          : null;
 
     /** Throttle keranjang (30/menit) — beri tahu pemakai alih-alih membiarkan modal galat bawaan. */
     const onHttpException = (response) => {
@@ -141,10 +161,14 @@ export default function Cart({ keranjang = null, flash = null }) {
                                 className="lg:sticky lg:top-20"
                                 subtotal={keranjang?.subtotal ?? null}
                                 shipping={keranjang?.shipping_cost ?? null}
-                                total={keranjang?.total ?? null}
+                                shippingText={ongkirApi ? 'Dihitung saat checkout' : null}
+                                shippingBadge={badgeOngkir}
+                                totalLabel={ongkirApi ? 'Subtotal' : 'Total'}
+                                total={ongkirApi ? (keranjang?.subtotal ?? null) : (keranjang?.total ?? null)}
+                                helper={helperOngkir}
                                 ctaLabel="Lanjut ke Pembayaran"
                                 ctaHref="/checkout"
-                                note="Pembayaran QRIS"
+                                note="Pembayaran aman lewat Midtrans."
                             />
                         </div>
                     </div>

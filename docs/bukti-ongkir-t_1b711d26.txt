@@ -1,0 +1,40 @@
+# Bukti kartu t_1b711d26 (ongkir: peta galat Biteship 400)
+# 2026-10-24 17:28 SEAST
+
+$ php -d extension=pdo_sqlite -d extension=sqlite3 vendor/bin/phpunit --filter=Ongkir
+Runtime:       PHP 8.3.32
+Configuration: C:\Users\LENOVO\Downloads\toko-kulot\phpunit.xml
+
+.................                                                 17 / 17 (100%)
+
+Time: 00:01.825, Memory: 56.00 MB
+
+OK (17 tests, 126 assertions)
+
+$ PHP_INI_SCAN_DIR=<pdo_sqlite> php artisan test --filter=Ongkir
+
+  Tests:    17 passed (126 assertions)
+  Duration: 2.00s
+
+
+$ grep -n "logGagalBiteship\|pesanGalat\|GALAT_KODE_POS" app/Services/BiteshipService.php
+34:    public const GALAT_KODE_POS = 'Kode pos tidak dikenal. Periksa kode pos tujuan; bila tetap gagal, hubungi penjual.';
+185:            $this->logGagalBiteship('Biteship rates menjawab tidak sukses', $response, [
+193:                'galat' => $this->pesanGalat((int) $response->json('code')),
+300:            $this->logGagalBiteship('Biteship couriers menjawab tidak sukses', $response);
+414:    private function logGagalBiteship(string $pesan, Response $response, array $konteks = []): void
+425:    private function pesanGalat(int $code): string
+428:            40001001 => self::GALAT_KODE_POS,
+
+=== Putaran 2 (24 Okt 2026): akar masalah dari log asli ===
+
+$ grep -n "Biteship" storage/logs/laravel.log | tail -1
+[2026-10-24 17:35:08] local.WARNING: Biteship rates menjawab tidak sukses {"origin_postal_code":50148,"destination_postal_code":60184,"status":400,"success":false,"error":"No sufficient balance to call rates API. Please top up your balance","code":null}
+
+$ PHP_INI_SCAN_DIR='C:\Users\LENOVO\AppData\Local\hermes\profiles\backenddeveloper\cache\scratch\phpini' php artisan test --filter=Ongkir
+  Tests:    18 passed (130 assertions)
+  ✓ galat biteship 400 saldo habis memberi pesan saldo
+
+Kesimpulan: 400 disebabkan saldo akun Biteship habis (code null, error "No sufficient balance").
+Kode kini memetakan kasus itu ke GALAT_SALDO; ongkir baru pulih setelah pemilik mengisi saldo.
+

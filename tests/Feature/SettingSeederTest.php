@@ -19,7 +19,7 @@ class SettingSeederTest extends TestCase
     {
         $this->seed(SettingSeeder::class);
 
-        $this->assertSame(24, Setting::query()->count());
+        $this->assertSame(31, Setting::query()->count());
         $this->assertDatabaseHas('settings', ['key' => 'store_favicon', 'type' => 'image']);
         $this->assertDatabaseHas('settings', ['key' => 'footer_copyright', 'type' => 'text']);
         $this->assertDatabaseHas('settings', ['key' => 'landing_gallery', 'type' => 'json']);
@@ -29,7 +29,7 @@ class SettingSeederTest extends TestCase
 
         $this->seed(SettingSeeder::class);
 
-        $this->assertSame(24, Setting::query()->count());
+        $this->assertSame(31, Setting::query()->count());
         $this->assertSame('Toko Milik Pemilik', Setting::query()->where('key', 'store_name')->value('value'));
         $this->assertSame('© 2026 Pemilik', Setting::query()->where('key', 'footer_copyright')->value('value'));
 

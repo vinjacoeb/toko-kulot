@@ -92,10 +92,38 @@ Aturan: urutan array = urutan menu; `url` selalu path internal diawali `/`.
     "title": "Kenapa Beli di Toko Kulot",
     "items": [ { "title": "Bahan Adem", "body": "Rayon premium, tidak panas." } ]
   },
-  "newsletter": { "title": "Dapat Info Diskon", "subtitle": "Tinggalkan email Anda.", "button_text": "Kirim" }
+  "newsletter": { "title": "Dapat Info Diskon", "subtitle": "Gratis ongkir untuk belanja min. Rp300.000 — khusus pengiriman reguler.", "button_text": "Hubungi Kami" }
 }
 ```
 `icon` ∈ `truck` | `refresh` | `qris` | `chat` | `leaf` | `scissors`.
+
+`landing_sections.newsletter` adalah **CTA akhir** halaman `/`; `subtitle` berisi copy CTA
+(bawaan seeder memuat "Rp300.000" dan "reguler") dan `button_text` label tombolnya.
+Dapat diubah dari tab Landing.
+
+### `landing_gallery` (type `json`, addendum v1.1 §6 — D6)
+
+Array maksimum 8 item, urut sesuai tampilan. Kosong (`[]` atau `null`) = seksi galeri disembunyikan.
+
+```json
+[
+  {
+    "image": "/images/seed/landing/galeri-1.png",
+    "caption": "[CONTOH] Detail jahitan rapi",
+    "alt": "Jahitan rapi pada daster rayon"
+  }
+]
+```
+
+| Field | Aturan |
+|---|---|
+| `image` | wajib; unggahan gambar (jpg/jpeg/png/webp ≤ 2 MB) atau path yang sudah ada (`/storage/landing/...` / `/images/seed/...`) |
+| `caption` | boleh kosong, teks maks 80 |
+| `alt` | boleh kosong, teks maks 120 |
+
+Berkas unggahan disimpan di disk `public` folder `landing` (`storage/app/public/landing`) dan
+dikirim sebagai `/storage/landing/<nama>`; berkas dihapus dari disk saat item dihapus/diganti.
+Butuh `php artisan storage:link` di server (lihat `docs/langkah-pemilik-v1.1.md`).
 
 ## 3. Jalur gambar (`image`, `path`, `store_logo`)
 
@@ -131,6 +159,7 @@ carousel/hero/promo 1600×900, logo 240×64.
 | `contact_map_embed` | kontak | textarea | URL embed peta |
 | `landing_hero` | landing | json | lihat §2 |
 | `landing_sections` | landing | json | lihat §2 |
+| `landing_gallery` | landing | json | lihat §2 (maks 8 gambar) |
 | `seo_default_title` | seo | text | judul default |
 | `seo_default_description` | seo | textarea | deskripsi default |
 | `shipping_cost_default` | pembayaran | text | `20000` (integer rupiah sebagai string) |
@@ -358,9 +387,17 @@ ringkasan keranjang di props halaman memakai key **`keranjang`**, bukan `cart`.
   ],
   "count": 4,
   "subtotal": 340000,
-  "shipping_cost": 20000,
-  "total": 360000,
-  "is_empty": false
+  "shipping_cost": null,
+  "total": 340000,
+  "is_empty": false,
+  "shipping": {
+    "mode": "api",
+    "dihitung_saat_checkout": true,
+    "tarif_uji": null,
+    "gratis_aktif": true,
+    "gratis_min": 300000,
+    "berat_gram": 2000
+  }
 }
 ```
 
@@ -368,9 +405,15 @@ ringkasan keranjang di props halaman memakai key **`keranjang`**, bukan `cart`.
   **+ `product_variants.price_delta`**; dihitung ulang setiap qty berubah.
 - `variant_label` = gabungan nilai `variant_attributes` (mis. `"Ukuran L / Merah"`), `null` bila tanpa varian.
 - `image` = gambar utama (`product_images.is_primary`), bentuk path absolut (§3), `null` bila tidak ada.
-- `shipping_cost` = `settings.shipping_cost_default` (integer, `0` bila key tidak ada).
 - `stock` = stok varian saat ini (0 bila tanpa varian).
 - `is_active` = `products.is_active` dan `product_variants.is_active`.
+- `shipping.mode` = `"api"` bila `BITESHIP_API_KEY` terisi, `"fake"` bila kosong (§7.12).
+- `shipping_cost`: angka `settings.shipping_cost_default` saat `mode = "fake"`; **`null`** saat `mode = "api"`,
+  karena ongkir baru diketahui setelah kode pos diisi (§7.12). `total` = `subtotal` + (`shipping_cost` ?? 0).
+- `shipping.dihitung_saat_checkout` = `true` saat `shipping_cost` `null`; frontend menampilkan
+  `Dihitung saat checkout` pada baris Ongkir, bukan `Rp0`.
+- `shipping.gratis_aktif`/`gratis_min` = `settings.free_shipping_enabled`/`free_shipping_min`.
+- `shipping.berat_gram` = Σ `max(products.weight_gram, 500) × qty` (PRD v1.1 A19), dipakai juga oleh §7.12.
 
 ### 7.1 `GET /keranjang` — name `cart.index`
 
@@ -417,6 +460,15 @@ Akses: `auth:web` (guest → redirect `login` + `intended`). Keranjang kosong �
 ```json
 {
   "keranjang": { "...": "bentuk §7.0" },
+  "pengiriman": {
+    "mode": "api",
+    "key_terisi": true,
+    "tarif_uji": null,
+    "berat_gram": 2000,
+    "gratis": { "aktif": true, "min": 300000, "subtotal": 340000, "terpenuhi": true },
+    "asal": { "nama": "Toko Kulot", "kode_pos": "51111" },
+    "galat": null
+  },
   "prefill": {
     "customer_name": "Siti Aminah",
     "customer_phone": "081234567890",
@@ -426,15 +478,15 @@ Akses: `auth:web` (guest → redirect `login` + `intended`). Keranjang kosong �
     "customer_postal_code": "51111",
     "note": null
   },
-  "pembayaran": { "method": "qris", "label": "QRIS (semua e-wallet & m-banking)", "expiry_minutes": 5 },
+  "pembayaran": { "method": "midtrans", "label": "Semua metode pembayaran (Midtrans)", "expiry_minutes": 5 },
   "midtrans": {
     "client_key": null, "is_production": false, "fake": true,
     "mode": "uji", "alasan_kode": "fake_aktif",
-    "alasan": "MODE UJI aktif karena MIDTRANS_FAKE=true di .env: QRIS dibuat lokal (tanpa Midtrans) sehingga tidak bisa ditransfer.",
+    "alasan": "MODE UJI aktif karena MIDTRANS_FAKE=true di .env: pembayaran disimulasikan lokal (tanpa Midtrans).",
     "langkah_perbaikan": [
       "Ubah MIDTRANS_FAKE=false pada berkas .env.",
-      "Isi MIDTRANS_SERVER_KEY dan MIDTRANS_CLIENT_KEY dari dashboard Midtrans.",
-      "Jalankan php artisan config:clear, lalu muat ulang halaman ini."
+      "Isi MIDTRANS_CLIENT_KEY dan MIDTRANS_SERVER_KEY dari dashboard Midtrans.",
+      "Jalankan php artisan config:clear, lalu muat ulang halaman pembayaran."
     ],
     "server_key_terisi": false,
     "sumber_kredensial": ".env (MIDTRANS_*)",
@@ -445,13 +497,25 @@ Akses: `auth:web` (guest → redirect `login` + `intended`). Keranjang kosong �
 
 `prefill` diisi dari akun pembeli (nama, email, `users.phone`), field lain `null`.
 
-`pembayaran.expiry_minutes` = masa berlaku tagihan QRIS dari `config/midtrans.php`
+`pengiriman` menjelaskan ongkir sebelum pembeli menekan **Cek Ongkir** (§7.12):
+
+| Key | Isi |
+|---|---|
+| `mode` | `"api"` (Biteship aktif) / `"fake"` (tarif uji `shipping_cost_default`) |
+| `key_terisi` | boolean `BITESHIP_API_KEY` terisi; nilainya tidak pernah dikirim |
+| `tarif_uji` | integer tarif uji, `null` saat `mode = "api"` |
+| `berat_gram` | berat total keranjang (A19) |
+| `gratis` | `{aktif, min, subtotal, terpenuhi}` dari `settings.free_shipping_*` |
+| `asal` | `{nama, kode_pos}` dari `settings.shipping_origin_*` (untuk teks "dikirim dari") |
+| `galat` | kalimat galat konfigurasi (mis. kode pos asal kosong), `null` bila siap |
+
+`pembayaran.expiry_minutes` = masa berlaku tagihan pembayaran dari `config/midtrans.php`
 (`MIDTRANS_EXPIRY_MINUTES`, bawaan **5 menit** — keputusan pemilik 21 Okt 2026, kartu `t_e35050e8`).
-Nilai yang sama dipakai `custom_expiry` Midtrans dan kolom `payments.expires_at`, jadi frontend cukup
-memakai satu angka ini untuk teks, dan `pembayaran.expires_at` (§7.6) untuk Countdown.
+Nilai yang sama dipakai `expiry` Snap dan kolom `payments.expires_at`, jadi frontend cukup
+memakai satu angka ini untuk teks, dan `pembayaran.expires_at` (§7.7) untuk Countdown.
 
 Bentuk `midtrans` (baku, juga dipakai §7.7 dan §10.7) menjelaskan **mode efektif** pembayaran, supaya
-UI bisa memberi tahu kenapa QRIS tidak bisa ditransfer:
+UI bisa memberi tahu kenapa pembayaran belum bisa dilakukan:
 
 | Key | Isi |
 |---|---|
@@ -478,17 +542,21 @@ Akses: `auth:web`. Rate limit **10/menit** per pembeli.
 | `customer_address` | wajib, string, maks 500 | `Alamat lengkap wajib diisi.` |
 | `customer_city` | wajib, string, maks 100 | `Kota/kecamatan wajib diisi.` |
 | `customer_postal_code` | wajib, digits 5 | `Kode pos harus 5 angka.` |
+| `shipping_courier` | opsional, string, maks 40 — **wajib** saat `pengiriman.mode = "api"` (ditegakkan service) | `Pilih kurir pengiriman.` |
+| `shipping_service` | opsional, string, maks 60 — **wajib** saat `mode = "api"` | `Pilih layanan pengiriman.` |
+| `shipping_cost` | opsional, integer, min 0 — hanya untuk mendeteksi tarif berubah; server tetap memakai tarifnya sendiri | `Ongkir berubah, pilih ulang kurir.` |
 | `note` | opsional, string, maks 500 | `Catatan maksimal 500 karakter.` |
 
-Sukses: order `status = pending`, `payment_status = pending`, `payment_method = qris`,
+Sukses: order `status = pending`, `payment_status = pending`, `payment_method = midtrans`,
 `orders.code` = `TK-YYYYMMDD-NNNN` (urut per hari), stok terpotong + `stock_movements` tipe `sale`,
-`payments` QRIS dibuat, keranjang dikosongkan, lalu
-`redirect()->route('checkout.pay', $order)` + `flash.success` = `Pesanan dibuat. Selesaikan pembayaran QRIS.`
+tagihan Midtrans **Snap** dibuat (`snap_token`, `snap_redirect_url`; semua kanal aktif akun merchant),
+keranjang dikosongkan, lalu
+`redirect()->route('checkout.pay', $order)` + `flash.success` = `Pesanan dibuat. Selesaikan pembayaran.`
 
 Gagal (stok berubah / Midtrans error) → **tidak ada order setengah jadi** (transaksi di-rollback):
 `redirect()->back()` + `flash.error` = `Stok {nama varian} tersisa {n}. Perbarui keranjang.` atau
-`Gagal membuat pembayaran QRIS. Coba lagi.` atau — bila Midtrans menolak **semua** kanal QRIS dengan
-402 `Payment channel is not activated` — `Pembayaran QRIS belum bisa dibuat karena kanal QRIS belum
+`Gagal membuat pembayaran. Coba lagi.` atau — bila Midtrans menolak transaksi dengan
+402 `Payment channel is not activated` — `Pembayaran belum bisa dibuat karena kanal pembayaran belum
 aktif di akun Midtrans penjual. Hubungi penjual.`
 (Ketiga teks tetap `flash.error`; bentuk props tidak berubah. Teks ketiga ditambahkan kartu
 `t_2f443b75` — LOCKED §7.6 diperbarui aditif 22 Okt 2026, lihat §7.7.)
@@ -515,20 +583,23 @@ Akses: pemilik order; order pembeli lain → **HTTP 404**. Komponen: `Public/Che
     ]
   },
   "pembayaran": {
-    "method": "qris", "label": "QRIS", "provider": "midtrans",
-    "status": "pending", "gross_amount": 360000, "qr_string": "00020101021226...6304A1B2",
-    "qris_url": null, "expires_at": "2026-10-20T14:20:00+07:00", "paid_at": null,
-    "fake": true, "galat": null
+    "method": "midtrans", "label": "Semua metode pembayaran (Midtrans)", "provider": "midtrans",
+    "type": null, "type_label": "Midtrans",
+    "status": "pending", "gross_amount": 360000,
+    "snap_token": "66e4fa55-…", "snap_redirect_url": "https://app.sandbox.midtrans.com/snap/v4/redirection/66e4fa55-…",
+    "qr_string": null, "qris_url": null,
+    "expires_at": "2026-10-20T14:20:00+07:00", "paid_at": null,
+    "fake": false, "galat": null
   },
   "midtrans": {
-    "client_key": null,
+    "client_key": "SB-Mid-client-xxxx",
     "is_production": false,
-    "fake": true,
-    "mode": "uji",
-    "alasan_kode": "fake_aktif",
-    "alasan": "MODE UJI aktif karena MIDTRANS_FAKE=true di .env: QRIS dibuat lokal (tanpa Midtrans) sehingga tidak bisa ditransfer.",
-    "langkah_perbaikan": [ "Ubah MIDTRANS_FAKE=false pada berkas .env.", "…" ],
-    "server_key_terisi": false,
+    "fake": false,
+    "mode": "asli",
+    "alasan_kode": null,
+    "alasan": null,
+    "langkah_perbaikan": [],
+    "server_key_terisi": true,
     "sumber_kredensial": ".env (MIDTRANS_*)",
     "catatan": "Kredensial efektif dibaca dari .env (MIDTRANS_*); kolom Midtrans pada tab Pembayaran admin belum dipakai jalur pembayaran ini."
   }
@@ -536,28 +607,27 @@ Akses: pemilik order; order pembeli lain → **HTTP 404**. Komponen: `Public/Che
 ```
 
 `pembayaran.status`: `pending` | `settlement` | `expire` | `deny` | `cancel`.
-`qris_url` hanya terisi di mode Midtrans asli; frontend merender QR dari `qr_string` bila `qris_url` null.
+`pembayaran.snap_token` dan `snap_redirect_url` dipakai frontend untuk membuka halaman Snap (semua kanal
+aktif akun merchant). `pembayaran.type` = `payment_type` Midtrans (`bank_transfer`, `echannel`, `qris`,
+`gopay`, …), baru terisi setelah webhook; `type_label` label Indonesianya. `qr_string`/`qris_url` hanya
+terisi di mode uji (QRIS dummy untuk panel simulasi).
 `pembayaran.fake` = tagihan yang sedang dipakai dibuat tanpa Midtrans. `pembayaran.galat` = `null`
-bila tidak ada masalah; bila diisi, teksnya siap ditampilkan sebagai galat di panel QRIS.
+bila tidak ada masalah; bila diisi, teksnya siap ditampilkan sebagai galat di panel pembayaran.
 Bentuk `midtrans` sama dengan §7.5 (baku).
 
 Tagihan mode uji yang tertinggal (mis. pesanan dibuat sebelum `MIDTRANS_FAKE=false` diisi) **dibuat ulang
 otomatis**: bila mode efektif `asli` sedangkan tagihan tersimpan masih mode uji dan masih `pending`,
-server membuat tagihan QRIS nyata ke **baris `payments` yang sama** (satu tagihan per pesanan, §7.5)
-sebelum halaman dirender — `qr_string`, `qris_url`, `transaction_id`, `expires_at`, dan `pembayaran.fake`
-ikut berubah. Gagal menghubungi Midtrans → halaman tetap tampil (HTTP 200), tagihan lama tidak diubah,
-dan `pembayaran.galat` = `Gagal membuat pembayaran QRIS. Coba lagi.`
+server membuat transaksi Snap nyata ke **baris `payments` yang sama** (satu tagihan per pesanan, §7.5)
+sebelum halaman dirender — `snap_token`, `snap_redirect_url`, `transaction_id`, `expires_at`, dan
+`pembayaran.fake` ikut berubah. Gagal menghubungi Midtrans → halaman tetap tampil (HTTP 200), tagihan
+lama tidak diubah, dan `pembayaran.galat` = `Gagal membuat pembayaran. Coba lagi.`
 
-Bila Midtrans menolak **semua** kanal QRIS dengan 402 `Payment channel is not activated` (kanal QRIS
-belum aktif di akun merchant), `pembayaran.galat` =
-`Pembayaran QRIS belum bisa dibuat karena kanal QRIS belum aktif di akun Midtrans penjual. Hubungi
-penjual.` — teks yang sama dipakai `flash.error` §7.6. Server mencoba kanal dari
-`MIDTRANS_QRIS_ACQUIRER` (bawaan `gopay`) lalu acquirer sah satunya (`airpay shopee`) sebelum menyerah;
-kegagalan selain 402 tidak diulang. Bila percobaan pertama 402 lalu cadangan gagal dengan galat lain
-(mis. 413 payload ditolak), `pembayaran.galat` tetap teks kanal belum aktif itu — bukan pesan generik.
-`other_qris` bukan acquirer Core API (metode Snap), tidak dikirim di `qris.acquirer`, dan hanya diterima
-sebagai nilai config lama yang dipetakan ke `airpay shopee`.
-(Ditambahkan kartu `t_2f443b75`, diperbarui kartu `t_56062a5c`, 22 Okt 2026 — aditif, bentuk props tetap.)
+Bila Midtrans menolak transaksi dengan 402 `Payment channel is not activated` (belum ada kanal aktif di
+akun merchant), `pembayaran.galat` =
+`Pembayaran belum bisa dibuat karena kanal pembayaran belum aktif di akun Midtrans penjual. Hubungi
+penjual.` — teks yang sama dipakai `flash.error` §7.6. Tidak ada lagi percobaan acquirer QRIS: Snap
+menampilkan kanal apa pun yang aktif di akun merchant.
+(Ditambahkan kartu `t_2f443b75`, diganti ke Snap oleh kartu `t_04da18e0`, 24 Okt 2026 — aditif, bentuk props tetap.)
 
 ### 7.8 `GET /checkout/{order}/status` — name `checkout.status` (JSON)
 
@@ -616,12 +686,15 @@ Akses: publik, **di luar CSRF**, tanpa sesi. Body = payload Midtrans (JSON/form)
 3. `gross_amount` ≠ `payments.gross_amount` → **HTTP 422** `{"message":"amount mismatch"}`.
 4. `transaction_status` → status pembayaran: `capture`/`settlement` → `settlement`,
    `pending` → `pending`, `expire` → `expire`, `deny` → `deny`, `cancel` → `cancel`.
-5. `settlement`: `payments.paid_at` diisi, `orders.payment_status = settlement`,
+5. `payment_type` payload disimpan ke `payments.payment_type` (`bank_transfer`, `echannel`, `qris`,
+   `gopay`, …) — juga saat status tidak berubah. Saat `settlement`, `orders.payment_method` diisi
+   `payment_type` itu; sebelum settlement nilainya `midtrans`.
+6. `settlement`: `payments.paid_at` diisi, `orders.payment_status = settlement`,
    `orders.status` `pending` → `dibayar`.
-6. `expire`/`deny`/`cancel`: `orders.payment_status` ikut, `orders.status` `pending` → `batal`,
+7. `expire`/`deny`/`cancel`: `orders.payment_status` ikut, `orders.status` `pending` → `batal`,
    stok dikembalikan (`stock_movements` tipe `in`, catatan `Pengembalian stok — pembayaran {status} ({code})`).
-7. Idempoten: notifikasi ulang dengan status yang sama tidak mengubah stok, `paid_at`, atau status.
-8. Sukses: **HTTP 200** `{"status":"ok"}`.
+8. Idempoten: notifikasi ulang dengan status yang sama tidak mengubah stok, `paid_at`, atau status.
+9. Sukses: **HTTP 200** `{"message":"ok"}`.
 
 ### 7.11 Status
 
@@ -632,6 +705,88 @@ Akses: publik, **di luar CSRF**, tanpa sesi. Body = payload Midtrans (JSON/form)
 | §7.5, §7.7 — prop `midtrans` (mode efektif + alasan), `pembayaran.fake`/`pembayaran.galat`, pembuatan ulang tagihan mode uji | **LOCKED** diperbarui 21 Okt 2026 (kartu `t_9f4b6aee`, temuan F-2 `docs/review.md`) | K13, F2 |
 | §7.5 — **nilai** `pembayaran.expiry_minutes` 15 → **5 menit** (keputusan pemilik 21 Okt 2026, `MIDTRANS_EXPIRY_MINUTES`); nama key, bentuk respons, dan key lain tidak berubah | **LOCKED** diperbarui 21 Okt 2026 (kartu `t_e35050e8`, temuan F-3 `docs/review.md`) | K13, F2 |
 | §7.9 — **definisi** `ulasan.boleh` (bukan bentuk respons): `true` hanya bila §9.1 menerima minimal satu kiriman ulasan — `settlement` + status boleh dinilai + masih ada produk belum diulas | **LOCKED** diperbarui 21 Okt 2026 (kartu `t_2b031326`, temuan F6 `docs/catatan-frontend.md`; keputusan `docs/keputusan-f6-ulasan-boleh.md`) | K12, K13, F6 |
+| §7.0–§7.6 — ongkir Biteship: `shipping_cost` `null` + blok `shipping`, prop `pengiriman`, field `shipping_*` di §7.6, §7.12 rute baru | **DRAFT** (24 Okt 2026, kartu `t_f22c8d46`, PRD v1.1 D2/D3) | FE checkout `t_aea95532`, QA |
+| §7.12 — **nilai** `galat` dipetakan dari kode error rates Biteship (`40001001`, `40001002`, `40001010`) dan dari `error` tanpa `code` (`balance` → saldo habis); nama key/bentuk respons tidak berubah | **DRAFT** (24 Okt 2026, kartu `t_1b711d26`, temuan F1 `docs/review-alur-pemesanan.md` §2) | FE checkout, QA |
+| §7.5–§7.7, §7.10 — Midtrans **Snap** (ganti Core API QRIS): `pembayaran.method = midtrans`, `snap_token`/`snap_redirect_url`/`type`/`type_label`, `payment_type` dari webhook, `orders.payment_method` saat settlement, teks galat baru, §7.13 simulasi mode uji | **DRAFT** (24 Okt 2026, kartu `t_04da18e0`, PRD-v1.1 §2 D1) | FE halaman bayar, QA |
+
+### 7.12 `GET /checkout/ongkir` — name `checkout.shipping` (JSON)
+
+Akses: `auth:web` (guest → 302 `/login`). Rate limit **30/menit** per pembeli.
+Query: `postal_code` (wajib, digits 5) — kode pos tujuan.
+
+```json
+{
+  "mode": "api",
+  "kode_pos": "51111",
+  "berat_gram": 2000,
+  "subtotal": 340000,
+  "gratis": { "aktif": true, "min": 300000, "terpenuhi": true },
+  "opsi": [
+    {
+      "courier_code": "jne", "courier_name": "JNE",
+      "service_code": "reg", "service_name": "REG",
+      "label": "JNE REG", "etd": "2-3 hari", "cost": 18000,
+      "is_regular": true, "gratis": true
+    }
+  ],
+  "galat": null
+}
+```
+
+| Key | Aturan |
+|---|---|
+| `mode` | `"api"` / `"fake"` seperti §7.0 |
+| `berat_gram` | Σ `max(products.weight_gram, 500) × qty` (A19) |
+| `gratis.terpenuhi` | `gratis.aktif && subtotal >= gratis.min` (dipakai hanya untuk `is_regular` di §7.6) |
+| `opsi[]` | hanya layanan yang aktif di `settings.shipping_couriers`; urut `courier_name`, lalu `service_name` |
+| `opsi[].cost` | tarif server (Biteship). Mode `fake`: `settings.shipping_cost_default` untuk semua opsi |
+| `opsi[].gratis` | `true` bila `gratis.terpenuhi && is_regular` — `cost` tetap tarif asli; frontend menampilkan `GRATIS` dan mengirim `shipping_cost: 0` |
+| `opsi[].etd` | rentang hari dari Biteship, `null` bila tidak ada |
+| `galat` | kalimat siap tampil bila Biteship gagal; `opsi: []` dan order tidak bisa dibuat dengan tarif tebakan. Nilainya mengikuti kode error rates Biteship (tabel di bawah) |
+
+Galat: keranjang kosong → 422 `Keranjang masih kosong.`; `postal_code` tidak valid → 422
+`Kode pos harus 5 angka.`; Biteship gagal → 200 + `opsi: []` + `galat` dari peta kode error
+[rates Biteship](https://biteship.com/en/docs/api/rates/error) (`code` di body jawaban):
+
+| `code` Biteship | `galat` |
+|---|---|
+| `40001001` | `Kode pos tidak dikenal. Periksa kode pos tujuan; bila tetap gagal, hubungi penjual.` |
+| `40001002` | `Ongkir tidak bisa dihitung karena pengaturan Biteship belum lengkap. Hubungi penjual.` |
+| `40001010` | `Tidak ada layanan kurir untuk kode pos ini. Coba kode pos lain.` (pesan lama) |
+| 400 **tanpa** `code`, `error` memuat `balance` (`No sufficient balance to call rates API…`) | `Ongkir tidak bisa dihitung karena saldo Biteship penjual habis. Hubungi penjual.` |
+| lainnya / tanpa `code` | `Ongkir tidak bisa dihitung saat ini. Coba lagi atau hubungi penjual.` |
+
+Kode asal `40001001` bisa berarti kode pos **asal** (pengaturan `/admin/ekspedisi`) juga, karena
+Biteship tidak membedakannya. Server mencatat `success`, `error`, `code`, dan kedua kode pos di
+`storage/logs/laravel.log` (`Biteship rates menjawab tidak sukses`) — tanpa header/kunci — supaya
+pemilik bisa membedakan kode pos uji vs pengaturan akun. Bila `code` `null`, `error` di baris log itu
+yang menentukan pesan (mis. `No sufficient balance…` → saldo akun Biteship habis). `catalog()`
+(panel Ekspedisi) mencatat field yang sama tanpa memetakan pesan.
+
+Aturan §7.6 saat kirim: server memanggil ulang layanan yang dipilih dan memakai **tarif server**
+(`shipping_cost` dari frontend hanya pembanding; layanan gratis dihitung 0). Bila layanan tidak
+ada atau `shipping_cost` kiriman ≠ tarif server (setelah gratis) → `flash.error` =
+`Ongkir berubah, pilih ulang kurir.` dan **tidak ada order**. Mode `fake` tanpa
+`shipping_courier`/`shipping_service` memakai tarif uji datar (`shipping_cost_default`) dan
+menyimpan `shipping_courier = null`; mode `api` menolak dengan `Pilih kurir pengiriman.`
+
+### 7.13 `POST /checkout/{order}/simulasi-bayar` — name `checkout.simulate`
+
+Akses: pemilik order; order pembeli lain → **HTTP 404**. Rate limit **10/menit** per pembeli.
+Tanpa body. Hanya untuk **mode uji**: menandai tagihan uji lunas lewat jalur service yang sama dengan
+webhook (`payments.status = settlement`, `paid_at`, `orders.status = dibayar`,
+`orders.payment_method = qris`, stok tidak dikembalikan).
+
+Sukses → `redirect()->route('checkout.pay', $order)` + `flash.success` =
+`Pembayaran mode uji ditandai lunas.`
+
+Gagal (mode asli, atau baris tagihan dibuat Midtrans asli) →
+`redirect()->route('checkout.pay', $order)` + `flash.error` =
+`Simulasi pembayaran hanya tersedia dalam mode uji Midtrans.` /
+`Tagihan ini dibuat Midtrans asli, jadi tidak bisa disimulasikan.`
+
+Status: **DRAFT** (24 Okt 2026, kartu `t_04da18e0`) — halaman bayar wajib menyembunyikan tombol
+simulasi bila `pembayaran.fake = false`.
 
 ---
 
@@ -986,7 +1141,7 @@ Props:
     "fake": true,
     "mode": "uji",
     "alasan_kode": "fake_aktif",
-    "alasan": "MODE UJI aktif karena MIDTRANS_FAKE=true di .env: QRIS dibuat lokal (tanpa Midtrans) sehingga tidak bisa ditransfer.",
+    "alasan": "MODE UJI aktif karena MIDTRANS_FAKE=true di .env: pembayaran disimulasikan lokal (tanpa Midtrans).",
     "langkah_perbaikan": [ "Ubah MIDTRANS_FAKE=false pada berkas .env.", "…" ],
     "server_key_terisi": false,
     "sumber_kredensial": ".env (MIDTRANS_*)",
@@ -1001,7 +1156,7 @@ Carousel urut `sort_order`, lalu `id`; FAQ urut `sort_order`, lalu `id` (semua b
 `is_active = false`, karena ini halaman admin).
 
 `midtrans` = status mode pembayaran efektif (bentuk baku, sama persis dengan §7.5). Tab **Pembayaran**
-memakainya untuk menjelaskan kenapa QRIS tidak bisa ditransfer dan apa yang harus diubah pemilik.
+memakainya untuk menjelaskan kenapa pembayaran belum bisa dilakukan dan apa yang harus diubah pemilik.
 Kolom `midtrans_client_key` / `midtrans_is_production` di atas **hanya catatan di halaman admin** —
 jalur pembayaran membaca `.env` (`MIDTRANS_*`) lewat `config/midtrans.php`; sumber itu ditulis di
 `midtrans.sumber_kredensial` dan `midtrans.catatan`.
@@ -1043,7 +1198,8 @@ Sukses: redirect kembali + `flash.success` = `Pengaturan disimpan.`
 
 ### 10.9 `PUT /admin/pengaturan/landing` — name `admin.settings.landing`
 
-Body: `landing_hero` (array) dan `landing_sections` (array). Struktur mengikuti
+Body: `landing_hero` (array), `landing_sections` (array), `landing_gallery` (array, opsional) dan
+`landing_gallery_present` (boolean, opsional). Struktur mengikuti
 `database/seeders/SettingSeeder.php`; hanya sub-key yang dikenal yang disimpan (key asing dibuang).
 
 | Field | Aturan |
@@ -1058,7 +1214,9 @@ Body: `landing_hero` (array) dan `landing_sections` (array). Struktur mengikuti
 | `landing_sections.featured` | `title` (maks 80), `subtitle` (maks 120), `limit` (1–12) |
 | `landing_sections.promo` | `title`, `subtitle`, `cta_label`, `cta_url`, `image`, `is_active` |
 | `landing_sections.why_us` | `title` (maks 80), `items` (array maks 6; tiap entri `title` maks 80 + `body` maks 255) |
-| `landing_sections.newsletter` | `title` (maks 80), `subtitle` (maks 120), `button_text` (maks 40) |
+| `landing_sections.newsletter` | `title` (maks 80), `subtitle` (maks 120; copy CTA akhir), `button_text` (maks 40) |
+| `landing_gallery` | array maks 8; tiap entri `image` (unggahan jpg/jpeg/png/webp ≤ 2 MB, atau path yang sudah ada), `caption` (maks 80), `alt` (maks 120). Urutan array = urutan tampil |
+| `landing_gallery_present` | boolean; wajib `1` bila admin mengirim daftar galeri kosong untuk menghapus semua item. Tanpa penanda ini dan tanpa `landing_gallery`, galeri yang tersimpan tidak diubah |
 
 Sukses: redirect kembali + `flash.success` = `Konten landing disimpan.`
 
@@ -1113,6 +1271,68 @@ Sukses: redirect kembali + `flash.success` = `FAQ disimpan.` / `FAQ diperbarui.`
 | §10.7–10.11 pengaturan, carousel, FAQ | LOCKED | K14 |
 | §10.7/§10.8 key `footer_copyright` + props bersama `store_favicon`/`footer_copyright` | LOCKED diperbarui 23 Okt 2026 (kartu `t_101b9145`) | FE-Identitas (`t_c915c033`), QA |
 | §10.7 prop `midtrans` (mode efektif + alasan) | LOCKED diperbarui 21 Okt 2026 (kartu `t_9f4b6aee`, temuan F-2 `docs/review.md`) | F2 |
+
+### 10.13 Ekspedisi — `admin.shipping.index` / `admin.shipping.update`
+
+`GET /admin/ekspedisi` (name `admin.shipping.index`, komponen `Admin/Shipping/Index`),
+`PUT /admin/ekspedisi` (name `admin.shipping.update`). Akses: admin login. PRD v1.1 D4.
+
+```json
+{
+  "pengaturan": {
+    "shipping_origin_name": "Toko Kulot",
+    "shipping_origin_phone": "081234567890",
+    "shipping_origin_address": "Jl. Melati 12, Pekalongan",
+    "shipping_origin_postal_code": "51111",
+    "free_shipping_enabled": true,
+    "free_shipping_min": 300000,
+    "shipping_cost_default": 20000
+  },
+  "kurir": {
+    "mode": "api",
+    "key_terisi": true,
+    "sumber": "biteship",
+    "galat": null,
+    "daftar": [
+      {
+        "courier_code": "jne", "courier_name": "JNE",
+        "service_code": "reg", "service_name": "REG",
+        "label": "JNE REG", "is_regular": true, "is_active": true
+      }
+    ]
+  }
+}
+```
+
+| Key | Aturan |
+|---|---|
+| `pengaturan.*` | nilai `settings` grup `shipping`; `free_shipping_enabled` boolean, `free_shipping_min` integer |
+| `kurir.mode` | `"api"` / `"fake"` seperti §7.12 |
+| `kurir.key_terisi` | boolean saja — **nilai `BITESHIP_API_KEY` tidak pernah dikirim** |
+| `kurir.sumber` | `"biteship"` bila daftar dari API, `"settings"` bila memakai daftar tersimpan (API gagal/mode fake) |
+| `kurir.galat` | kalimat bila daftar API gagal; form tetap bisa disimpan |
+| `kurir.daftar[]` | gabungan layanan Biteship dengan `settings.shipping_couriers` (aktif/reguler per layanan). `is_regular` = layanan reguler (boleh gratis ongkir), `is_active` = ditampilkan di checkout |
+
+Kiriman `PUT`:
+
+| Field | Aturan | Pesan galat |
+|---|---|---|
+| `shipping_origin_name` | wajib, string, maks 100 | `Nama pengirim wajib diisi.` |
+| `shipping_origin_phone` | wajib, string, maks 30 | `Nomor telepon pengirim wajib diisi.` |
+| `shipping_origin_address` | wajib, string, maks 500 | `Alamat asal wajib diisi.` |
+| `shipping_origin_postal_code` | wajib, digits 5 | `Kode pos asal harus 5 angka.` |
+| `free_shipping_enabled` | wajib, boolean | `Nilai gratis ongkir tidak valid.` |
+| `free_shipping_min` | wajib, integer, min 0, maks 100000000 | `Minimal belanja gratis ongkir tidak valid.` |
+| `shipping_cost_default` | wajib, integer, min 0, maks 10000000 — tarif datar mode `fake` dan `pengiriman.tarif_uji` di checkout | `Tarif uji tidak valid.` |
+| `couriers` | wajib, array, min 1 | `Pilih minimal satu layanan kurir.` |
+| `couriers[].courier_code` | wajib, string, maks 40 | `Kode kurir tidak valid.` |
+| `couriers[].service_code` | wajib, string, maks 60 | `Kode layanan tidak valid.` |
+| `couriers[].label` | opsional, string, maks 80 | `Label layanan maksimal 80 karakter.` |
+| `couriers[].is_regular` | wajib, boolean | `Nilai layanan reguler tidak valid.` |
+| `couriers[].is_active` | wajib, boolean | `Nilai layanan aktif tidak valid.` |
+
+Minimal satu baris `couriers` harus `is_active = true` → `Pilih minimal satu layanan kurir.`
+Sukses: redirect kembali + `flash.success` = `Pengaturan ekspedisi disimpan.`
 
 ---
 
@@ -1457,14 +1677,14 @@ Query: `q` (kode/nama/telepon/email), `status` ∈ `semua`(bawaan)|`pending`|`di
     "id": 5, "code": "TK-20261020-0001", "status": "dibayar", "status_label": "Dibayar",
     "payment_status": "settlement", "payment_label": "Lunas",
     "subtotal": 170000, "shipping_cost": 5000, "discount": 0, "total": 175000,
-    "payment_method": "qris", "notes": null,
+    "payment_method": "qris", "payment_method_label": "QRIS", "notes": null,
     "tracking_number": "JX1234567890",
     "customer": {"name": "…", "phone": "…", "email": "…", "address": "…", "city": "…", "postal_code": "…"},
     "items": [{"id": 9, "product_id": 3, "product_name": "…", "variant_label": "L / Hitam",
                "qty": 2, "unit_price": 85000, "line_total": 170000}],
     "payment": {"provider": "midtrans", "status": "settlement", "transaction_id": "…",
-                "qris_url": "…", "qr_string": "…", "gross_amount": 175000,
-                "expires_at": "…", "paid_at": "…"},
+                "snap_token": "…", "snap_redirect_url": "…", "payment_type": "qris",
+                "gross_amount": 175000, "expires_at": "…", "paid_at": "…"},
     "created_at": "…", "paid_at": "…"
   },
   "status_berikut": [{"value": "diproses", "label": "Diproses"}, {"value": "batal", "label": "Batal"}]
