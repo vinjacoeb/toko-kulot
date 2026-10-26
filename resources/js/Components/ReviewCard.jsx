@@ -42,7 +42,7 @@ export default function ReviewCard({ review = null, className = '' }) {
                     <p className="truncate text-meta font-semibold text-ink">{name}</p>
                     <div className="flex items-center gap-2">
                         <Stars value={review.rating} />
-                        {date && <time className="text-meta text-slate-500">{date}</time>}
+                        {date && <time className="text-meta tabular-nums text-slate-500">{date}</time>}
                     </div>
                 </div>
             </header>

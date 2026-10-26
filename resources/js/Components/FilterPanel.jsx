@@ -14,7 +14,7 @@ function toArray(value) {
 function Group({ title, children }) {
     return (
         <section className="border-b border-line py-4 first:pt-0 last:border-b-0">
-            <h3 className="mb-2.5 text-meta font-semibold uppercase tracking-wide text-slate-500">{title}</h3>
+            <h3 className="mb-2 text-label text-ink">{title}</h3>
             {children}
         </section>
     );
@@ -88,7 +88,7 @@ function FilterGroups({ draft, setDraft, categories, sizes }) {
                     </Field>
                 </div>
                 {(draft.harga_min || draft.harga_max) && (
-                    <p className="mt-2 text-meta text-slate-500">
+                    <p className="mt-2 text-meta tabular-nums text-slate-500">
                         {rupiah(Number(draft.harga_min || 0)) + ' - ' + (draft.harga_max ? rupiah(Number(draft.harga_max)) : 'tanpa batas')}
                     </p>
                 )}

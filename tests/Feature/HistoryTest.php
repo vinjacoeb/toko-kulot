@@ -256,4 +256,58 @@ class HistoryTest extends TestCase
                 ->where('ringkasan.batal', 0)
             );
     }
+
+    public function test_riwayat_menyertakan_customer_pengiriman_rincian_biaya_dan_timeline(): void
+    {
+        $pembeli = User::factory()->create();
+
+        $order = $this->pesanan($pembeli, [
+            'status' => Order::STATUS_SHIPPED,
+            'payment_status' => Order::PAYMENT_SETTLEMENT,
+            'paid_at' => '2026-10-22 11:00:00',
+            'shipping_courier' => 'jne',
+            'shipping_service' => 'reg',
+            'shipping_etd' => '2-3 hari',
+            'shipping_cost' => 20000,
+            'tracking_number' => 'JX1234567890',
+            'shipping_status' => 'confirmed',
+            'postal_code' => '51100',
+        ], '2026-10-22 10:00:00');
+
+        $order->forceFill(['shipped_at' => '2026-10-23 08:00:00'])->save();
+
+        $this->actingAs($pembeli)
+            ->get('/history')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('orders.data.0.subtotal', 85000)
+                ->where('orders.data.0.shipping_cost', 20000)
+                ->where('orders.data.0.discount', 0)
+                ->where('orders.data.0.customer.name', '[CONTOH] Siti Aminah')
+                ->where('orders.data.0.customer.city', 'Pekalongan')
+                ->where('orders.data.0.customer.postal_code', '51100')
+                ->where('orders.data.0.shipping.courier_name', 'JNE')
+                ->where('orders.data.0.shipping.service_name', 'REG')
+                ->where('orders.data.0.shipping.tracking_number', 'JX1234567890')
+                ->where('orders.data.0.shipping.status_label', 'Dikonfirmasi')
+                ->where('orders.data.0.timeline.shipped_at', $order->fresh()->shipped_at->toIso8601String())
+            );
+    }
+
+    public function test_pesanan_tanpa_kurir_tetap_mengirim_objek_pengiriman_kosong(): void
+    {
+        $pembeli = User::factory()->create();
+        $this->pesanan($pembeli);
+
+        $this->actingAs($pembeli)
+            ->get('/history')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('orders.data.0.shipping.courier_name', null)
+                ->where('orders.data.0.shipping.tracking_number', null)
+                ->where('orders.data.0.shipping.status', null)
+                ->where('orders.data.0.shipping.galat', null)
+                ->where('orders.data.0.timeline.shipped_at', null)
+            );
+    }
 }

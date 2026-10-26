@@ -3,20 +3,21 @@
 namespace App\Services;
 
 use App\Exceptions\CheckoutException;
-use App\Exceptions\OrderStatusException;
 use App\Models\Cart;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Pembuatan pesanan dari keranjang (PRD §5.1 langkah 5–7).
  *
  * Satu transaksi: kunci varian → validasi stok → snapshot order + order_items
- * → potong stok lewat StockService → buat tagihan QRIS → kosongkan keranjang.
- * Tidak ada jalur lain yang boleh membuat order atau memotong stok.
+ * → potong stok lewat StockService → buat baris tagihan `pending` (tanpa
+ * memanggil Midtrans; charge dibuat saat pembeli memilih kanal) → kosongkan
+ * keranjang. Tidak ada jalur lain yang boleh membuat order atau memotong stok.
  */
 class OrderService
 {
@@ -46,7 +47,8 @@ class OrderService
             $biteshipItems = [];
 
             foreach ($lines as $line) {
-                $unitWeight = max(500, (int) $line['product']->weight_gram);
+                // Satu dasar hitung dengan tarif & create order (PRD-v1.4 §2.2).
+                $unitWeight = BiteshipService::beratUnit((int) $line['product']->weight_gram);
                 $weight += $unitWeight * $line['qty'];
                 $biteshipItems[] = [
                     'name' => $line['product']->name,
@@ -83,6 +85,18 @@ class OrderService
                 'paid_at' => null,
             ]);
 
+            // Bukti tarif yang dipakai (PRD-v1.4 §2.2): satu baris per order, tanpa kunci API.
+            Log::info(BiteshipService::LOG_TARIF, [
+                'order' => $order->code,
+                'origin_postal_code' => (int) $this->biteship->origin()['kode_pos'],
+                'destination_postal_code' => (int) $order->postal_code,
+                'weight_gram' => $weight,
+                'courier' => $shipping['courier'],
+                'service' => $shipping['service'],
+                'cost' => (int) $shipping['cost'],
+                'mode' => $this->biteship->mode(),
+            ]);
+
             foreach ($lines as $line) {
                 OrderItem::create([
                     'order_id' => $order->id,
@@ -104,7 +118,7 @@ class OrderService
                 }
             }
 
-            $this->midtrans->createSnapTransaction($order);
+            $this->midtrans->createPendingPayment($order);
 
             $cart->items()->delete();
             $cart->forceFill(['expires_at' => now()->addDays(30)])->save();
@@ -150,7 +164,6 @@ class OrderService
             $postalCode,
             $items,
             $subtotal,
-            $data['customer_city'] ?? null,
         );
 
         if ($quote === null) {
@@ -275,84 +288,5 @@ class OrderService
         }
 
         return $prefix.strtoupper(substr(bin2hex(random_bytes(3)), 0, 4));
-    }
-
-    /**
-     * Ubah status pesanan dari panel admin (kontrak props §12.18).
-     *
-     * Transisi dicek terhadap rantai status pesanan; pembatalan mengembalikan stok semua
-     * item (satu catatan `in` per varian, atas nama petugas), dan status `dibayar`
-     * mengisi `paid_at` bila masih kosong.
-     *
-     * @param  array<string, mixed>  $data  data tervalidasi UpdateOrderStatusRequest
-     */
-    public function changeStatusByAdmin(Order $order, array $data, ?int $adminId = null): Order
-    {
-        return DB::transaction(function () use ($order, $data, $adminId): Order {
-            $locked = Order::query()->whereKey($order->id)->lockForUpdate()->firstOrFail();
-            $target = (string) $data['status'];
-
-            if (! in_array($target, $locked->nextStatuses(), true)) {
-                throw new OrderStatusException(sprintf(
-                    'Status pesanan tidak bisa diubah dari %s ke %s.',
-                    Order::statusLabel($locked->status),
-                    Order::statusLabel($target),
-                ));
-            }
-
-            if ($target === Order::STATUS_CANCELLED) {
-                $this->restoreStock($locked, $adminId, $this->note($data));
-            }
-
-            $attributes = ['status' => $target];
-
-            if ($target === Order::STATUS_PAID && $locked->paid_at === null) {
-                $attributes['paid_at'] = now();
-            }
-
-            $locked->forceFill($attributes)->save();
-
-            return $locked;
-        });
-    }
-
-    /**
-     * Kembalikan stok semua item pesanan sebagai catatan `in` (PRD §7, kontrak §12.18).
-     */
-    private function restoreStock(Order $order, ?int $adminId, ?string $catatan): void
-    {
-        $items = $order->items()->with('variant')->orderBy('id')->get();
-
-        foreach ($items as $item) {
-            $variant = $item->variant;
-            $qty = (int) $item->qty;
-
-            if ($variant === null || $qty < 1) {
-                continue;
-            }
-
-            $this->stock->increase(
-                $variant,
-                $qty,
-                $catatan === null ? 'Pembatalan '.$order->code : 'Pembatalan '.$order->code.' — '.$catatan,
-                $adminId,
-            );
-        }
-    }
-
-    /**
-     * Catatan opsional dari form perubahan status (§12.18); `null` bila kosong.
-     *
-     * @param  array<string, mixed>  $data
-     */
-    private function note(array $data): ?string
-    {
-        if (! isset($data['note'])) {
-            return null;
-        }
-
-        $note = trim((string) $data['note']);
-
-        return $note === '' ? null : $note;
     }
 }

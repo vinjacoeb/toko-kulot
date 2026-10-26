@@ -1469,3 +1469,694 @@ Biteship. Peta kode `40001001`/`40001002`/`40001010` tidak pernah kena. Tindakan
   `PHP_INI_SCAN_DIR='C:\Users\LENOVO\AppData\Local\hermes\profiles\backenddeveloper\cache\scratch\phpini'`
   (berisi `extension=C:/laragon/bin/php/php-8.3.32-Win32-vs16-x64/ext/php_pdo_sqlite.dll`).
   `php.ini` dan `.env` tidak disentuh.
+
+## Rencana kartu `t_66e507a3` — Midtrans Core API 8 kanal (24 Okt 2026)
+
+- `MidtransApi::snap()` → `charge(array)`; `SdkMidtransApi` pakai `CoreApi::charge`.
+- `MidtransService`: tabel 8 kanal PRD-v1.2 §2.2, charge per kanal, idempoten kanal sama
+  (belum kedaluwarsa), ganti kanal = `order_id_midtrans` baru akhiran `-2`, `-3`, instruksi
+  diurai dari payload, expiry QRIS 5 menit / VA-gerai-Mandiri 60 menit.
+- `OrderService::createFromCart`: hanya baris `payments` pending, tanpa panggilan Midtrans.
+- `CheckoutController`: `pay`, `method` (POST baru, `throttle:10,1`), `status`, `simulate`,
+  `midtransSelesai`; route publik `GET /midtrans/selesai`.
+- `FakeMidtransApi` fixture per grup + `MidtransCoreTest`; `MidtransSnapTest` dihapus;
+  `QaV11OngkirPembayaranTest` disesuaikan.
+- Berkas: `app/Services/Midtrans/*`, `app/Services/MidtransService.php`,
+  `app/Services/OrderService.php`, `app/Http/Controllers/CheckoutController.php`,
+  `app/Models/Order.php`, `config/midtrans.php`, `routes/web.php`, `tests/*`,
+  `docs/kontrak-props.md`.
+
+## Rencana kartu B3 — resi otomatis Biteship + katalog kurir (24 Okt 2026)
+
+Berkas disentuh: migrasi `2026_10_24_000003_add_biteship_columns_to_orders_table.php`,
+`app/Models/Order.php`, `app/Services/BiteshipService.php` (`createOrder` + fake + cache katalog),
+`app/Http/Controllers/Admin/OrderController.php` (`resiOtomatis`), `routes/admin.php`,
+`app/Http/Controllers/Admin/ShippingController.php` (validasi katalog), `config/biteship.php`,
+`tests/Feature/Admin/AdminAutoResiTest.php`, `docs/kontrak-props.md` (§10.13, §12.25).
+Tidak menyentuh `docs/db.md` (kartu B4), `.env`, dan tidak menjalankan migrasi.
+
+### Hasil B3 (24 Okt 2026)
+
+- Migrasi `2026_10_24_000003_add_biteship_columns_to_orders_table.php` ditulis, **belum dijalankan**
+  (menunggu `php artisan migrate` pemilik/kartu B4); `docs/db.md` tidak disentuh.
+- `BiteshipService::createOrder`: transaksi + `lockForUpdate`, idempoten lewat
+  `biteship_order_id`, guard status/kurir/setting asal sebelum jaringan; mode uji tanpa
+  `BITESHIP_API_KEY` tidak memanggil API (resi `FAKE-<kode>`).
+- `BiteshipService::catalog`: `GET /v1/couriers` di-cache 24 jam (`biteship.couriers`), gagal API
+  tidak di-cache dan jatuh ke daftar tersimpan (`sumber = "settings"` + `galat`). Baris katalog
+  digabung dengan daftar tersimpan; kode yang hanya ada di daftar bawaan (`DEFAULT_COURIERS`)
+  tetap dianggap dikenal oleh validasi `PUT /admin/ekspedisi`.
+- `PUT /admin/ekspedisi` menolak layanan di luar katalog hanya saat `sumber = "biteship"` dan
+  `daftar` tidak kosong (mode uji/API gagal tetap bisa menyimpan).
+- `POST /admin/pesanan/{order}/resi` (`admin.orders.resi-otomatis`,
+  `throttle:admin-write`): controller hanya meneruskan `pesan`; semua guard + tulisan kolom di
+  service, jadi tidak ada jalur 500 untuk kegagalan Biteship.
+- Verifikasi: `php -l` 8 berkas exit 0; `artisan route:list --name=resi` memuat route baru
+  (`PATCH` dan `POST` di path sama, name `admin.orders.resi` dan `admin.orders.resi-otomatis`);
+  `artisan test tests/Feature/Admin/AdminAutoResiTest.php` → **9 passed (36 assertions)**;
+  `artisan test tests/Feature/Checkout/CheckoutShippingTest.php` → **10 passed**.
+  `artisan test tests/Feature/Admin tests/Feature/Checkout` masih gagal di 3 test Midtrans/checkout
+  lama (`CheckoutTest` qris, `QaV11OngkirPembayaranTest` webhook 403) — berkas Midtrans di working
+  tree sedang diubah kartu lain, bukan dari B3.
+
+## Hasil kartu `t_66e507a3` — Midtrans Core API 8 kanal (24 Okt 2026)
+
+- Snap dihapus: `MidtransApi::snap()` → `charge(array)`; `SdkMidtransApi` memakai
+  `Midtrans\CoreApi::charge`. Tidak ada `snap()`, `snap_token`, `snap_redirect_url` yang
+  ditulis lagi (kolom lama dibiarkan, tidak dipakai; tidak ada migrasi baru).
+- 8 kanal `MidtransService::CHANNELS` (urutan PRD-v1.2 §2.2): `qris`, `bca_va`, `bni_va`,
+  `bri_va`, `permata_va`, `mandiri_bill`, `alfamart`, `indomaret`; `grup` ∈
+  `qris`/`va`/`bill`/`gerai`. Charge memakai `payment_type` + payload per grup
+  (`qris.acquirer`, `bank_transfer.bank`, `echannel`, `cstore`).
+- Kedaluwarsa per kanal: QRIS `midtrans.expiry_minutes` (5), lainnya
+  `midtrans.expiry_va_minutes` (60, baru di `config/midtrans.php` + `.env.example`).
+  `custom_expiry.expiry_duration` dan `payments.expires_at` memakai nilai yang sama.
+- Checkout hanya membuat baris `payments` pending (`createPendingPayment`); charge terjadi
+  saat `POST /checkout/{order}/bayar/metode` (`checkout.method`, `throttle:checkout` = 10/menit).
+  Kanal sama yang belum kedaluwarsa tidak di-charge ulang; ganti kanal memakai
+  `order_id_midtrans` `code`, lalu `code-2`, `code-3`, … pada baris `payments` yang sama.
+- Route publik baru `GET /midtrans/selesai` (`midtrans.selesai`) → `CheckoutController::midtransSelesai`;
+  `order_id` tak dikenal / bukan milik pengguna → `/` + `flash.error`.
+- `payments.payment_type` menyimpan id kanal; webhook hanya mengisi kolom itu bila kosong.
+  `orders.payment_method` diisi id kanal saat `settlement`.
+- Admin `payment` payload (§12.17): `snap_token`/`snap_redirect_url` diganti `metode` +
+  `instruksi`; kontrak sudah diperbarui.
+- Test: `tests/Feature/Checkout/MidtransSnapTest.php` dihapus, diganti
+  `tests/Feature/Checkout/MidtransCoreTest.php` (10 test: checkout tanpa charge, 8 kanal,
+  charge QRIS 5 menit, idempoten, ganti kanal `-2` + 60 menit, bill/gerai, kanal tak dikenal,
+  gagal charge, `/midtrans/selesai`). `CheckoutTest` + `QaV11OngkirPembayaranTest` disesuaikan.
+- Verifikasi: `php -l` 12 berkas exit 0; `route:list` memuat `checkout.method` dan
+  `midtrans.selesai`; suite penuh **307 passed (2.390 assertions)** via
+  `php -d extension=pdo_sqlite -d extension=sqlite3 vendor/bin/phpunit`.
+- Catatan lingkungan: `php` CLI di mesin ini belum memuat `pdo_sqlite`, jadi `php artisan test`
+  gagal "could not find driver". Sementara dijalankan dengan flag `-d extension=pdo_sqlite`
+  (tanpa mengubah `php.ini`). Pemilik perlu mengaktifkan `extension=pdo_sqlite` di `php.ini`
+  agar `php artisan test` berjalan biasa — dicatat di `docs/langkah-pemilik.md`.
+- Di luar lingkup kartu ini: `resources/js/Pages/Public/CheckoutPay.jsx` masih membaca
+  `snap_redirect_url`/`pembayaran.method`; halaman bayar perlu memakai `pembayaran.kanal[]`,
+  `pembayaran.metode`, `pembayaran.instruksi`, dan `POST checkout.method`. Dikerjakan kartu frontend.
+
+## Rencana kartu `t_09738dd5` — B2 alamat register + prefill checkout
+
+- `RegisterRequest`: `address` (wajib, 10–500), `city` (wajib, maks 100), `postal_code`
+  (wajib, `digits:5`) + trim; pesan galat dari `docs/design-v1.2.md` §6.1.
+- `AuthController::register`: simpan tiga field ke `users` (kolom sudah ada, tanpa migrasi).
+- `CheckoutController::index`: `prefill.customer_address/city/postal_code` dari profil user
+  (sebelumnya `null`); kontrak §7.5 baris prefill diperbarui.
+- Test: `RegistrationTest` (3 field tersimpan, kode pos 4 angka/alfabet ditolak, alamat/kota
+  wajib), `CheckoutTest` (prefill terisi untuk user lama, user tanpa alamat → `null`).
+- Berkas disentuh: `app/Http/Requests/Auth/RegisterRequest.php`,
+  `app/Http/Controllers/AuthController.php`, `app/Http/Controllers/CheckoutController.php`,
+  `tests/Feature/Auth/RegistrationTest.php`, `tests/Feature/Checkout/CheckoutTest.php`,
+  `docs/kontrak-props.md`, `docs/catatan-backend.md`.
+- Tanpa migrasi, tanpa route baru, tanpa `.env`.
+
+## Hasil kartu `t_09738dd5` — B2 alamat register + prefill checkout (24 Okt 2026)
+
+- `RegisterRequest` (§6.2): `address` wajib 10–500, `city` wajib maks 100, `postal_code` wajib
+  `digits:5`; ketiganya di-trim (email juga di-lowercase seperti sebelumnya). Pesan galat persis
+  design-v1.2 §6.1: `Alamat lengkap wajib diisi.` / `Alamat terlalu singkat. Tulis jalan, nomor, RT/RW.`
+  / `Alamat maksimal 500 karakter.` / `Kota wajib diisi.` / `Kota maksimal 100 karakter.` /
+  `Kode pos wajib diisi.` / `Kode pos harus 5 angka.`
+- `AuthController::register` menyimpan `address`, `city`, `postal_code` ke `users` (kolom sudah ada
+  di migrasi `2026_10_20_000002_add_profile_columns_to_users_table`; **tidak ada migrasi baru**,
+  `docs/db.md` tidak berubah).
+- `CheckoutController@index` (§7.5): `prefill.customer_address/city/postal_code` kini dari
+  `users.address/city/postal_code` (sebelumnya `null`); `customer_name/phone/email` tetap.
+  User lama tanpa profil tetap mendapat `null` (kontrak tidak berubah bentuk).
+- Test: `RegistrationTest` +4 (kode pos 4 angka ditolak, kode pos berhuruf ditolak, alamat <10
+  ditolak, tiga field wajib) dan assertion 3 field tersimpan; `CheckoutTest` +2 (prefill terisi
+  dari profil, prefill `null` untuk user tanpa alamat).
+- Verifikasi: `php -l` 5 berkas exit 0; `php -d extension=pdo_sqlite -d extension=sqlite3
+  vendor/bin/phpunit --filter 'RegistrationTest|CheckoutTest'` → OK (34 test, 314 assertion);
+  suite penuh → **OK (313 test, 2.445 assertion)**. `php artisan test` polos belum bisa di mesin
+  ini (ekstensi `pdo_sqlite` belum aktif) — sama seperti catatan kartu sebelumnya.
+- Untuk frontend (`t_8febc069`): `Register.jsx` saat ini **belum** mengirim `address`, `city`,
+  `postal_code`, jadi pendaftaran lewat UI akan gagal validasi sampai kartu FE selesai — urutan
+  ini memang disengaja (kartu FE bergantung pada kartu ini). Field wajib ada setelah Nomor WhatsApp
+  (design-v1.2 §6.1); `prefill.customer_address/city/postal_code` sudah terisi dan bisa diedit.
+- Untuk QA: payload `POST /register` pada skrip/uji manual wajib menambah tiga field di atas
+  (`address` ≥10 karakter, `postal_code` 5 angka), selain itu 302 redirect balik dengan `errors`.
+
+## Rencana kartu `t_f4a75237` — B4 props pesanan/pembayaran/pengiriman + riwayat
+
+- Tujuan: menutup K1–K4 `docs/design-v1.2.md` §11 — detail admin `payment.metode/instruksi/fake`,
+  `pesanan.shipping`, `pesanan.mode_uji`, kolom kurir/resi + filter `kirim` di daftar admin,
+  dan kelengkapan rincian riwayat (customer, shipping, biaya, timeline).
+- Migrasi baru `2026_10_24_000004_add_shipped_at_to_orders_table` (kolom `shipped_at`, nullable);
+  diisi `OrderService::changeStatusByAdmin` saat status menjadi `dikirim` — sumber `timeline.shipped_at`.
+- `BiteshipService`: `serviceLabels()` (peta `courier:service` → nama dari layanan tersimpan),
+  `shippingInfo()` (satu bentuk objek `shipping` untuk admin & riwayat), `shippingLabel()`.
+- `Admin\OrderController`: `index` (kolom kurir/resi/status + `mode_uji` + filter `kirim` +
+  `filter_opsi.kirim`), `show` (`shipping`, `mode_uji`, `timeline`, `payment.fake`, instruksi benar).
+- `HistoryController`: `customer`, `shipping`, `subtotal`, `shipping_cost`, `discount`, `timeline`.
+- Kontrak: §12.16, §12.17, §13 (aditif, kompatibel); `docs/db.md` (migrasi 24–25, kolom `orders`).
+- Test: tambahan metode di `tests/Feature/Admin/AdminSalesTest.php` dan `tests/Feature/HistoryTest.php`.
+- Tanpa rute baru, tanpa perubahan `.env`.
+
+### Hasil `t_f4a75237`
+
+- `php -l` lima berkas: lolos; `php artisan migrate --force`: `2026_10_24_000004` masuk batch 4,
+  `migrate:status` = `Ran`.
+- `php artisan tinker` (baca saja, pesanan `TK-20261024-0001`): `shippingInfo()` mengembalikan
+  `anteraja/ANTERAJA/REG`, etd, berat, ongkir, resi — bentuk sama untuk admin dan riwayat.
+- `BiteshipService::shippingLabel('delivered')` = `Terkirim`, `shippingLabel(null)` = `null`.
+- Test **belum dijalankan**: `php artisan test` gagal karena ekstensi `pdo_sqlite` tidak aktif di PHP
+  lokal (langkah pemilik sudah ada di `docs/langkah-pemilik.md`). `phpunit.xml` sudah memakai SQLite
+  in-memory, jadi tidak menyentuh database pengembangan begitu ekstensi aktif.
+- Catatan untuk FE: nama kurir/layanan mengikuti `settings.shipping_couriers` bila ada `courier_name`/
+  `service_name`; baris settings sekarang hanya berisi `label`, jadi fallback = kode mentah huruf besar
+  (`ANTERAJA`, `REG`) sesuai kontrak. Bila ingin nama rapi, isi `courier_name` di settings (kartu lain).
+- `mode_uji` = tagihan Midtrans uji (`payload.mode='fake'` atau `transaction_id` berawalan `fake-`)
+  atau `shipping_payload.mode_uji`; tidak ada kolom baru.
+
+## Rencana kartu `t_6032599a` — Fix B-01 `shipping.galat` riwayat pembeli (24 Okt 2026)
+
+Sumber: `docs/qa-v1.2.md` B-01 (P1/Medium). Suite merah di `tests/Feature/HistoryTest.php:309`
+(`shipping.galat` pembeli berisi pesan penjaga status admin).
+
+- Pilih arah (a) dari kartu: null-kan `galat` di payload `HistoryController` — satu titik, panel admin
+  (`Admin/OrderController` → `§12.17`) tidak tersentuh, `BiteshipService` tidak berubah bentuk.
+- Key `galat` tetap **ada** bernilai `null` (bukan dihapus): `AssertableJson::where()` memanggil `has()`,
+  jadi key wajib ada; bentuk payload §13 tetap satu.
+- Berkas disentuh: `app/Http/Controllers/HistoryController.php` (1 baris + komentar),
+  `docs/kontrak-props.md` §13 (baris `shipping` + status), `docs/catatan-backend.md`.
+- Verifikasi: `HistoryTest` lalu suite penuh 317 test (phpunit.xml = SQLite `:memory:`, bukan DB dev).
+
+## Hasil kartu `t_6032599a` — Fix B-01 `shipping.galat` pembeli (24 Okt 2026)
+
+- `app/Http/Controllers/HistoryController.php` baris ~104: `shipping` = `array_merge(shippingInfo(...), ['galat' => null])`.
+  Key tetap ada bernilai `null` (test `where()` menuntut key ada). `BiteshipService` tidak berubah, jadi
+  panel admin `§12.17` tetap menerima `galat` non-null (test admin `AdminSalesTest.php:426` hijau).
+- `docs/kontrak-props.md` §13: baris `shipping` + contoh JSON (`"galat": null`) + status §13.1 (klarifikasi
+  `t_6032599a`, QA v1.2 B-01/D-05).
+- Bukti jalan: `php -l` lolos; `--filter HistoryTest` = OK (7 test, 187 assertion); suite penuh
+  `php vendor/phpunit/phpunit/phpunit --no-coverage` = **OK (317 tests, 2565 assertions)**, 1m31s,
+  PHP 8.3.32 via `PHP_INI_SCAN_DIR` phpqa (bukan DB dev; phpunit `:memory:`). Verifikasi Tech Lead terpisah
+  juga 317/317.
+- Catatan FE: tidak ada yang perlu diubah — `Public/History.jsx` tidak pernah membaca `shipping.galat`;
+  bila nanti dipakai, nilainya selalu `null`.
+
+## Rencana kartu `t_139d20e8` — Fix B-02 label kanal di daftar pesanan admin (24 Okt 2026)
+
+- `OrderController::row()`: tambah `payment_method_label` = `Order::paymentMethodLabel($order->payment_method)`
+  (sumber sama dengan detail §12.17). Tanpa relasi baru, jadi tanpa N+1.
+- `resources/js/Pages/Admin/Orders/Index.jsx` kolom pembayaran: tampilkan label kanal (`—` bila kosong)
+  + badge status bayar yang sudah ada; header jadi `Pembayaran`.
+- `docs/kontrak-props.md` §12.16: key `payment_method_label` di contoh JSON + tabel aturan.
+- `tests/Feature/Admin/AdminSalesTest.php`: test baru assert label kanal (`qris` → `QRIS`), bukan id mentah.
+- Verifikasi: `php -l`, `AdminSalesTest`, suite penuh (sqlite `:memory:` lewat INI scan sementara di scratch,
+  bukan DB pemilik), `npm run build`.
+
+### Hasil
+
+- `app/Http/Controllers/Admin/OrderController.php` `row()`: `payment_method_label` ditambahkan (satu baris,
+  `Order::paymentMethodLabel($order->payment_method)` — sama dengan detail §12.17; kolom `orders.payment_method`,
+  bukan relasi, jadi tanpa query tambahan).
+- `resources/js/Pages/Admin/Orders/Index.jsx`: header `Status bayar` → `Pembayaran`, isi = label kanal
+  (`—` bila kosong) + badge status bayar lama. Filter dan kolom lain tidak disentuh.
+- `docs/kontrak-props.md` §12.16: contoh JSON + baris tabel `payment_method_label` (dan `payment_label` yang
+  sebelumnya belum terdokumentasi di tabel). Status §12 tetap DRAFT.
+- `tests/Feature/Admin/AdminSalesTest.php`: test baru `test_daftar_pesanan_mengirim_label_kanal_bukan_id_mentah`
+  (`bca_va` → `Transfer Bank`; gagal bila id mentah yang dikirim).
+- Bukti jalan (24 Okt 2026): `php -l` 2 berkas lolos; `--filter AdminSalesTest` = **OK (17 test, 197 assertion)**;
+  suite penuh = **OK (318 tests, 2575 assertions)**, 1m19s, PHP 8.3.32, sqlite `:memory:` (INI scan sementara di
+  scratch, php.ini global dan `.env` tidak disentuh); `npm run build` = **lulus** (exit 0, 14,04 s).
+- Belum dicek: tampilan kolom di browser (360px/kartu bertumpuk) — wewenang QA/pemilik.
+
+
+
+
+## Rencana kartu `t_8498103a` — B0 trust proxy loopback (PRD-v1.3 §3)
+
+- `bootstrap/app.php`: `$middleware->trustProxies(at: ['127.0.0.1', '::1'])` (bukan `'*'`), plus komentar alasan.
+- `tests/Feature/Public/ForwardedProtoTest.php`: tiga kasus — loopback + `X-Forwarded-Proto: https` →
+  favicon `https://…`; tanpa header → `http://…` (kontrol); IP tak dipercaya + header → tetap `http://…`
+  (bukti bukan `'*'`). Ambil href `<link rel="icon">` (dihasilkan `asset()`), sehingga tidak bergantung
+  pada `public/hot`/`public/build` milik DevOps.
+- Verifikasi: `php -l`, PHPUnit filter test baru (sqlite `:memory:`), suite penuh.
+- Tidak menyentuh `public/hot`, `public/build`, `.env`, server, atau perilaku lain.
+
+## Rencana kartu `t_2c6be520` — B1 webhook Biteship (PRD-v1.3 §2)
+
+- Migrasi `2026_10_24_000005_add_shipping_webhook_columns_to_orders_table`: `shipping_updated_at`
+  timestamp null, `shipping_webhook_payload` json null; `Order` fillable + casts ikut.
+- `config/biteship.php`: `webhook_token` dari `BITESHIP_WEBHOOK_TOKEN` (tanpa mencetak nilai).
+- `app/Services/BiteshipWebhookService.php`: satu-satunya tempat aturan token, pencocokan
+  `biteship_order_id`, peta event, status hanya maju, idempoten, payload terakhir (transaksi + lock).
+- `app/Http/Controllers/BiteshipWebhookController.php` invokable tipis: JSON rusak → 422, token salah → 403,
+  sisanya 200 `{"message":"ok"}`.
+- Route `POST /biteship/webhook` (`biteship.webhook`, tanpa auth, `throttle:120,1`) di `routes/web.php`;
+  CSRF dikecualikan di `bootstrap/app.php`.
+- Test `tests/Feature/Checkout/BiteshipWebhookTest.php`: tiga event, event ganda, status tidak mundur,
+  `pending`/`batal` aman, token salah, body rusak, order tak dikenal, dua kolom terisi, uang/stok tetap.
+- `docs/db.md` diperbarui (urutan migrasi + kolom `orders`).
+- Verifikasi: `php -l`, `php artisan test --filter=BiteshipWebhook` (sqlite `:memory:`), suite penuh.
+
+### Hasil
+
+- `database/migrations/2026_10_24_000005_add_shipping_webhook_columns_to_orders_table.php` (baru):
+  `orders.shipping_updated_at` timestamp null, `orders.shipping_webhook_payload` json null (`down()`
+  menghapus keduanya). `App\Models\Order` fillable + casts (`datetime`, `array`) ikut diperbarui.
+- `config/biteship.php`: `webhook_token` = `env('BITESHIP_WEBHOOK_TOKEN')` (tidak mencetak nilai).
+- `app/Services/BiteshipWebhookService.php` (baru): satu tempat aturan — token (`hash_equals`, kosong =
+  diterima + `Log::info`), pencocokan `biteship_order_id`, tiga event, status hanya maju
+  (`nextOrderStatus`), idempoten (penugasan nilai + `shipped_at` hanya bila null), transaksi +
+  `lockForUpdate`. `order.price` hanya menyimpan payload + `shipping_updated_at`; tidak menulis
+  `payments`, stok, `shipping_cost`, atau `total`.
+- `app/Http/Controllers/BiteshipWebhookController.php` (baru, invokable): token salah → 403
+  `{"message":"invalid token"}` + `Log::warning`; body bukan JSON → 422 `{"message":"invalid payload"}`;
+  sisanya 200 `{"message":"ok"}` (event/order tak dikenal juga 200 + log).
+- `routes/web.php`: `POST /biteship/webhook` name `biteship.webhook`, middleware `throttle:120,1`, di luar
+  `auth`; `bootstrap/app.php` CSRF dikecualikan (`biteship/webhook`) — baris `trustProxies` milik kartu B0
+  tidak disentuh.
+- `tests/Feature/Checkout/BiteshipWebhookTest.php` (baru, 10 test): tiga event, `delivered` pada `dibayar`
+  hanya satu langkah (`dikirim`), event ganda idempoten (`shipped_at` + resi tetap), status tidak mundur
+  (`dikirim`/`selesai`/`batal`/`pending`), status kurir bermasalah tidak membatalkan pesanan, token salah
+  403 (query & header) + token benar 200, body rusak 422, order tak dikenal 200 + `Log::warning`, dan
+  `order.price` tidak mengubah `shipping_cost`/`total`/`payments.gross_amount`/stok/`stock_movements`.
+- `docs/db.md`: baris migrasi #27 + dua kolom di bagian `orders`.
+- Bukti jalan (24 Okt 2026): `php -l` 7 berkas lolos; `php -d extension=pdo_sqlite -d extension=sqlite3
+  vendor/bin/phpunit --filter=BiteshipWebhook` = **OK (10 tests, 62 assertions)**; suite penuh (flag sama)
+  = **OK (331 tests, 2647 assertions)**, 38 s, PHP 8.3.32, sqlite `:memory:`. `php artisan test` tanpa flag
+  gagal `could not find driver` (pdo_sqlite belum aktif di PHP CLI — lihat `docs/langkah-pemilik.md`).
+- Belum dicek: `php artisan migrate` pada database pengembangan (kartu melarang) dan kiriman webhook asli
+  dari dashboard Biteship (butuh token + tunnel milik pemilik).
+- Catatan untuk kartu B2: `shipping_webhook_payload` menyimpan payload terakhir saja (PRD-v1.3 §2.4), jadi
+  `shipping_webhook_payload.price` bisa hilang bila event `order.status` datang setelah `order.price` —
+  `price_final` harus dibaca apa adanya (`null` bila payload terakhir bukan `order.price`), bukan ditebak.
+
+### Hasil kartu `t_8498103a` — B0 trust proxy loopback
+
+- `bootstrap/app.php`: `$middleware->trustProxies(at: ['127.0.0.1', '::1'])` di `withMiddleware`, sebelum
+  append middleware web; komentar menyebut PRD-v1.3 §3 dan alasan menolak `'*'`. Tidak ada perubahan lain
+  pada rute, CSRF, alias, atau middleware.
+- `tests/Feature/Public/ForwardedProtoTest.php` (3 test, 10 assertion):
+  1. `REMOTE_ADDR 127.0.0.1` + `X-Forwarded-Proto: https` → `<link rel="icon">` berawalan `https://` (dari
+     `asset()` di `resources/views/app.blade.php`).
+  2. Tanpa header → tetap `http://` (kontrol, membuktikan efek berasal dari header).
+  3. `X-Forwarded-Proto: https` dari `203.0.113.9` (tak dipercaya) → tetap `http://` (membuktikan bukan `'*'`).
+  Href diambil dari `<link rel="icon">`, bukan tag `@vite`, sehingga test tidak bergantung pada `public/hot`
+  atau `public/build` milik DevOps.
+- Bukti merah: dengan `bootstrap/app.php` versi HEAD (tanpa trustProxies), test 1 gagal
+  (`'http://localhost:8000/favicon.ico'` tidak berawalan `https://`); setelah perubahan, hijau.
+- Bukti jalan (25 Okt 2026, PHP 8.3.32 + pdo_sqlite lewat `PHP_INI_SCAN_DIR` scratch, sqlite `:memory:`,
+  bukan DB pemilik): `php -l` 2 berkas lolos; `--filter ForwardedProtoTest` = **OK (3 tests, 10 assertions)**;
+  suite penuh = **OK (321 tests, 2585 assertions)**, 50,2 s.
+- `public/hot` dan `public/build` tidak disentuh dan tidak dihapus (milik kartu DevOps D0); `.env` tidak dibaca.
+- Untuk DevOps D0: setelah `public/hot` dihapus + `npm run build`, `curl https://<tunnel>/` harus memuat
+  `/build/assets/...` dan favicon `https://`. Test di atas hanya membuktikan skema URL; penghapusan `public/hot`
+  tidak diuji di sini.
+
+## Rencana kartu `t_5a702574` — B2 props data webhook (PRD-v1.3 §2.6)
+
+- `app/Services/BiteshipService.php`: `shippingInfo()` (bentuk pembeli/dasar) ditambah `updated_at`,
+  `driver`, `perlu_tindakan`, `tindakan`; metode baru `shippingInfoAdmin()` (+`price_final`,
+  `price_selisih`, `webhook_terakhir`) dan `shippingPerluTindakan()` untuk baris daftar admin.
+- `app/Http/Controllers/Admin/OrderController.php`: detail pakai `shippingInfoAdmin()`; baris daftar
+  +`shipping_updated_at`, +`shipping_perlu_tindakan`.
+- `app/Http/Controllers/CheckoutController.php` §7.9: `pesanan.shipping` bentuk pembeli (`galat` null
+  seperti §13). `HistoryController` tidak berubah (sudah memaksa `galat` null).
+- `tests/Feature/ShippingPropsV13Test.php` (baru): nilai null benar, retur/gagal, selisih ≠ 0,
+  payload terakhir bukan `order.price`, dan pembeli tanpa key admin.
+- `docs/kontrak-props.md` §7.9/§12.16/§12.17/§13 + `docs/asumsi.md`. Tanpa migrasi, tanpa `.env`.
+
+### Hasil kartu `t_5a702574` — B2 (25 Okt 2026)
+
+Berkas diubah:
+- `app/Services/BiteshipService.php` — `shippingInfo()` + `updated_at`, `driver`, `perlu_tindakan`,
+  `tindakan`; baru `shippingInfoAdmin()`, `shippingPriceFinal()`, `shippingPerluTindakan()`,
+  `shippingTindakan()`, `shippingStatusBermasalah()`, `shippingDriver()`. Daftar status bermasalah
+  memakai `BiteshipWebhookService::STATUS_BERMASALAH` (satu sumber, tidak digandakan).
+- `app/Http/Controllers/Admin/OrderController.php` — detail `shippingInfoAdmin()`; baris daftar
+  `shipping_updated_at`, `shipping_perlu_tindakan`.
+- `app/Http/Controllers/CheckoutController.php` — §7.9 `pesanan.shipping` bentuk pembeli, `galat`
+  dipaksa `null`.
+- `tests/Feature/ShippingPropsV13Test.php` — 8 test (nilai null, selisih, retur, retur pada
+  pesanan selesai, daftar admin, riwayat, halaman selesai).
+- `docs/kontrak-props.md` §7.9/§7.11/§12.16/§12.17/§12.23/§13/§13.1; `docs/asumsi.md`.
+
+Tidak berubah: `HistoryController` (sudah memakai `shippingInfo()` + `galat` null), migrasi,
+model, `.env`, `docs/db.md` (kolom sudah ada dari B1).
+
+Verifikasi:
+- `php -d extension=pdo_sqlite -d extension=sqlite3 vendor/bin/phpunit --filter=ShippingPropsV13Test`
+  → OK (8 test, 168 asersi).
+- Seluruh suite: `php -d extension=pdo_sqlite -d extension=sqlite3 vendor/bin/phpunit`
+  → OK (339 test, 2815 asersi). phpunit.xml memakai SQLite `:memory:`.
+- Belum dicek: render React (di luar lingkup backend); tidak menjalankan server/migrasi.
+
+Untuk frontend: `shipping.driver` bisa `null` walau `status` terisi (payload `order.price` tidak
+membawa data kurir); `perlu_tindakan`/`tindakan` ikut terkirim ke pembeli tetapi tidak dirender
+(design-v1.3 baris 18–19); `price_final`/`price_selisih` hanya ada di detail admin dan bernilai
+`null` bila payload terakhir bukan `order.price`.
+
+## Rencana kartu `t_8c48f38d` — T-13-01 webhook JSON generik saat exception (25 Okt 2026)
+
+Rencana (maks 10 baris):
+1. `bootstrap/app.php` `withExceptions`: `shouldRenderJsonWhen` untuk `biteship/webhook` (semua
+   status, termasuk 429/404/405, dibalas JSON) + callback `render` untuk exception **non-HTTP**
+   → `500 {"message":"internal error"}` tanpa SQL/trace, tidak bergantung `APP_DEBUG`.
+2. Test baru `tests/Feature/Checkout/BiteshipWebhookExceptionJsonTest.php`: service di-mock
+   melempar `RuntimeException` berisi SQLSTATE + nama kolom; kirim tanpa `Accept: application/json`
+   agar negosiasi diuji; assert 500, `Content-Type: application/json`, body persis generik.
+3. Jalur 200/403/422 tidak disentuh (respons controller tetap), 404 non-webhook tetap 404.
+4. Berkas disentuh: `bootstrap/app.php`, satu test baru, `docs/catatan-backend.md`. Tanpa `.env`,
+   tanpa migrasi, tanpa perubahan kontrak props (tidak ada key data baru).
+
+Hasil (25 Okt 2026):
+- `bootstrap/app.php` `withExceptions`:
+  - `shouldRenderJsonWhen(fn ($r) => $r->is('biteship/webhook') || $r->expectsJson())`.
+    Versi pertama hanya `$webhook($request)` → **regresi**: callback ini menggantikan
+    `expectsJson()` di handler, sehingga 2 test validasi JSON rute lain jadi 302
+    (`AdminSalesTest`, `CheckoutShippingTest`). `|| $request->expectsJson()` wajib.
+  - `render()` untuk exception **non-4xx** pada path webhook → `500 {"message":"internal error"}`;
+    `HttpException` 4xx (403/404/405/429) dilewatkan agar status/pesan bawaan tetap. 5xx
+    `HttpException` ikut digenerikkan. Tidak bergantung `APP_DEBUG` (F-13-02 tetap milik pemilik).
+- `tests/Feature/Checkout/BiteshipWebhookExceptionJsonTest.php` — 5 test, 22 asersi: exception
+  `RuntimeException` berisi SQLSTATE/nama kolom → 500 `application/json` persis
+  `{"message":"internal error"}`, tanpa SQLSTATE/nama kolom/trace/`base_path()`; `HttpException(503)`
+  → 500 generik; 403 token salah & 422 body rusak tetap (dikirim tanpa `Accept: application/json`);
+  `/halaman-tidak-ada-xyz` tetap 404 bukan pesan webhook. Service diganti tiruan lewat
+  `app()->instance()` (tanpa DB, tanpa `RefreshDatabase`).
+- Verifikasi: `php -d extension=pdo_sqlite -d extension=sqlite3 vendor/bin/phpunit
+  tests/Feature/Checkout/BiteshipWebhookExceptionJsonTest.php tests/Feature/Checkout/BiteshipWebhookTest.php`
+  → OK (15 test, 84 asersi). Suite penuh → OK (**344 test, 2837 asersi**; baseline 339/2815).
+  `php -l bootstrap/app.php` bersih. Tanpa `migrate`, tanpa menyentuh `.env`/database.
+- Belum dicek: webhook asli dari dashboard Biteship dan balasan lewat tunnel (butuh token pemilik +
+  server berjalan); 429 runtime throttle tidak diuji.
+- Dokumen: `docs/review-v1.3.md` T-13-01 dan `docs/pertanyaan-pemilik-v1.3.md` tidak saya ubah
+  (bukan lingkup/ milik reviewer & pemilik); F-13-01/02/03 tetap tindakan pemilik.
+
+## t_f09907b0 — probe instalasi webhook Biteship (GET + body kosong)
+
+Rencana: (1) `BiteshipWebhookController` membalas `200 {"status":"ok","success":true}` +
+`Log::info` bila `trim($request->getContent()) === ''`, **sebelum** cek token; (2) rute jadi
+`Route::match(['get','post'], '/biteship/webhook')`, throttle tetap; (3) dua test baru di
+`tests/Feature/Checkout/BiteshipWebhookTest.php`; (4) bukti curl via tunnel. Kontrak tidak
+berubah: webhook server-ke-server, bentuknya di PRD-v1.3 §2.1 (bukan `docs/kontrak-props.md`),
+dan §2.1 sudah memuat pengecualian probe. Berkas: controller, `routes/web.php`, test, dokumen.
+
+Hasil (25 Okt 2026):
+- `BiteshipWebhookController::__invoke` — probe body kosong (POST maupun GET) dijawab
+  `200 {"status":"ok","success":true}` + `Log::info('Webhook Biteship: probe instalasi dijawab ok')`,
+  tidak memproses apa pun, tidak menyentuh DB. Body non-kosong: alur lama utuh (token → 403,
+  JSON rusak → 422, valid → `200 {"message":"ok"}` + efek sama).
+- `routes/web.php`: `Route::match(['get','post'], '/biteship/webhook', ...)`, name
+  `biteship.webhook`, `throttle:120,1` tidak berubah; CSRF sudah dikecualikan di `bootstrap/app.php`.
+- Test baru 2: `test_probe_instalasi_post_body_kosong_dibalas_ok_tanpa_cek_token` (token terisi
+  `rahasia-uji` + `?token=salah` + body kosong → 200, bukan 403; `Log::info` sekali) dan
+  `test_probe_instalasi_get_dibalas_ok`. Test lama 10 tidak diubah.
+- Verifikasi: `phpunit tests/Feature/Checkout/BiteshipWebhookTest.php` → OK (12 test, 69 asersi);
+  suite penuh → OK (**346 test, 2844 asersi**; baseline 344/2837). `php -l` bersih untuk 3 berkas.
+- Live (server pemilik + tunnel yang sama, bukan server baru): POST body kosong → 200
+  `{"status":"ok","success":true}`, GET → 200 sama; body rusak `{bukan json` → 422 tetap.
+  Bukti: `docs/bukti-webhook-install-t_f09907b0.txt`.
+- Catatan: `POST` payload nyata tanpa token di tunnel masih 200 karena `BITESHIP_WEBHOOK_TOKEN`
+  kosong di runtime (F-13-03, milik pemilik); 403 terbukti di test dengan token terisi.
+- Belum: pendaftaran ulang URL di dashboard Biteship dan 1 event nyata `order.status`
+  (butuh pemilik). Tanpa migrasi, tanpa `.env`, tanpa perubahan DB.
+
+
+## F12 v1.4 — hapus ubah status manual (B3, kartu t_fc5b4ce1)
+
+Rencana (maks 10 baris): hapus rute `admin.orders.status`, `OrderController@status` + prop
+`status_berikut`, `UpdateOrderStatusRequest`, `Order::nextStatuses()`; sesuaikan test lama
+(`AdminSalesTest`, `RouteContractTest`) dan kontrak §12.17/§12.18. Berkas: `routes/admin.php`,
+`app/Http/Controllers/Admin/OrderController.php`, `app/Models/Order.php`,
+`app/Http/Requests/Admin/UpdateOrderStatusRequest.php` (hapus), `tests/Feature/Admin/AdminSalesTest.php`,
+`tests/Feature/Contract/RouteContractTest.php`, `docs/kontrak-props.md`.
+Tidak menyentuh `BiteshipService`/`OrderService`/`BiteshipWebhookService`/JSX (kartu B1 berjalan paralel).
+
+Hasil (26 Okt 2026):
+- `routes/admin.php:142` — rute `PATCH /admin/pesanan/{order}/status` (`admin.orders.status`) hilang;
+  `route:list --path=admin/pesanan` kini 5 rute (index, show, resi PATCH/POST, sinkron-pembayaran).
+- `app/Http/Controllers/Admin/OrderController.php:136-142` — `show()` hanya mengirim `pesanan`
+  (prop `status_berikut` dihapus); method `status()`, import `UpdateOrderStatusRequest`,
+  `OrderStatusException`, `ValidationException`, dan dependency `OrderService` dibuang.
+- `app/Models/Order.php:124` — `nextStatuses()` dihapus; `isFinal()` dan `STATUS_FLOW` tetap
+  (dipakai filter/ringkasan daftar). `app/Http/Requests/Admin/UpdateOrderStatusRequest.php` dihapus.
+- Test: `AdminSalesTest::test_daftar_dan_detail_pesanan_admin_tanpa_prop_ubah_status` (:89, asersi
+  `missing('status_berikut')`), `::test_rute_ubah_status_manual_sudah_dihapus` (:128 — PATCH lama
+  `assertNotFound()`, status/stok/stock_movements tidak berubah), `::test_detail_pesanan_menampilkan_shipped_at_status_dikirim`
+  (:405 — keadaan `dikirim` disiapkan langsung, bukan lewat rute). Dua test lama yang menguji
+  pembatalan via rute status dihapus (jalur batal sekarang hanya Midtrans, diuji di suite Midtrans).
+  `RouteContractTest` tidak lagi memuat `admin.orders.status`.
+- `docs/kontrak-props.md` §12.17: contoh & penjelasan `status_berikut` dihapus, ditambah catatan
+  status hanya dari Midtrans/Biteship; §12.18 ditandai dihapus (404). (Brief menaruh edit kontrak di
+  B2; §12.17/§12.18 milik B3 dan tidak bertabrakan dengan §12.16/§13 milik B2.)
+- Verifikasi: `vendor/bin/phpunit --filter='AdminSalesTest|RouteContractTest|BiteshipWebhookTest'`
+  → OK (32 test, 256 asersi). Webhook Biteship tetap memajukan status (test lama lulus tanpa diubah).
+- Catatan lingkungan: `php.ini` Laragon 8.3.32 di mesin ini mematikan `pdo_sqlite`, jadi test
+  dijalankan `php -d extension=pdo_sqlite -d extension=sqlite3 vendor/bin/phpunit ...`
+  (sudah tercatat di `docs/langkah-pemilik.md` §7/§"Menjalankan test").
+- Suite penuh: **OK (349 test, 2856 asersi)** — `php -d extension=pdo_sqlite -d extension=sqlite3
+  vendor/bin/phpunit`. (Percobaan pertama saat kartu B1 t_3a264fac masih menulis memunculkan 4
+  gagal di `QaV11OngkirPembayaranTest`; setelah B1 selesai menulis, 13/13 test itu lulus dan suite
+  penuh hijau. Tidak ada perubahan B3 yang terlibat.)
+- Utang teknis (sengaja tidak dikerjakan, kartu melarang menyentuh `OrderService`):
+  `OrderService::changeStatusByAdmin` + `private restoreStock` kini tak terpakai dan menunjuk
+  `nextStatuses()` yang sudah dihapus. Perlu kartu lanjutan untuk menghapus keduanya
+  (`restoreStock` versi MidtransService tetap dipakai dan tidak tersentuh).
+
+## F11 v1.4 — samakan dasar hitung ongkir (kartu t_3a264fac)
+
+Rencana (maks 10 baris): satu fungsi berat `BiteshipService::beratUnit()` (berat produk apa adanya,
+fallback 300 g/unit, tanpa minimum 500 g) dipakai `CartService` (prop `berat_gram`), `OrderService`
+(`orders.shipping_weight_gram` + item tarif) dan `BiteshipService::orderPayload` (berat per unit).
+`rates()`/`quote()` berhenti menerima & mengirim `destination_city`; guard asal kirim lengkap
+(nama, telepon, alamat, kode pos 5 angka, email kontak) dipakai bersama oleh `rates()` dan
+`createOrder()`. `OrderService::createFromCart` mencatat `Log::info('Biteship tarif dipakai', …)`.
+Berkas: `app/Services/BiteshipService.php`, `app/Services/OrderService.php`,
+`app/Services/CartService.php`, `app/Http/Controllers/CheckoutController.php`, test
+(`OngkirV14Test` baru + 3 test lama disesuaikan), `docs/kontrak-props.md`, `docs/asumsi.md`.
+
+Hasil (26 Okt 2026):
+- `BiteshipService::beratUnit(int)` = `weight_gram > 0 ? weight_gram : 300`; dipakai
+  `CartService::unitWeight`, `OrderService::createFromCart`, dan `orderPayload` — satu aturan.
+  `max(500, …)` hilang dari `OrderService` & `CartService`.
+- `rates()`/`quote()`: parameter `$city` dihapus; body tarif hanya `origin_postal_code`,
+  `destination_postal_code`, `couriers`, `items`. `CheckoutController@shipping` tidak lagi
+  memvalidasi/mengirim `city` (nilai `customer_city` tetap disimpan di order lewat checkout).
+- Guard asal: `BiteshipService::originMasalah()` + `pesanAsalBelumLengkap()` dipakai `rates()` dan
+  `createOrder()`; pesan lama (`Kode pos asal toko belum diatur…`, `Pengaturan asal pengiriman belum
+  lengkap: …`) tidak berubah. `rates()` menolak sebelum HTTP bila pengaturan belum lengkap.
+- Log bukti: `Log::info(BiteshipService::LOG_TARIF, ['order','origin_postal_code',
+  'destination_postal_code','weight_gram','courier','service','cost','mode'])` — satu baris per
+  order, tanpa kunci/token. Mode `fake` ikut dicatat dengan `mode: fake`.
+- Test baru `tests/Feature/Checkout/OngkirV14Test.php` (5 test): berat 250 g × 1 = 250 di body tarif;
+  produk berat 0 → 300 g/unit; berat create order = `orders.shipping_weight_gram`; log terpanggil
+  dengan field lengkap; asal belum lengkap → `galat`, `Http::assertNothingSent()`.
+- Test lama disesuaikan ke aturan baru: `CheckoutShippingTest` (`berat_gram` 1000 → 600 = 300×2,
+  `shipping_weight_gram` 1000 → 600), `AdminAutoResiTest` (berat item payload 500 → 250 per unit,
+  qty 2 tetap), `QaV11OngkirPembayaranTest` (fixture `contact_email` agar guard asal lolos).
+- Verifikasi: `vendor/bin/phpunit` (php 8.3 + `-d extension=pdo_sqlite -d extension=sqlite3` karena
+  build Laragon tidak memuat pdo_sqlite di php.ini) → **OK (349 test, 2856 asersi)**, termasuk 5 test
+  baru. `php -l` bersih. `artisan test` tidak dipakai: proses anaknya kehilangan flag `-d extension`.
+- Belum: perbandingan nyata tarif website vs `order.price` Biteship (butuh key + saldo pemilik,
+  PRD-v1.4 §2.3). Tidak ada migrasi, tidak menyentuh `.env`/DB.
+- Catatan: field `weight` pada `POST /v1/orders` kini **per unit** (sama dengan body tarif); total
+  kirim = Σ `weight × quantity`, diasumsikan Biteship mengalikan `quantity` (lihat `docs/asumsi.md`).
+
+## F13 v1.4 (B2) — riwayat pengiriman & timeline pembeli (kartu `t_f51f8c36`)
+
+Rencana (26 Okt 2026): migrasi `2026_10_26_000006` kolom `orders.shipping_events` json null;
+`Order` (+fillable, cast array); `BiteshipWebhookService` append idempoten `{event,status,at}`
+maks 50; `BiteshipService::shippingInfo` + `events` (terbaru dulu, label) dan
+`shippingCompletedAt()`; `HistoryController` `timeline.completed_at`; kontrak §12.17/§13 + `db.md`;
+test baru `tests/Feature/Checkout/TimelineV14Test.php`. Tanpa perubahan JSX.
+
+Hasil (26 Okt 2026):
+- Migrasi `2026_10_26_000006_add_shipping_events_to_orders_table` (`json` null, `down` drop kolom);
+  `Order` fillable + cast `array`. Sudah terbukti jalan di SQLite uji lewat suite; **belum
+  dijalankan di DB pengembangan** (status `Pending` di `migrate:status`, pemilik yang menjalankan
+  `php artisan migrate` — PRD-v1.4 §5.2). Catatan: `2026_10_24_000005` juga masih `Pending` di DB
+  pengembangan (bukan dari kartu ini).
+- `BiteshipWebhookService::appendEvent()` (baris ~137): satu entri `{event,status,at}` per webhook
+  cocok (`order.status`, `order.price`, `order.waybill_id`), `status` lowercase/maks 30, `at` ISO
+  8601; entri dengan `event`+`status` sama dengan entri terakhir tidak ditambahkan; `array_slice(-50)`
+  menyimpan 50 terbaru (list lama → baru). `shipping_webhook_payload` tetap payload terakhir.
+- `BiteshipService::shippingInfo()` + `events` (baris ~584) memakai `shippingEvents()`: bentuk
+  pembeli `{status,label,at}` lewat `shippingLabel()`, urut **terbaru → terlama**, maks 50, `[]`
+  bila kosong. `shippingInfoAdmin()` ikut mendapat key yang sama (aditif, §12.17).
+  `shippingCompletedAt()`: `at` entri `delivered` terakhir → fallback `shipping_updated_at` bila
+  `status = selesai` → `null`.
+- `HistoryController` `timeline.completed_at` (baris ~115). `CheckoutController` tidak perlu diubah:
+  halaman selesai/bayar memakai `shippingInfo()` yang sama sehingga `shipping.events` mengalir
+  otomatis (PRD-v1.4 §4.3: halaman selesai hanya daftar event, tanpa timeline baru).
+  Kontrak §7.9 juga ditambah catatan `pesanan.shipping.events` + baris changelog.
+- Test `tests/Feature/Checkout/TimelineV14Test.php` (7 test, 130 asersi):
+  `test_dua_webhook_status_identik_hanya_menambah_satu_entri`,
+  `test_picked_lalu_delivered_menambah_dua_entri_dan_menyelesaikan_pesanan`,
+  `test_riwayat_dibatasi_lima_puluh_entri`,
+  `test_props_riwayat_memuat_events_terbaru_dulu_dengan_label`,
+  `test_timeline_completed_at_terisi_saat_delivered_pada_pesanan_dikirim`,
+  `test_timeline_completed_at_null_tanpa_delivered`,
+  `test_halaman_selesai_bayar_memuat_events_pengiriman`.
+- Verifikasi: `php -d extension=pdo_sqlite -d extension=sqlite3 vendor/bin/phpunit` →
+  **OK (356 test, 2986 asersi)**; `--filter=TimelineV14Test` → OK (7 test). `php -l` semua berkas
+  tersentuh bersih. Tanpa menyentuh `.env`, JSX, atau DB pengembangan.
+
+
+## 2026-10-26 — QA-14-01: buang sisa kode ubah status (t_eb2b12f9)
+
+Rencana (maks 10 baris):
+1. Hapus `OrderService::changeStatusByAdmin()` (satu-satunya pemanggil `Order::nextStatuses()` yang sudah tiada).
+2. Hapus `restoreStock()` private + `note()` yang jadi yatim; import `OrderStatusException` ikut dibuang.
+3. Perbarui komentar test `CheckoutTest.php:582` yang masih menyebut `Order::nextStatuses()`.
+4. Berkas disentuh: `app/Services/OrderService.php`, `tests/Feature/Checkout/CheckoutTest.php`, catatan ini.
+5. Verifikasi: `php -l`, `grep -rn nextStatuses app tests` kosong, suite PHPUnit (356 test).
+6. Tidak menyentuh `.env`, JSX, migrasi, DB pengembangan.
+
+## 2026-10-26 — QA-14-03: buang ajakan "ubah status" dari `shipping.tindakan` (t_4eb06cea)
+
+Rencana (maks 10 baris):
+1. `BiteshipService::shippingTindakan()`: hapus penutup `Periksa pesanan dan ubah status bila perlu.`; penutup selisih ongkir tetap.
+2. Hasil pesan = daftar §12.17 apa adanya (`Kurir melaporkan paket dikembalikan.` dst.).
+3. Perbarui asersi `tests/Feature/ShippingPropsV13Test.php:175` (kunci teks lama).
+4. Kontrak §12.17: baris `shipping.tindakan` diberi catatan tanpa ajakan ubah status + baris changelog.
+5. `docs/asumsi.md`: catatan keputusan redaksi (tanpa arahan pengganti; uiux bisa minta tambahan).
+6. Berkas disentuh: `app/Services/BiteshipService.php`, `tests/Feature/ShippingPropsV13Test.php`,
+   `docs/kontrak-props.md`, `docs/asumsi.md`, catatan ini.
+7. Verifikasi: `php -l`, `--filter=ShippingPropsV13Test`, suite penuh (356 test).
+8. Tidak ada migrasi, tidak menyentuh `.env`/JSX; workspace kartu kosong (scratch), kode proyek di
+   `C:/Users/LENOVO/Downloads/toko-kulot` seperti kartu-kartu backend sebelumnya.
+
+Hasil:
+- `shippingTindakan()`: penutup hanya untuk selisih ongkir; pesan status = daftar §12.17 apa adanya
+  (`Kurir melaporkan paket dikembalikan.`). Kasus gabungan (status + selisih) tetap menghasilkan
+  `Kurir melaporkan paket dikembalikan. Ongkir aktual berbeda dari ongkir tagihan. Periksa selisih ongkir pesanan ini.`
+- Test: asersi `ShippingPropsV13Test:175` → teks baru. `grep -rn "Periksa pesanan dan ubah status"
+  app resources tests routes config` kosong.
+- Verifikasi: `php -l` 2 berkas bersih; `--filter=ShippingPropsV13Test` → OK (8 test, 168 asersi);
+  suite penuh → **OK (356 test, 2986 asersi)**.
+- Frontend tidak perlu berubah: `design-v1.3.md:42` memakai `shipping.tindakan` apa adanya.
+- Belum dikerjakan (di luar lingkup): koordinasi redaksi dengan uiux — bila uiux ingin arahan
+  pengganti, tinggal tambah satu kalimat di service + §12.17 + test.
+
+**Hasil (QA-14-01).**
+- `app/Services/OrderService.php`: `changeStatusByAdmin()`, `private restoreStock()`, `private note()` dihapus (92 baris); import `App\Exceptions\OrderStatusException` dibuang. `DB::`, `Log::`, `$this->stock` tetap dipakai jalur checkout.
+- `app/Exceptions/OrderStatusException.php` dihapus (`git rm`): nol pemanggil setelah method di atas hilang (grep `app tests routes bootstrap config resources` → kosong).
+- `tests/Feature/Checkout/CheckoutTest.php:582`: komentar diperbarui (tak lagi menyebut `Order::nextStatuses()`); asersi tidak berubah.
+- `restoreStock` milik `MidtransService` (baris 600/625) tetap — itu jalur pengembalian stok resmi kontrak §12.18.
+- Verifikasi: `php -l` dua berkas bersih; `grep -rn "nextStatuses" app tests` kosong;
+  `php -d extension=pdo_sqlite -d extension=sqlite3 vendor/phpunit/phpunit/phpunit < /dev/null`
+  → **OK (359 test, 3006 asersi)**. Catatan: QA mencatat 356 test; suite bertambah 3 test dari
+  kartu lain yang berjalan paralel saat pemeriksaan ini, bukan dari perubahan di sini.
+- Tidak menyentuh `.env`, JSX, migrasi, atau DB pengembangan (test pakai SQLite in-memory).
+- Sisa catatan usang di luar lingkup: komentar `database/migrations/2026_10_24_000004_add_shipped_at_to_orders_table.php:10`
+  masih menyebut `OrderService::changeStatusByAdmin`; tidak diubah karena aturan migrasi lama.
+
+## 2026-10-26 — v1.5 B2: token webhook Biteship dari nama header apa pun (t_b8bc14f7)
+
+Rencana (maks 10 baris):
+1. `BiteshipWebhookController`: kumpulkan kandidat token dari `?token=` + semua header; cocokkan `hash_equals`.
+2. Log penerimaan memuat `sumber` (nama header/`query`); log penolakan memuat daftar **nama** header + IP, tanpa nilai token.
+3. Token `.env` kosong tetap menerima semua lewat `BiteshipWebhookService::tokenValid()` (tanpa perubahan peta status).
+4. Test di `tests/Feature/Checkout/BiteshipWebhookTest.php`: header kustom, `X-Webhook-Token`, query, salah 403, kosong menerima, log tanpa nilai token.
+5. Berkas: controller, test, komentar `config/biteship.php` + `routes/web.php`, `docs/langkah-pemilik.md` §v1.5, catatan ini.
+6. Verifikasi: `php -l`, `--filter=BiteshipWebhook`, suite penuh (SQLite in-memory).
+
+Hasil:
+- `BiteshipWebhookController`: `tokenMasuk()` mengumpulkan `?token=` + semua nilai header, memilih yang `hash_equals` dengan `config('biteship.webhook_token')`; `tokenValid()` tetap satu-satunya gerbang (token kosong = terima semua, peta status tidak disentuh).
+- Log diterima: `sumber` = `query` atau **nama** header (mis. `x-api-key`). Log ditolak: `header` = daftar nama header yang diterima + `query_token` boolean + IP. Nilai token tidak pernah masuk log (diasersi test).
+- Komentar usang diperbarui: `config/biteship.php`, `routes/web.php`, docblock test. `docs/langkah-pemilik.md` §v1.5 langkah 1 ditambah cara baca `header` di log bila masih 403 (bagian v1.5 sudah ada dari kartu induk, tinggal dilengkapi).
+- Verifikasi: `php -l` dua berkas bersih; `--filter=BiteshipWebhook` → OK (19 test, 100 asersi); suite penuh → **OK (368 test, 3045 asersi)**. Catatan balapan: saat suite pertama dijalankan, `OngkirV15OpsiTest::test_duplikat_beda_huruf_dibuang` (kartu B1) sempat gagal karena `BiteshipService` masih ditulis worker paralel; test itu lolos begitu B1 selesai dan suite ulang hijau.
+- Webhook Biteship nyata: **belum diuji**, butuh pemilik (kartu mencatat ini).
+
+## 2026-10-26 — QA-14-02: berat create order dari snapshot `orders.shipping_weight_gram` (t_65362988)
+
+Rencana (maks 10 baris):
+1. `BiteshipService::bagiBerat(total, qty)`: bagi snapshot berat jadi gram/unit tiap baris, Σ(berat×qty) = total persis.
+2. `orderPayload()` pakai snapshot; berat produk hidup hanya fallback bila `shipping_weight_gram` null/0 (order lama).
+3. Tanpa migrasi/kolom baru (pilihan "total tersimpan" di kartu) → tidak perlu persetujuan techlead.
+4. Test: berat produk diubah, produk dihapus, dua baris qty 5 & 7 di `tests/Feature/Checkout/OngkirV14Test.php`.
+5. Verifikasi: `php -l`, `--filter=OngkirV14Test`, suite penuh.
+6. Berkas: `app/Services/BiteshipService.php`, `tests/Feature/Checkout/OngkirV14Test.php`, `docs/asumsi.md`, catatan ini.
+7. Workspace kartu kosong (scratch); kode proyek di `C:/Users/LENOVO/Downloads/toko-kulot` seperti kartu backend sebelumnya.
+
+Hasil verifikasi (dijalankan):
+- `php -l app/Services/BiteshipService.php` → no syntax errors.
+- `php -d extension=pdo_sqlite vendor/bin/phpunit --filter=OngkirV14Test` → OK (8 tests, 47 assertions).
+- Suite penuh `php -d extension=pdo_sqlite vendor/bin/phpunit` → OK (359 tests, 3006 assertions), 62 s.
+
+Catatan lingkungan (bukan blocker): `php` CLI di mesin ini tidak memuat `pdo_sqlite` secara default
+(`php -m` tanpa sqlite) sehingga `php artisan test` gagal "could not find driver". Perlu
+`php -d extension=pdo_sqlite vendor/bin/phpunit` untuk menjalankan test (phpunit.xml sudah memakai
+`sqlite :memory:` → tidak menyentuh DB pengembangan). `php artisan test` tidak meneruskan flag `-d`.
+
+Perilaku baru:
+- Berat payload = `bagiBerat((int) $order->shipping_weight_gram, qty per baris)`; sisa gram dibagi utuh;
+  bila sisa tak muat di qty mana pun, dicari kombinasi geseran ±unit (uji nyata: qty 5 & 7 berat 3350 →
+  278 & 280). `Log::warning('Berat create order Biteship tidak sama dengan shipping_weight_gram.')`
+  hanya muncul untuk kasus mustahil (mis. `total < Σqty`) — tidak ada pembuangan selisih diam-diam.
+- Order lama tanpa `shipping_weight_gram` tetap memakai berat produk hidup (jalur lama).
+
+## v1.5 B1 — opsi ekspedisi checkout ikuti pengaturan aktif
+
+Rencana: ubah `app/Services/BiteshipService.php` saja — `services()` menerima baris string
+`"courier:service"` + array (normalisasi, buang kosong, dedupe `courier:service` huruf kecil),
+`DEFAULT_COURIERS` hanya bila tak ada baris sah; `rates()` urut `courier_name` lalu `service_name`
+dan `Log::warning('Biteship layanan aktif tanpa tarif', ['layanan' => [...]])`. Berkas:
+`app/Services/BiteshipService.php`, `tests/Feature/Checkout/OngkirV15OpsiTest.php`,
+`docs/kontrak-props.md` §7.12, catatan ini. Tanpa migrasi/dependency/.env.
+
+Keputusan: duplikat `courier:service` (beda huruf) dipakai yang **pertama**; huruf asli
+`service_code` tidak diubah supaya nilai `opsi[].service_code` tetap sama dengan yang dikirim
+frontend saat checkout. Sorting lewat helper `urutOpsi()` dipakai untuk mode `api` dan `fake`.
+
+Perilaku baru:
+- `services()`: string `"jne:reg"`, `"JNE:REG"` → satu layanan `jne:reg` (bentuk lama kini dipakai,
+  tidak lagi jatuh ke 6 `DEFAULT_COURIERS`); baris `""`, `"jne"`, array tanpa `courier_code`/
+  `service_code`, dan nilai non-string/non-array dilewati; default hanya bila nol baris sah.
+- `rates()`: `opsi[]` urut `courier_name` lalu `service_name`; layanan aktif yang tidak ada di
+  `pricing` Biteship dicatat `Biteship layanan aktif tanpa tarif` dengan konteks `layanan` saja
+  (tanpa token/header). `quote()`, `option()`, dan bentuk JSON `opsi` tidak berubah.
+
+Hasil verifikasi (dijalankan):
+- `php -l app/Services/BiteshipService.php` dan `php -l tests/Feature/Checkout/OngkirV15OpsiTest.php`
+  → no syntax errors.
+- `php -d extension=pdo_sqlite vendor/bin/phpunit --filter=OngkirV15OpsiTest` → OK (7 tests, 30 assertions).
+- Suite penuh `php -d extension=pdo_sqlite vendor/bin/phpunit` → OK (368 tests, 3045 assertions), 43 s.
+- Test baru: `test_baris_string_lama_dipakai_bukan_default`, `test_baris_array_tetap_diterima`,
+  `test_duplikat_beda_huruf_dibuang`, `test_hanya_baris_aktif_tampil`,
+  `test_default_dipakai_bila_tidak_ada_baris_sah`, `test_opsi_urut_nama_kurir_lalu_layanan`,
+  `test_log_layanan_aktif_tanpa_tarif_tanpa_token`.
+
+Belum diuji: tarif Biteship nyata dengan `settings.shipping_couriers` asli (butuh token/pemilik);
+semua test memakai `Http::fake()`.
+
+## v1.5 B3 — filter status riwayat + timeline halaman selesai
+
+Rencana: `HistoryController@index` baca `?status=` (nilai sah `Order::STATUS_FLOW` + `batal`,
+asing diabaikan), tambah prop `filter {status}`, paginator `withQueryString()`, `ringkasan` dari
+seluruh pesanan user. `CheckoutController::orderPayload` tambah `timeline` 4 kunci memakai
+`BiteshipService::shippingCompletedAt()`. Berkas: `app/Http/Controllers/HistoryController.php`,
+`app/Http/Controllers/CheckoutController.php`, `tests/Feature/HistoryFilterV15Test.php`,
+`docs/kontrak-props.md` §7.9/§13, catatan ini. Tanpa migrasi/dependency/.env.
+
+Perilaku baru:
+- `HistoryController@index`: `?status=` sah (`Order::STATUS_FLOW` + `batal`) memfilter daftar; nilai
+  asing, kosong, atau array (`?status[]=`) → `filter.status = null` dan semua pesanan tampil.
+  `ringkasan.total` kini dari `sum()` agregat status (bukan `total()` paginator yang ikut filter),
+  jadi tetap global. `->withQueryString()` membuat `links` membawa `status` ke halaman berikutnya.
+  Prop baru `filter: {status: string|null}`; key lama tidak berubah.
+- `CheckoutController::orderPayload` (dipakai `checkout.success`): key baru `timeline`
+  `{created_at, paid_at, shipped_at, completed_at}`; `completed_at` =
+  `BiteshipService::shippingCompletedAt()`. Key lama (`created_at`, `paid_at`, `shipping`, dst.) tetap.
+
+Hasil verifikasi (dijalankan):
+- `php -l` tiga berkas → no syntax errors.
+- `php -d extension=pdo_sqlite vendor/bin/phpunit --filter=HistoryFilterV15Test` → OK
+  (5 tests, 127 assertions).
+- Suite penuh `php -d extension=pdo_sqlite vendor/bin/phpunit` → OK (373 tests, 3172 assertions), 40 s.
+- Test baru: `test_filter_hanya_mengembalikan_status_itu`,
+  `test_status_asing_atau_berulang_diabaikan`, `test_halaman_kedua_mempertahankan_status_di_tautan`,
+  `test_ringkasan_tetap_global_saat_filter_dipakai`,
+  `test_payload_halaman_selesai_memuat_timeline_empat_kunci`.
+- `pint --test` → `HistoryController.php` dan test baru lulus; `CheckoutController.php` masih
+  melaporkan pelanggaran gaya lama (`no_unused_imports`, `unary_operator_spaces`, dst.) yang sudah
+  ada sebelum kartu ini — tidak diformat ulang agar diff tetap kecil.
+
+Catatan: `timeline` di halaman selesai hanya diuji lewat HTTP + Inertia; tampilan (ikon/urutan node)
+milik kartu frontend F2.

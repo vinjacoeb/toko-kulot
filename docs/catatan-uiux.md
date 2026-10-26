@@ -1,6 +1,7 @@
 # Catatan UIUX — Toko Kulot
 
-Berkas kerja agent **uiux**. Diperbarui per kartu. Kartu aktif: **U6 — catat deviasi desain dari laporan pemilik putaran 2** (`t_46901364`).
+Berkas kerja agent **uiux**. Diperbarui per kartu. Kartu aktif: **U7 — desain v1.3 data webhook
+Biteship** (`t_92f89ef1`).
 
 ---
 
@@ -136,3 +137,59 @@ dari pola yang sudah ada di halaman yang sama — tidak ada microcopy karangan.
 - **Catatan untuk techlead (bukan penghalang):** kontrak §12.24 secara fisik tertulis di antara §12.19 dan
   §12.20 (`docs/kontrak-props.md:1412`), dan tabel status §12.23 (`:1480-1487`) belum punya baris untuk §12.24.
   Tidak mengubah perilaku mana pun; usul perbaikan urutan/status adalah pekerjaan dokumen techlead, bukan kartu ini.
+
+---
+
+## U7 — Desain v1.3 data webhook Biteship (kartu `t_92f89ef1`, 25 Okt 2026)
+
+Sumber: `docs/brief-v1.3-uiux.md` + `docs/PRD-v1.3.md` §2.6. Keluaran: **`docs/design-v1.3.md`**
+(§0 aturan, §1 detail admin, §2 daftar admin, §3 riwayat, §4 halaman selesai, §5 matriks 6 keadaan
+× 4 tempat, §6 asumsi). **Nol berkas kode disentuh** — `git status` untuk `resources/`, `app/`,
+`routes/` tidak berubah oleh kartu ini (perubahan `app/` yang terlihat milik kartu backend lain).
+
+### Temuan yang perlu diketahui kartu lain
+
+1. **Rute brief salah.** Brief §3 menulis `/akun/pesanan`; aplikasi hanya punya `/history`
+   (`routes/web.php:84`, `HistoryController@index`). Desain memakai `/history`; **tidak** ada rute
+   baru — rute `/akun/*` memang tidak pernah ada (design-v1.2 §6.2).
+2. **Key v1.3 belum ada di kontrak.** `grep -nE 'shipping_updated_at|price_final|price_selisih|perlu_tindakan|webhook_terakhir' docs/kontrak-props.md`
+   → **0 hasil**. Key baru mendarat lewat B2 `t_5a702574`; desain merujuk PRD §2.6 dan menetapkan
+   perilaku "key absen = keadaan belum ada webhook", jadi F2 tidak menebak nama key.
+3. **Badge `Mode uji` bertabrakan nada.** `Index.jsx:168` dan `Show.jsx:144` memakai
+   `Badge tone="warning"` untuk `Mode uji`; badge baru `Perlu tindakan` juga warning dan bisa satu
+   baris. Aturan desain: `Perlu tindakan` **selalu** membawa `AlertIcon` 14 px, `Mode uji` tidak
+   diubah. Di detail, `Perlu tindakan` berupa `InlineNotice`, bukan badge → tidak ada tabrakan.
+4. **`DataTable` tidak punya mode kartu 360 px.** Karena itu larangan kolom baru: badge + timestamp
+   masuk sel **Kurir / Resi** (`Index.jsx:199-215`, sudah `flex flex-col gap-1`). Jebakan yang
+   dicatat untuk F2: early-return `—` di `Index.jsx:199` harus tetap menghormati
+   `shipping_perlu_tindakan`.
+5. **`tindakan`/`perlu_tindakan` ikut terkirim ke pembeli** (PRD §2.6 bentuk pembeli hanya membuang
+   `price_final`, `price_selisih`, `webhook_terakhir`). Desain memutuskan pembeli **tidak**
+   merendernya — kalimatnya berorientasi admin (contoh di PRD memakai "ubah status"). QA: jangan
+   tandai ini sebagai bug; jangan minta backend membuang key (DoD B2 menyebut bentuk pembeli apa
+   adanya).
+6. **Format waktu.** Contoh brief `24 Okt 2026 14.05` (tanpa koma) vs helper baku `formatDateTime`
+   (`resources/js/lib/format.js:38`) yang menghasilkan koma. Desain memakai helper apa adanya.
+
+### Asumsi
+
+- Halaman bayar `CheckoutPay` tidak berubah (PRD §2.6 menegaskan); tidak ada key baru yang perlu
+  dibaca di sana.
+- Teks UI baru dibatasi empat kalimat beku (`Lihat payload webhook`, `Belum ada payload webhook.`,
+  `Periksa status pengiriman pesanan ini.`, `Resi sedang disiapkan.`); sisanya copy existing
+  (`Resi belum tersedia.` di `History.jsx:321`). Semua nilai contoh di dokumen berlabel `[CONTOH]`.
+
+### Verifikasi yang dijalankan
+
+- `wc -l -c docs/design-v1.3.md` — **148 baris / 9.523 bait** (target brief: maks 2 halaman, tabel padat).
+- `grep -c 'CONTOH' docs/design-v1.3.md` — nilai contoh selalu berlabel.
+- `git status --porcelain` — satu-satunya tambahan dari kartu ini: `docs/design-v1.3.md`.
+- **Tidak ada** `npm run build`/test: nol kode aplikasi diubah (sama seperti U6).
+
+### Serah terima
+
+- **F2 frontend** memakai `docs/design-v1.3.md` §1–§4 (aturan render + copy beku). Bila props B2
+  belum mendarat, semua tempat tampil sebagai keadaan "belum ada webhook" (§5) — tidak perlu
+  menunggu, tapi jangan mengarang key.
+- **QA** memakai §5 sebagai matriks uji: 6 keadaan (belum ada webhook, `picked`, `delivered`,
+  retur/gagal, selisih ongkir, payload kosong) × 4 tempat.

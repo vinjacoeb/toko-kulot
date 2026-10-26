@@ -5,11 +5,13 @@ import Button from '@/Components/Button';
 import Field from '@/Components/Field';
 import InlineNotice from '@/Components/InlineNotice';
 import Input from '@/Components/Input';
+import Textarea from '@/Components/Textarea';
 
 /**
- * `/register` — kontrak props §6.1/§6.2, design §5.5.
+ * `/register` — kontrak props §6.1/§6.2, design §5.5 + design-v1.2 §6.1.
  * URL literal `POST /register` (PRD §15.2 melarang Ziggy/`route()`).
- * Field: name, email, phone, password, password_confirmation, terms.
+ * Field: name, email, phone, address, city, postal_code, password,
+ * password_confirmation, terms. Alamat wajib untuk prefill + ongkir otomatis.
  * State: idle | submitting | error-field | error-global | success (flash dari server).
  * Tautan silang ke `/login` (teks "Sudah punya akun? Masuk") — deviasi D16, kartu t_e3f68f7f.
  */
@@ -18,6 +20,9 @@ export default function Register({ settings = null, flash = null }) {
     name: '',
     email: '',
     phone: '',
+    address: '',
+    city: '',
+    postal_code: '',
     password: '',
     password_confirmation: '',
     terms: false,
@@ -107,6 +112,64 @@ export default function Register({ settings = null, flash = null }) {
             value={data.password_confirmation}
             onChange={(e) => setData('password_confirmation', e.target.value)}
             error={errors.password_confirmation}
+          />
+        </Field>
+
+        <Field
+          label="Alamat"
+          htmlFor="register-address"
+          required
+          error={errors.address}
+          hint="Tulis jalan, nomor rumah, RT/RW, dan kelurahan."
+        >
+          <Textarea
+            id="register-address"
+            name="address"
+            rows={3}
+            autoComplete="street-address"
+            maxLength={500}
+            value={data.address}
+            onChange={(e) => setData('address', e.target.value)}
+            error={errors.address}
+          />
+        </Field>
+
+        <Field
+          label="Kota"
+          htmlFor="register-city"
+          required
+          error={errors.city}
+          hint="Kota/kabupaten pengiriman."
+        >
+          <Input
+            id="register-city"
+            name="city"
+            type="text"
+            autoComplete="address-level2"
+            maxLength={100}
+            value={data.city}
+            onChange={(e) => setData('city', e.target.value)}
+            error={errors.city}
+          />
+        </Field>
+
+        <Field
+          label="Kode Pos"
+          htmlFor="register-postal-code"
+          required
+          error={errors.postal_code}
+          hint="5 angka, dipakai untuk menghitung ongkir."
+        >
+          <Input
+            id="register-postal-code"
+            name="postal_code"
+            type="text"
+            inputMode="numeric"
+            autoComplete="postal-code"
+            maxLength={5}
+            value={data.postal_code}
+            onChange={(e) => setData('postal_code', e.target.value.replace(/[^0-9]/g, ''))}
+            error={errors.postal_code}
           />
         </Field>
 

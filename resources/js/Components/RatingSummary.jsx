@@ -31,7 +31,7 @@ export default function RatingSummary({ average = 0, count = 0, distribution = n
     return (
         <div className={cn('flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6', className)}>
             <div className="flex items-baseline gap-2">
-                <span className="text-[32px] font-bold leading-10 text-ink">{avg ? avg.toFixed(1) : '-'}</span>
+                <span className="text-h2 font-bold tabular-nums text-ink">{avg ? avg.toFixed(1) : '-'}</span>
                 <div className="flex flex-col">
                     <Stars value={avg} />
                     <span className="text-meta text-slate-500">

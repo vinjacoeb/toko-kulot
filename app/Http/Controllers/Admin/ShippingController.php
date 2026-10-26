@@ -58,6 +58,24 @@ class ShippingController extends Controller
             ];
         }
 
+        $katalog = $this->biteship->catalog();
+
+        if ($katalog['sumber'] === 'biteship' && $katalog['daftar'] !== []) {
+            $dikenal = array_fill_keys(array_map(
+                fn (array $row): string => $row['courier_code'].':'.$row['service_code'],
+                $katalog['daftar'],
+            ), true);
+
+            $tidakDikenal = array_keys(array_diff_key($couriers, $dikenal));
+
+            if ($tidakDikenal !== []) {
+                throw ValidationException::withMessages([
+                    'couriers' => 'Layanan kurir tidak ada di katalog Biteship: '.implode(', ', $tidakDikenal)
+                        .'. Pilih layanan dari daftar.',
+                ]);
+            }
+        }
+
         $couriers = array_values($couriers);
 
         if (array_filter($couriers, fn (array $row): bool => $row['is_active']) === []) {

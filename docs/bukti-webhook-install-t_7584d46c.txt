@@ -1,0 +1,37 @@
+# Bukti — validasi instalasi webhook Biteship gagal (kartu `t_7584d46c`)
+
+Tanggal: 25 Okt 2026. Endpoint publik yang dipakai pemilik:
+`https://nonpsychopathically-unmarriageable-ruben.ngrok-free.dev/biteship/webhook`
+
+## Yang dikirim dashboard Biteship saat "Simpan/Install"
+
+Menurut pesan error di layar: server harus menjawab `ok` dengan **validation dimatikan** dan
+**menerima body kosong** untuk `application/json`. Artinya probe = `POST`, `Content-Type:
+application/json`, body **kosong**, **tanpa** `?token=`.
+
+## Hasil pengamatan langsung (curl ke tunnel, bukan tebakan)
+
+```
+POST /biteship/webhook   Content-Type: application/json   body kosong  -> 422 Unprocessable Entity
+GET  /biteship/webhook                                                 -> 405 Method Not Allowed
+```
+
+Tunnel hidup dan aplikasi menjawab (bukan HTML blank, bukan 502), jadi penyebabnya ada di kode:
+
+- `app/Http/Controllers/BiteshipWebhookController.php:30-38` — `json_decode('')` = `null` →
+  `422 {"message":"invalid payload"}`. Body kosong dianggap JSON rusak.
+- `routes/web.php:152` — hanya `Route::post`, jadi probe berbentuk `GET` dijawab 405.
+- `app/Services/BiteshipWebhookService.php:34-47` — token kosong = semua diterima, jadi saat
+  `BITESHIP_WEBHOOK_TOKEN` belum terisi pun probe tetap gagal (bukan soal token). Bila nanti
+  token terisi dan probe membawa body kosong tanpa `?token=`, urutan cek sekarang membalas 403
+  lebih dulu.
+- `docs/PRD-v1.3.md` §2.1 versi lama mewajibkan `422` untuk "body bukan JSON" — tidak ada
+  pengecualian untuk probe instalasi. Sudah ditambahkan di §2.1 (pengecualian body kosong).
+
+## Dampak
+
+Pendaftaran webhook tidak bisa diselesaikan dari dashboard Biteship; tanpa itu event
+`order.status` / `order.waybill_id` / `order.price` tidak pernah sampai ke toko. Perbaikan kode:
+kartu `t_` turunan kartu ini (backenddeveloper). Tindakan pemilik yang tetap perlu: `php artisan
+migrate` (kolom webhook `000005`), isi `BITESHIP_WEBHOOK_TOKEN`, `APP_DEBUG=false`, lalu daftarkan
+ulang URL.

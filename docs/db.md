@@ -32,6 +32,11 @@ Semua uang = integer rupiah tanpa desimal. Semua tabel: `id` bigint auto-increme
 | 21 | `2026_10_20_000018_add_compare_price_to_products_table` | kolom `compare_price` pada `products` (K11) |
 | 22 | `2026_10_21_000019_add_tracking_number_to_orders_table` | kolom `tracking_number` pada `orders` (PRD A15) |
 | 23 | `2026_10_24_000001_add_snap_columns_to_payments_table` | kolom `snap_token`, `snap_redirect_url`, `payment_type` pada `payments` (Snap, kartu `t_04da18e0`) |
+| 24 | `2026_10_24_000002_add_shipping_columns_to_orders_table` | kolom `shipping_courier`, `shipping_service`, `shipping_etd`, `shipping_weight_gram`, `shipping_is_free` pada `orders` |
+| 25 | `2026_10_24_000003_add_biteship_columns_to_orders_table` | kolom `biteship_order_id`, `shipping_status`, `shipping_payload` pada `orders` (Biteship) |
+| 26 | `2026_10_24_000004_add_shipped_at_to_orders_table` | kolom `shipped_at` pada `orders` (kartu `t_f4a75237`) |
+| 27 | `2026_10_24_000005_add_shipping_webhook_columns_to_orders_table` | kolom `shipping_updated_at`, `shipping_webhook_payload` pada `orders` (webhook Biteship, kartu `t_2c6be520`) |
+| 28 | `2026_10_26_000006_add_shipping_events_to_orders_table` | kolom `shipping_events` (json null) pada `orders` (timeline pembeli, PRD-v1.4 §4.1, kartu `t_f51f8c36`) |
 
 ## 2. Tabel & kolom
 
@@ -91,6 +96,13 @@ Index: (`category_id`,`is_active`), (`is_active`,`is_featured`).
 (diisi manual admin — PRD A15; migrasi `2026_10_21_000019`), `shipping_courier` (40, null),
 `shipping_service` (60, null), `shipping_etd` (30, null), `shipping_weight_gram` uint null,
 `shipping_is_free` bool default false (migrasi `2026_10_24_000002`, kartu `t_f22c8d46`),
+`biteship_order_id` string(60) null, `shipping_status` string(30) null,
+`shipping_payload` json null (migrasi `2026_10_24_000003`, Biteship),
+`shipped_at` timestamp null (diisi otomatis saat status menjadi `dikirim`; migrasi `2026_10_24_000004`),
+`shipping_updated_at` timestamp null, `shipping_webhook_payload` json null (payload webhook Biteship
+terakhir + waktu terapkan; migrasi `2026_10_24_000005`, webhook Biteship PRD-v1.3 §2.5),
+`shipping_events` json null (riwayat event `{event,status,at}` urut lama → baru, maks 50;
+migrasi `2026_10_26_000006`, PRD-v1.4 §4.1),
 `timestamps`.
 Index: (`status`,`created_at`), (`payment_status`,`created_at`), (`user_id`).
 

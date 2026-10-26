@@ -94,7 +94,7 @@ export default function Cart({ keranjang = null, flash = null }) {
                 <header className="mt-2">
                     <h1 className="text-h1 text-ink">Keranjang</h1>
                     {!isEmpty && (
-                        <p className="mt-1 text-body text-ink-soft">
+                        <p className="mt-1 text-body tabular-nums text-ink-soft">
                             {formatNumber(count)} produk di keranjang. Periksa jumlah sebelum melanjutkan.
                         </p>
                     )}
@@ -129,7 +129,7 @@ export default function Cart({ keranjang = null, flash = null }) {
                 ) : (
                     <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
                         <section className="min-w-0 flex-1" aria-label="Daftar item keranjang">
-                            <div className="hidden grid-cols-[80px_1fr_auto] gap-5 border-b border-line pb-2 text-label uppercase text-slate-500 lg:grid">
+                            <div className="hidden grid-cols-[80px_1fr_auto] gap-5 border-b border-line pb-2 text-label text-slate-600 lg:grid">
                                 <span className="col-span-2">Produk</span>
                                 <span className="text-right">Jumlah &amp; Subtotal</span>
                             </div>

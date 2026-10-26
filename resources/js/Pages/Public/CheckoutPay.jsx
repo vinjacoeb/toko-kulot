@@ -680,7 +680,7 @@ export default function CheckoutPay({ pesanan = null, pembayaran = null, flash =
                         {fake ? <Badge tone="warning">Mode uji</Badge> : null}
                     </div>
                     {statusLokal === 'pending' && expiresAt ? (
-                        <p className="mt-2 text-meta text-ink-soft">Bayar sebelum {formatDateTime(expiresAt)}</p>
+                        <p className="mt-2 text-meta tabular-nums text-ink-soft">Bayar sebelum {formatDateTime(expiresAt)}</p>
                     ) : null}
                 </header>
 

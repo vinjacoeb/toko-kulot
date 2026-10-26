@@ -4,7 +4,9 @@ import json
 import os
 import sqlite3
 
-DB = os.environ['HERMES_KANBAN_DB']
+DB = os.environ.get('HERMES_KANBAN_DB') or os.path.join(
+    os.environ.get('LOCALAPPDATA', ''), 'hermes', 'kanban', 'boards', 'toko-kulot', 'kanban.db'
+)
 con = sqlite3.connect('file:' + DB.replace('\\', '/') + '?mode=ro', uri=True)
 con.row_factory = sqlite3.Row
 cur = con.cursor()
@@ -16,7 +18,7 @@ cur.execute("select name from sqlite_master where type='table' order by name")
 tables = [r[0] for r in cur.fetchall()]
 print('tabel:', tables)
 
-me = 't_099c813c'
+me = 't_6c310317'
 cur.execute('select id, title, assignee, status from tasks')
 rows = cur.fetchall()
 

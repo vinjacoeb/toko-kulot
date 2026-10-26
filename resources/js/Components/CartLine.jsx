@@ -75,7 +75,7 @@ export default function CartLine({
 
                     {variantLabel && <p className="mt-1 text-meta text-slate-500">{variantLabel}</p>}
 
-                    <p className="mt-2 text-meta text-slate-500">
+                    <p className="mt-2 text-meta tabular-nums text-slate-500">
                         {unitPrice ?? '-'} <span className="text-slate-500">/ pcs</span>
                     </p>
 
@@ -112,7 +112,7 @@ export default function CartLine({
 
                     <div className="min-w-0 lg:text-right">
                         <p className="text-meta text-slate-500 lg:hidden">Subtotal</p>
-                        <p className="text-h3 text-ink">{lineTotal ?? '-'}</p>
+                        <p className="whitespace-nowrap text-h3 tabular-nums text-ink">{lineTotal ?? '-'}</p>
                         {updating && (
                             <span className="mt-1 flex items-center gap-2 text-meta text-slate-500 lg:justify-end">
                                 <Spinner size={16} label="Memperbarui jumlah" className="hidden lg:inline-block" />

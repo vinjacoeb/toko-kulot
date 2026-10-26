@@ -210,6 +210,9 @@ pembeli langsung login (guard `web`). `email_verified_at` diisi saat dibuat (PRD
 | `email` | wajib, format email, maks 255, unik `users.email` | `Email wajib diisi.` / `Format email tidak valid.` / `Email sudah terdaftar.` |
 | `phone` | wajib, 8–30, hanya angka `+ - spasi ( )` | `Nomor WhatsApp wajib diisi.` / `Format nomor WhatsApp tidak valid.` |
 | `password` | wajib, min 8, `confirmed` | `Kata sandi wajib diisi.` / `Kata sandi minimal 8 karakter.` / `Konfirmasi kata sandi tidak cocok.` |
+| `address` | wajib, teks 10–500, di-trim | `Alamat lengkap wajib diisi.` / `Alamat terlalu singkat. Tulis jalan, nomor, RT/RW.` / `Alamat maksimal 500 karakter.` |
+| `city` | wajib, teks, maks 100, di-trim | `Kota wajib diisi.` / `Kota maksimal 100 karakter.` |
+| `postal_code` | wajib, 5 angka (`digits:5`), di-trim | `Kode pos wajib diisi.` / `Kode pos harus 5 angka.` |
 | `terms` | wajib `accepted` | `Anda harus menyetujui syarat dan ketentuan.` |
 
 ### 6.3 `GET /login` — name `login`
@@ -413,7 +416,8 @@ ringkasan keranjang di props halaman memakai key **`keranjang`**, bukan `cart`.
 - `shipping.dihitung_saat_checkout` = `true` saat `shipping_cost` `null`; frontend menampilkan
   `Dihitung saat checkout` pada baris Ongkir, bukan `Rp0`.
 - `shipping.gratis_aktif`/`gratis_min` = `settings.free_shipping_enabled`/`free_shipping_min`.
-- `shipping.berat_gram` = Σ `max(products.weight_gram, 500) × qty` (PRD v1.1 A19), dipakai juga oleh §7.12.
+- `shipping.berat_gram` = Σ `max(1, products.weight_gram) × qty`, fallback 300 g/unit bila berat 0
+  (PRD-v1.4 §2.2), dipakai juga oleh §7.12.
 
 ### 7.1 `GET /keranjang` — name `cart.index`
 
@@ -478,7 +482,14 @@ Akses: `auth:web` (guest → redirect `login` + `intended`). Keranjang kosong �
     "customer_postal_code": "51111",
     "note": null
   },
-  "pembayaran": { "method": "midtrans", "label": "Semua metode pembayaran (Midtrans)", "expiry_minutes": 5 },
+  "pembayaran": {
+    "expiry_minutes": 5,
+    "expiry_va_minutes": 60,
+    "kanal": [
+      { "id": "qris", "label": "QRIS (GoPay, OVO, DANA, m-banking)", "grup": "qris" },
+      { "id": "bca_va", "label": "Transfer BCA Virtual Account", "grup": "va" }
+    ]
+  },
   "midtrans": {
     "client_key": null, "is_production": false, "fake": true,
     "mode": "uji", "alasan_kode": "fake_aktif",
@@ -495,7 +506,10 @@ Akses: `auth:web` (guest → redirect `login` + `intended`). Keranjang kosong �
 }
 ```
 
-`prefill` diisi dari akun pembeli (nama, email, `users.phone`), field lain `null`.
+`prefill` diisi dari akun pembeli: `customer_name` = `users.name`, `customer_email` = `users.email`,
+`customer_phone` = `users.phone`, `customer_address` = `users.address`, `customer_city` = `users.city`,
+`customer_postal_code` = `users.postal_code`, `note` selalu `null`. Kolom profil yang kosong (user
+lama yang mendaftar sebelum v1.2) dikirim `null` dan diisi pembeli di form.
 
 `pengiriman` menjelaskan ongkir sebelum pembeli menekan **Cek Ongkir** (§7.12):
 
@@ -509,10 +523,13 @@ Akses: `auth:web` (guest → redirect `login` + `intended`). Keranjang kosong �
 | `asal` | `{nama, kode_pos}` dari `settings.shipping_origin_*` (untuk teks "dikirim dari") |
 | `galat` | kalimat galat konfigurasi (mis. kode pos asal kosong), `null` bila siap |
 
-`pembayaran.expiry_minutes` = masa berlaku tagihan pembayaran dari `config/midtrans.php`
+`pembayaran.expiry_minutes` = masa berlaku tagihan **QRIS** dari `config/midtrans.php`
 (`MIDTRANS_EXPIRY_MINUTES`, bawaan **5 menit** — keputusan pemilik 21 Okt 2026, kartu `t_e35050e8`).
-Nilai yang sama dipakai `expiry` Snap dan kolom `payments.expires_at`, jadi frontend cukup
-memakai satu angka ini untuk teks, dan `pembayaran.expires_at` (§7.7) untuk Countdown.
+`pembayaran.expiry_va_minutes` = masa berlaku kanal VA / Mandiri Bill / gerai
+(`MIDTRANS_EXPIRY_VA_MINUTES`, bawaan **60 menit**). Berlaku saat charge (§7.7a): QRIS 5 menit,
+kanal lain 60 menit. `pembayaran.kanal[]` = 8 kanal PRD-v1.2 §2.2 (`id`, `label`, `grup` ∈
+`qris`/`va`/`bill`/`gerai`), urutan tetap seperti tabel PRD; halaman checkout tidak memilih kanal,
+hanya halaman bayar (§7.7) yang memakainya.
 
 Bentuk `midtrans` (baku, juga dipakai §7.7 dan §10.7) menjelaskan **mode efektif** pembayaran, supaya
 UI bisa memberi tahu kenapa pembayaran belum bisa dilakukan:
@@ -549,17 +566,15 @@ Akses: `auth:web`. Rate limit **10/menit** per pembeli.
 
 Sukses: order `status = pending`, `payment_status = pending`, `payment_method = midtrans`,
 `orders.code` = `TK-YYYYMMDD-NNNN` (urut per hari), stok terpotong + `stock_movements` tipe `sale`,
-tagihan Midtrans **Snap** dibuat (`snap_token`, `snap_redirect_url`; semua kanal aktif akun merchant),
-keranjang dikosongkan, lalu
+baris `payments` pending dibuat (`provider = midtrans`, `status = pending`, `gross_amount`, kanal
+masih kosong — `order_id_midtrans`/`payment_type`/`expires_at` `null` sampai pembeli memilih kanal di
+§7.7a; **tidak ada panggilan Midtrans saat checkout**), keranjang dikosongkan, lalu
 `redirect()->route('checkout.pay', $order)` + `flash.success` = `Pesanan dibuat. Selesaikan pembayaran.`
 
-Gagal (stok berubah / Midtrans error) → **tidak ada order setengah jadi** (transaksi di-rollback):
-`redirect()->back()` + `flash.error` = `Stok {nama varian} tersisa {n}. Perbarui keranjang.` atau
-`Gagal membuat pembayaran. Coba lagi.` atau — bila Midtrans menolak transaksi dengan
-402 `Payment channel is not activated` — `Pembayaran belum bisa dibuat karena kanal pembayaran belum
-aktif di akun Midtrans penjual. Hubungi penjual.`
-(Ketiga teks tetap `flash.error`; bentuk props tidak berubah. Teks ketiga ditambahkan kartu
-`t_2f443b75` — LOCKED §7.6 diperbarui aditif 22 Okt 2026, lihat §7.7.)
+Gagal (stok berubah) → **tidak ada order setengah jadi** (transaksi di-rollback):
+`redirect()->back()` + `flash.error` = `Stok {nama varian} tersisa {n}. Perbarui keranjang.`
+Galat pembuatan tagihan tidak lagi muncul di sini karena Midtrans baru dipanggil saat kanal dipilih
+(§7.7a).
 
 ### 7.7 `GET /checkout/{order}/bayar` — name `checkout.pay`
 
@@ -583,13 +598,28 @@ Akses: pemilik order; order pembeli lain → **HTTP 404**. Komponen: `Public/Che
     ]
   },
   "pembayaran": {
-    "method": "midtrans", "label": "Semua metode pembayaran (Midtrans)", "provider": "midtrans",
-    "type": null, "type_label": "Midtrans",
-    "status": "pending", "gross_amount": 360000,
-    "snap_token": "66e4fa55-…", "snap_redirect_url": "https://app.sandbox.midtrans.com/snap/v4/redirection/66e4fa55-…",
-    "qr_string": null, "qris_url": null,
-    "expires_at": "2026-10-20T14:20:00+07:00", "paid_at": null,
-    "fake": false, "galat": null
+    "status": "pending",
+    "gross_amount": 360000,
+    "metode": { "id": "bca_va", "label": "Transfer BCA Virtual Account", "grup": "va" },
+    "instruksi": {
+      "jenis": "va", "nomor_va": "8808123456789012", "bank": "BCA",
+      "biller_code": null, "bill_key": null, "payment_code": null, "store": null,
+      "qr_url": null, "qr_string": null
+    },
+    "kanal": [
+      { "id": "qris", "label": "QRIS (GoPay, OVO, DANA, m-banking)", "grup": "qris" },
+      { "id": "bca_va", "label": "Transfer BCA Virtual Account", "grup": "va" },
+      { "id": "bni_va", "label": "Transfer BNI Virtual Account", "grup": "va" },
+      { "id": "bri_va", "label": "Transfer BRI Virtual Account", "grup": "va" },
+      { "id": "permata_va", "label": "Transfer Permata Virtual Account", "grup": "va" },
+      { "id": "mandiri_bill", "label": "Mandiri Bill Payment", "grup": "bill" },
+      { "id": "alfamart", "label": "Bayar di Alfamart", "grup": "gerai" },
+      { "id": "indomaret", "label": "Bayar di Indomaret", "grup": "gerai" }
+    ],
+    "expires_at": "2026-10-20T15:05:00+07:00",
+    "paid_at": null,
+    "fake": false,
+    "galat": null
   },
   "midtrans": {
     "client_key": "SB-Mid-client-xxxx",
@@ -607,40 +637,88 @@ Akses: pemilik order; order pembeli lain → **HTTP 404**. Komponen: `Public/Che
 ```
 
 `pembayaran.status`: `pending` | `settlement` | `expire` | `deny` | `cancel`.
-`pembayaran.snap_token` dan `snap_redirect_url` dipakai frontend untuk membuka halaman Snap (semua kanal
-aktif akun merchant). `pembayaran.type` = `payment_type` Midtrans (`bank_transfer`, `echannel`, `qris`,
-`gopay`, …), baru terisi setelah webhook; `type_label` label Indonesianya. `qr_string`/`qris_url` hanya
-terisi di mode uji (QRIS dummy untuk panel simulasi).
-`pembayaran.fake` = tagihan yang sedang dipakai dibuat tanpa Midtrans. `pembayaran.galat` = `null`
-bila tidak ada masalah; bila diisi, teksnya siap ditampilkan sebagai galat di panel pembayaran.
-Bentuk `midtrans` sama dengan §7.5 (baku).
+`pembayaran.metode` = kanal yang sedang dipakai (`{id,label,grup}`), `null` sebelum pembeli memilih
+kanal (§7.7a). `pembayaran.instruksi` = data bayar hasil charge kanal itu, `null` sebelum memilih;
+semua key selalu ada, yang tidak relevan bernilai `null`:
 
-Tagihan mode uji yang tertinggal (mis. pesanan dibuat sebelum `MIDTRANS_FAKE=false` diisi) **dibuat ulang
-otomatis**: bila mode efektif `asli` sedangkan tagihan tersimpan masih mode uji dan masih `pending`,
-server membuat transaksi Snap nyata ke **baris `payments` yang sama** (satu tagihan per pesanan, §7.5)
-sebelum halaman dirender — `snap_token`, `snap_redirect_url`, `transaction_id`, `expires_at`, dan
-`pembayaran.fake` ikut berubah. Gagal menghubungi Midtrans → halaman tetap tampil (HTTP 200), tagihan
-lama tidak diubah, dan `pembayaran.galat` = `Gagal membuat pembayaran. Coba lagi.`
+| Key | Isi |
+|---|---|
+| `jenis` | `qris` / `va` / `bill` / `gerai` |
+| `nomor_va` | nomor virtual account (VA bank + Permata) |
+| `bank` | `BCA`, `BNI`, `BRI`, `Permata`, `Mandiri`, atau `null` |
+| `biller_code`, `bill_key` | Mandiri Bill Payment |
+| `payment_code` | kode bayar Alfamart/Indomaret |
+| `store` | `Alfamart` / `Indomaret` |
+| `qr_url` | URL gambar QR dari Midtrans (`null` di mode uji) |
+| `qr_string` | isi QR mentah (dipakai mode uji / render QR lokal) |
 
-Bila Midtrans menolak transaksi dengan 402 `Payment channel is not activated` (belum ada kanal aktif di
-akun merchant), `pembayaran.galat` =
-`Pembayaran belum bisa dibuat karena kanal pembayaran belum aktif di akun Midtrans penjual. Hubungi
-penjual.` — teks yang sama dipakai `flash.error` §7.6. Tidak ada lagi percobaan acquirer QRIS: Snap
-menampilkan kanal apa pun yang aktif di akun merchant.
-(Ditambahkan kartu `t_2f443b75`, diganti ke Snap oleh kartu `t_04da18e0`, 24 Okt 2026 — aditif, bentuk props tetap.)
+`pembayaran.fake` = tagihan yang sedang dipakai dibuat tanpa Midtrans (mode uji). `pembayaran.galat`
+selalu `null`; galat aksi kanal dikirim sebagai `flash.error` (§7.7a). Bentuk `midtrans` sama dengan
+§7.5 (baku).
+
+Sebelum kanal dipilih: `status = pending`, `metode`/`instruksi`/`expires_at` `null`, dan halaman
+menampilkan 8 kanal dari `pembayaran.kanal`. Halaman **tidak** membuat tagihan saat dirender; tagihan
+baru dibuat oleh §7.7a. Bila baris `payments` tidak ada (data lama), server mengirim `flash.error` dan
+mengalihkan ke `cart.index`.
+
+### 7.7a `POST /checkout/{order}/bayar/metode` — name `checkout.method`
+
+Akses: pemilik order; order pembeli lain → **HTTP 404**. Rate limit **10/menit** per pembeli.
+Body: `metode` (wajib, salah satu `id` di `pembayaran.kanal`).
+
+| Field | Aturan | Pesan galat |
+|---|---|---|
+| `metode` | wajib, string, harus id kanal §7.7 | `Pilih metode pembayaran dulu.` / `Kanal pembayaran tidak dikenal.` |
+
+Perilaku:
+
+1. Server membuat charge Midtrans **Core API** untuk kanal itu pada **baris `payments` yang sama**
+   (satu tagihan per pesanan): QRIS (`qris`), VA (`bank_transfer` + bank), Mandiri Bill (`echannel`),
+   gerai (`cstore`). `payments.payment_type` = id kanal, `order_id_midtrans` =
+   `orders.code` untuk charge pertama lalu `orders.code-2`, `orders.code-3`, … saat ganti kanal.
+2. Masa berlaku: QRIS `pembayaran.expiry_minutes` (5 menit), kanal lain
+   `pembayaran.expiry_va_minutes` (60 menit) — disimpan di `payments.expires_at`.
+3. Idempoten: kanal sama, tagihan belum kedaluwarsa, status masih `pending` → tidak ada charge baru;
+   server langsung mengalihkan. Status bukan `pending` → tidak ada charge baru.
+4. Ganti kanal saat masih `pending` → charge baru dengan `order_id_midtrans` berakhiran `-2`, `-3`, …;
+   baris `payments` tidak diduplikasi.
+5. Sukses → `redirect()->route('checkout.pay', $order)` (props §7.7 sudah memuat kanal baru).
+6. Midtrans menolak dengan 402 `Payment channel is not activated` →
+   `redirect()->route('checkout.pay', $order)` + `flash.error` =
+   `Kanal ini belum aktif di Midtrans. Hubungi admin.`; baris `payments` tidak berubah (tidak ada
+   `order_id_midtrans` baru yang menggantung).
+7. Gagal lain (jaringan/5xx) → `redirect()->route('checkout.pay', $order)` + `flash.error` =
+   `Gagal membuat pembayaran. Coba lagi.`
+8. Mode uji (`midtrans.fake = true`) → tagihan dibuat lokal tanpa jaringan; `pembayaran.fake = true`,
+   tombol simulasi §7.13 tampil.
+
+Status: **LOCKED** ditulis 24 Okt 2026 (kartu `t_66e507a3`, PRD-v1.2 §2.2/§2.4) — dipakai FE halaman
+bayar dan QA.
 
 ### 7.8 `GET /checkout/{order}/status` — name `checkout.status` (JSON)
 
-Akses: pemilik order (lain → 404). Polling ringan untuk `QrisPanel` (design §4.4).
+Akses: pemilik order (lain → 404). Polling ringan untuk panel pembayaran (design §4.4).
 
 ```json
 { "status": "pending", "paid_at": null, "expires_at": "2026-10-20T14:20:00+07:00" }
 ```
 
-`status` = status pembayaran. Bila masih `pending` dan tagihan bukan mode uji, server menanyakan status
-ke Midtrans sekali (best effort; gagal → tetap `pending`, tanpa 500). Bila mode efektif `asli` sedangkan
-tagihan tersimpan masih mode uji, tagihan dibuat ulang dulu ke baris yang sama (aturan §7.7) — bila
-pembuatan ulang pun gagal, respons tetap `pending` tanpa 500. Bentuk respons tidak berubah.
+`status` = status pembayaran. Bila masih `pending`, `order_id_midtrans` terisi, dan tagihan bukan mode
+uji, server menanyakan status ke Midtrans sekali (best effort; gagal → tetap `pending`, tanpa 500).
+Sebelum kanal dipilih (`order_id_midtrans` `null`) respons tetap `{status: "pending", paid_at: null,
+expires_at: null}` tanpa memanggil Midtrans. Bentuk respons tidak berubah.
+
+### 7.8a `GET /midtrans/selesai` — name `midtrans.selesai`
+
+Akses: **publik** (di luar `auth`, tanpa CSRF) — URL kembali dari aplikasi/kanal Midtrans.
+Query: `order_id` (opsional; `order_id_midtrans` yang dipakai saat charge).
+
+1. `order_id` cocok dengan `payments.order_id_midtrans` → bila status masih `pending` dan tagihan bukan
+   mode uji, server menyegarkan status sekali (best effort), lalu
+   `redirect()->route('checkout.pay', $order)`. Guest → middleware `auth` mengalihkan ke `login`.
+2. Tidak cocok/kosong → `redirect('/')` + `flash.error` = `Pembayaran tidak dikenal.`
+
+Tidak menampilkan data pembeli; tidak mengubah status selain lewat sinkronisasi status Midtrans.
 
 ### 7.9 `GET /checkout/{order}/selesai` — name `checkout.success`
 
@@ -655,6 +733,18 @@ Akses: pemilik order (lain → 404). Belum `settlement` → redirect `checkout.p
     "customer_name": "Siti Aminah", "customer_phone": "081234567890",
     "customer_address": "Jl. Melati 12", "customer_city": "Pekalongan",
     "created_at": "2026-10-20T14:05:00+07:00", "paid_at": "2026-10-20T14:09:00+07:00",
+    "timeline": {
+      "created_at": "2026-10-20T14:05:00+07:00", "paid_at": "2026-10-20T14:09:00+07:00",
+      "shipped_at": "2026-10-21T08:00:00+07:00", "completed_at": "2026-10-22T10:30:00+07:00"
+    },
+    "shipping": {
+      "courier_code": "jne", "courier_name": "JNE", "service_name": "REG", "etd": "2-3 hari",
+      "weight_gram": 2000, "shipping_cost": 20000, "tracking_number": "JX1234567890",
+      "status": "delivered", "status_label": "Terkirim", "biteship_order_id": "BS-123",
+      "updated_at": "2026-10-21T09:15:00+07:00",
+      "driver": { "name": "Budi", "phone": "081234567891", "link": "https://track.contoh.id/BS-123" },
+      "perlu_tindakan": false, "tindakan": null, "galat": null
+    },
     "items": [
       { "product_id": 3, "name": "Daster Batik Pekalongan", "variant_label": "Ukuran L / Merah",
         "qty": 4, "unit_price": 85000, "line_total": 340000,
@@ -664,6 +754,15 @@ Akses: pemilik order (lain → 404). Belum `settlement` → redirect `checkout.p
   "ulasan": { "boleh": true, "sudah": [] }
 }
 ```
+
+`shipping` = bentuk pembeli (PRD-v1.3 §2.6): key sama §13, termasuk `updated_at`, `driver`,
+`perlu_tindakan`, `tindakan`, dan (v1.4) `events` `[{status,label,at}]` terbaru→terlama maks 50
+(`[]` bila kosong); **tanpa** `price_final`, `price_selisih`, `webhook_terakhir` (milik admin
+§12.17), dan `galat` selalu `null` seperti §13.
+
+Sejak v1.5 (aditif) `pesanan` juga memuat `timeline` `{created_at, paid_at, shipped_at, completed_at}`
+— empat kunci selalu ada, nilai ISO 8601 atau `null`; `completed_at` dihitung
+`BiteshipService::shippingCompletedAt()` (aturan sama §13, PRD-v1.4 §4.2). Key lama tidak berubah.
 
 `ulasan.boleh` = **`true` hanya bila server akan menerima minimal satu kiriman ulasan sekarang** (§9.1):
 order `payment_status = settlement`, `status` ∈ (`dibayar`, `diproses`, `dikirim`, `selesai`) — sama
@@ -686,9 +785,10 @@ Akses: publik, **di luar CSRF**, tanpa sesi. Body = payload Midtrans (JSON/form)
 3. `gross_amount` ≠ `payments.gross_amount` → **HTTP 422** `{"message":"amount mismatch"}`.
 4. `transaction_status` → status pembayaran: `capture`/`settlement` → `settlement`,
    `pending` → `pending`, `expire` → `expire`, `deny` → `deny`, `cancel` → `cancel`.
-5. `payment_type` payload disimpan ke `payments.payment_type` (`bank_transfer`, `echannel`, `qris`,
-   `gopay`, …) — juga saat status tidak berubah. Saat `settlement`, `orders.payment_method` diisi
-   `payment_type` itu; sebelum settlement nilainya `midtrans`.
+5. `payment_type` **tidak** menimpa id kanal yang sudah dipilih (§7.7a): `payments.payment_type`
+   tetap `qris`/`bca_va`/… Bila kolom masih kosong (data lama/Snap), `payment_type` payload
+   (`bank_transfer`, `echannel`, `qris`, …) yang disimpan. Saat `settlement`,
+   `orders.payment_method` diisi nilai itu; sebelum settlement nilainya `midtrans`.
 6. `settlement`: `payments.paid_at` diisi, `orders.payment_status = settlement`,
    `orders.status` `pending` → `dibayar`.
 7. `expire`/`deny`/`cancel`: `orders.payment_status` ikut, `orders.status` `pending` → `batal`,
@@ -702,12 +802,16 @@ Akses: publik, **di luar CSRF**, tanpa sesi. Body = payload Midtrans (JSON/form)
 |---|---|---|
 | §7.0–§7.9 | **LOCKED** (K8, terverifikasi 21 test) | K13 |
 | §7.10 | **LOCKED** (K8) | pemilik toko (URL webhook Midtrans) |
-| §7.5, §7.7 — prop `midtrans` (mode efektif + alasan), `pembayaran.fake`/`pembayaran.galat`, pembuatan ulang tagihan mode uji | **LOCKED** diperbarui 21 Okt 2026 (kartu `t_9f4b6aee`, temuan F-2 `docs/review.md`) | K13, F2 |
+| §7.5, §7.7 — prop `midtrans` (mode efektif + alasan), `pembayaran.fake`; `pembayaran.galat` kini selalu `null` (galat kanal lewat `flash.error` §7.7a) | **LOCKED** diperbarui 21 Okt 2026 (kartu `t_9f4b6aee`, temuan F-2 `docs/review.md`), disesuaikan 24 Okt 2026 (`t_66e507a3`) | K13, F2 |
 | §7.5 — **nilai** `pembayaran.expiry_minutes` 15 → **5 menit** (keputusan pemilik 21 Okt 2026, `MIDTRANS_EXPIRY_MINUTES`); nama key, bentuk respons, dan key lain tidak berubah | **LOCKED** diperbarui 21 Okt 2026 (kartu `t_e35050e8`, temuan F-3 `docs/review.md`) | K13, F2 |
 | §7.9 — **definisi** `ulasan.boleh` (bukan bentuk respons): `true` hanya bila §9.1 menerima minimal satu kiriman ulasan — `settlement` + status boleh dinilai + masih ada produk belum diulas | **LOCKED** diperbarui 21 Okt 2026 (kartu `t_2b031326`, temuan F6 `docs/catatan-frontend.md`; keputusan `docs/keputusan-f6-ulasan-boleh.md`) | K12, K13, F6 |
 | §7.0–§7.6 — ongkir Biteship: `shipping_cost` `null` + blok `shipping`, prop `pengiriman`, field `shipping_*` di §7.6, §7.12 rute baru | **DRAFT** (24 Okt 2026, kartu `t_f22c8d46`, PRD v1.1 D2/D3) | FE checkout `t_aea95532`, QA |
+| §7.9 — blok **baru** `pesanan.shipping` bentuk pembeli (`updated_at`, `driver`, `perlu_tindakan`, `tindakan`; tanpa key admin) | **DRAFT** (25 Okt 2026, kartu `t_5a702574`, PRD-v1.3 §2.6) | FE `Public/CheckoutSuccess`, QA |
+| §7.9 — **revisi aditif v1.4** `pesanan.shipping.events` `[{status,label,at}]` terbaru→terlama maks 50, `[]` bila kosong (PRD-v1.4 §4.3) | **DRAFT** (26 Okt 2026, kartu `t_f51f8c36`) | FE `Public/CheckoutSuccess`, QA |
 | §7.12 — **nilai** `galat` dipetakan dari kode error rates Biteship (`40001001`, `40001002`, `40001010`) dan dari `error` tanpa `code` (`balance` → saldo habis); nama key/bentuk respons tidak berubah | **DRAFT** (24 Okt 2026, kartu `t_1b711d26`, temuan F1 `docs/review-alur-pemesanan.md` §2) | FE checkout, QA |
-| §7.5–§7.7, §7.10 — Midtrans **Snap** (ganti Core API QRIS): `pembayaran.method = midtrans`, `snap_token`/`snap_redirect_url`/`type`/`type_label`, `payment_type` dari webhook, `orders.payment_method` saat settlement, teks galat baru, §7.13 simulasi mode uji | **DRAFT** (24 Okt 2026, kartu `t_04da18e0`, PRD-v1.1 §2 D1) | FE halaman bayar, QA |
+| §7.0 + §7.12 — **aturan** `berat_gram`/`shipping.berat_gram`: tanpa minimum 500 g, fallback 300 g/unit; galat baru "asal kirim belum lengkap" sebelum API tarif | **DRAFT** (26 Okt 2026, kartu `t_3a264fac`, PRD-v1.4 §2) | FE checkout, QA |
+| §7.5–§7.7a, §7.8, §7.8a, §7.10, §7.11, §7.13 — Midtrans **Core API 8 kanal** (ganti Snap): `pembayaran.metode`/`instruksi`/`kanal`, rute `POST …/bayar/metode`, `order_id_midtrans` berakhiran `-2`/`-3`, kanal id di `payments.payment_type`, `GET /midtrans/selesai` | **LOCKED** ditulis 24 Okt 2026 (kartu `t_66e507a3`, PRD-v1.2 §2) | FE halaman bayar, QA |
+| §6.2 + field `address`/`city`/`postal_code` di register, dan §7.5 — **sumber nilai** `prefill` (bukan bentuk respons): kini dari `users.address/city/postal_code`, bukan `null` | **DRAFT** (24 Okt 2026, kartu `t_09738dd5`, PRD-v1.2 §3) | FE register + checkout, QA |
 
 ### 7.12 `GET /checkout/ongkir` — name `checkout.shipping` (JSON)
 
@@ -736,7 +840,7 @@ Query: `postal_code` (wajib, digits 5) — kode pos tujuan.
 | Key | Aturan |
 |---|---|
 | `mode` | `"api"` / `"fake"` seperti §7.0 |
-| `berat_gram` | Σ `max(products.weight_gram, 500) × qty` (A19) |
+| `berat_gram` | Σ `max(1, products.weight_gram) × qty`, fallback 300 g/unit bila berat 0 (PRD-v1.4 §2.2) |
 | `gratis.terpenuhi` | `gratis.aktif && subtotal >= gratis.min` (dipakai hanya untuk `is_regular` di §7.6) |
 | `opsi[]` | hanya layanan yang aktif di `settings.shipping_couriers`; urut `courier_name`, lalu `service_name` |
 | `opsi[].cost` | tarif server (Biteship). Mode `fake`: `settings.shipping_cost_default` untuk semua opsi |
@@ -753,6 +857,7 @@ Galat: keranjang kosong → 422 `Keranjang masih kosong.`; `postal_code` tidak v
 | `40001001` | `Kode pos tidak dikenal. Periksa kode pos tujuan; bila tetap gagal, hubungi penjual.` |
 | `40001002` | `Ongkir tidak bisa dihitung karena pengaturan Biteship belum lengkap. Hubungi penjual.` |
 | `40001010` | `Tidak ada layanan kurir untuk kode pos ini. Coba kode pos lain.` (pesan lama) |
+| asal kirim belum lengkap (nama/telepon/alamat/kode pos/email kontak) | `Pengaturan asal pengiriman belum lengkap: <daftar>. Lengkapi di halaman Ekspedisi/Pengaturan, lalu coba lagi.` — tanpa memanggil API |
 | 400 **tanpa** `code`, `error` memuat `balance` (`No sufficient balance to call rates API…`) | `Ongkir tidak bisa dihitung karena saldo Biteship penjual habis. Hubungi penjual.` |
 | lainnya / tanpa `code` | `Ongkir tidak bisa dihitung saat ini. Coba lagi atau hubungi penjual.` |
 
@@ -770,12 +875,22 @@ ada atau `shipping_cost` kiriman ≠ tarif server (setelah gratis) → `flash.er
 `shipping_courier`/`shipping_service` memakai tarif uji datar (`shipping_cost_default`) dan
 menyimpan `shipping_courier = null`; mode `api` menolak dengan `Pilih kurir pengiriman.`
 
+`settings.shipping_couriers` boleh berisi baris array (`courier_code`, `service_code`, `label`,
+`is_regular`, `is_active`) maupun bentuk lama string `"courier:service"` (mis. `"jne:reg"`) —
+keduanya diterima, baris kosong/tidak sah dibuang, duplikat `courier:service` (tanpa beda huruf
+besar-kecil) dipakai yang pertama, dan `DEFAULT_COURIERS` hanya dipakai bila tidak ada satu pun
+baris sah. `opsi[]` selalu urut `courier_name` lalu `service_name`. Layanan aktif yang tidak ada
+di jawaban tarif Biteship dilewati dari `opsi[]` dan dicatat
+`Log::warning('Biteship layanan aktif tanpa tarif', ['layanan' => ['courier:service', …]])` di
+`storage/logs/laravel.log` (tanpa token/header). Bentuk JSON respons tidak berubah.
+
 ### 7.13 `POST /checkout/{order}/simulasi-bayar` — name `checkout.simulate`
 
 Akses: pemilik order; order pembeli lain → **HTTP 404**. Rate limit **10/menit** per pembeli.
 Tanpa body. Hanya untuk **mode uji**: menandai tagihan uji lunas lewat jalur service yang sama dengan
 webhook (`payments.status = settlement`, `paid_at`, `orders.status = dibayar`,
-`orders.payment_method = qris`, stok tidak dikembalikan).
+`orders.payment_method` = id kanal yang dipilih pada §7.7a, stok tidak dikembalikan). Bila kanal belum
+dipilih, tombol simulasi belum ditampilkan (`pembayaran.fake = false` sebelum charge).
 
 Sukses → `redirect()->route('checkout.pay', $order)` + `flash.success` =
 `Pembayaran mode uji ditandai lunas.`
@@ -1297,7 +1412,7 @@ Sukses: redirect kembali + `flash.success` = `FAQ disimpan.` / `FAQ diperbarui.`
       {
         "courier_code": "jne", "courier_name": "JNE",
         "service_code": "reg", "service_name": "REG",
-        "label": "JNE REG", "is_regular": true, "is_active": true
+        "label": "JNE REG", "etd": "2-3 hari", "is_regular": true, "is_active": true
       }
     ]
   }
@@ -1311,7 +1426,13 @@ Sukses: redirect kembali + `flash.success` = `FAQ disimpan.` / `FAQ diperbarui.`
 | `kurir.key_terisi` | boolean saja — **nilai `BITESHIP_API_KEY` tidak pernah dikirim** |
 | `kurir.sumber` | `"biteship"` bila daftar dari API, `"settings"` bila memakai daftar tersimpan (API gagal/mode fake) |
 | `kurir.galat` | kalimat bila daftar API gagal; form tetap bisa disimpan |
-| `kurir.daftar[]` | gabungan layanan Biteship dengan `settings.shipping_couriers` (aktif/reguler per layanan). `is_regular` = layanan reguler (boleh gratis ongkir), `is_active` = ditampilkan di checkout |
+| `kurir.daftar[]` | gabungan layanan Biteship dengan `settings.shipping_couriers` (aktif/reguler per layanan). `is_regular` = layanan reguler (boleh gratis ongkir), `is_active` = ditampilkan di checkout. `etd` = estimasi dari Biteship (`null` bila kosong); dropdown layanan memakai kode + nama + `etd` |
+
+Katalog Biteship (`GET /v1/couriers`) di-cache **24 jam** di server (key `biteship.couriers`);
+kegagalan API tidak di-cache dan tidak mengubah props: `sumber` menjadi `"settings"` + `galat`
+terisi, halaman tetap bisa disimpan. `PUT` menolak `couriers[].courier_code`/`service_code` di
+luar katalog **hanya** saat katalog Biteship benar-benar tersedia (`sumber = "biteship"` dan
+`daftar` tidak kosong); di mode `fake`/API gagal validasi manual tetap berlaku.
 
 Kiriman `PUT`:
 
@@ -1653,21 +1774,45 @@ Query: `q` (nama produk/SKU/catatan), `tipe` ∈ `semua`(bawaan)|`in`|`out`|`adj
 
 Query: `q` (kode/nama/telepon/email), `status` ∈ `semua`(bawaan)|`pending`|`dibayar`|
 `diproses`|`dikirim`|`selesai`|`batal`, `bayar` ∈ `semua`(bawaan)|`pending`|`settlement`|
-`expire`|`deny`|`cancel`, `dari`, `sampai` (`YYYY-MM-DD`), `page`. Urut `created_at` turun.
+`expire`|`deny`|`cancel`, `kirim` ∈ `semua`(bawaan)|`belum`|nilai `orders.shipping_status`
+yang ada di data (mis. `confirmed`, `delivered`), `dari`, `sampai` (`YYYY-MM-DD`), `page`.
+Urut `created_at` turun.
 
 ```json
 {
   "pesanan": {"data": [{
     "id": 5, "code": "TK-20261020-0001", "status": "dibayar", "status_label": "Dibayar",
-    "payment_status": "settlement", "payment_label": "Lunas",
+    "payment_status": "settlement", "payment_label": "Lunas", "payment_method_label": "QRIS",
     "customer_name": "Siti", "customer_phone": "0812…", "customer_email": "siti@contoh.id",
     "total": 175000, "items_count": 2,
+    "courier_name": "JNE", "service_name": "REG", "tracking_number": "JX1234567890",
+    "shipping_status": "confirmed", "shipping_status_label": "Dikonfirmasi",
+    "shipping_updated_at": "2026-10-20T15:02:00+07:00", "shipping_perlu_tindakan": false,
+    "mode_uji": false,
     "paid_at": "…", "created_at": "…", "url": "/admin/pesanan/5"
   }], "links": ["…"], "meta": {"current_page": 1, "last_page": 1, "per_page": 15, "total": 12}},
-  "filter": {"q": null, "status": "semua", "bayar": "semua", "dari": null, "sampai": null},
+  "filter": {"q": null, "status": "semua", "bayar": "semua", "kirim": "semua",
+             "dari": null, "sampai": null},
+  "filter_opsi": {"kirim": [{"value": "semua", "label": "Semua"},
+                            {"value": "belum", "label": "Belum ada status"},
+                            {"value": "confirmed", "label": "Dikonfirmasi"}]},
   "ringkasan": {"total": 12, "pending": 2, "dibayar": 3, "diproses": 1, "dikirim": 1, "selesai": 4, "batal": 1}
 }
 ```
+
+| Key | Aturan |
+|---|---|
+| `payment_label` | label status bayar Indonesia (`Order::paymentLabel()`) |
+| `payment_method_label` | label kanal bayar dari `orders.payment_method` lewat `Order::paymentMethodLabel()` — sumber sama dengan §12.17; `Midtrans` bila kanal belum terpilih, **bukan** id mentah (`qris`, `bca_va`, …) |
+| `courier_name`, `service_name` | nama layanan tersimpan (`settings.shipping_couriers`) untuk `shipping_courier:shipping_service`; bila tidak ada, kode mentah huruf besar; `null` bila kurir/layanan kosong |
+| `tracking_number` | `orders.tracking_number` (`—` bila null); sumber sama dengan §12.18a/§12.25 |
+| `shipping_status`, `shipping_status_label` | `orders.shipping_status` + label Indonesia (`BiteshipService::shippingLabel()`); `null` bila belum ada resi otomatis |
+| `shipping_updated_at` | `orders.shipping_updated_at` ISO 8601 — waktu payload webhook Biteship terakhir diproses; `null` bila belum pernah |
+| `shipping_perlu_tindakan` | `true` bila status kurir bermasalah (`cancelled`/`rejected`/`returned`/`disposed`/`on_hold`) pada pesanan yang belum `batal`/`selesai`, **atau** selisih ongkir ≠ 0 (`BiteshipService::shippingPerluTindakan()`); dipakai penanda baris |
+| `mode_uji` | `true` bila `payment` adalah tagihan uji (`MidtransService::isFakeCharge()`) atau `shipping_payload.mode_uji` |
+| `filter.kirim` | nilai tak dikenal/`semua` → tanpa filter; `belum` → `shipping_status` null |
+| `filter_opsi.kirim` | opsi dropdown: `semua`, `belum`, lalu nilai `shipping_status` yang benar-benar ada (label dari `shippingLabel()`) |
+
 
 ### 12.17 GET `/admin/pesanan/{order}` — `admin.orders.show` — `Admin/Orders/Show`
 
@@ -1678,32 +1823,68 @@ Query: `q` (kode/nama/telepon/email), `status` ∈ `semua`(bawaan)|`pending`|`di
     "payment_status": "settlement", "payment_label": "Lunas",
     "subtotal": 170000, "shipping_cost": 5000, "discount": 0, "total": 175000,
     "payment_method": "qris", "payment_method_label": "QRIS", "notes": null,
-    "tracking_number": "JX1234567890",
+    "tracking_number": "JX1234567890", "mode_uji": false,
     "customer": {"name": "…", "phone": "…", "email": "…", "address": "…", "city": "…", "postal_code": "…"},
     "items": [{"id": 9, "product_id": 3, "product_name": "…", "variant_label": "L / Hitam",
                "qty": 2, "unit_price": 85000, "line_total": 170000}],
+    "shipping": {
+      "courier_code": "jne", "courier_name": "JNE", "service_name": "REG",
+      "etd": "2-3 hari", "weight_gram": 600, "shipping_cost": 5000,
+      "tracking_number": "JX1234567890", "status": "confirmed", "status_label": "Dikonfirmasi",
+      "biteship_order_id": "BS-123",
+      "updated_at": "2026-10-20T15:02:00+07:00",
+      "driver": {"name": "Budi", "phone": "081234567891", "link": "https://track.contoh.id/BS-123"},
+      "perlu_tindakan": true,
+      "tindakan": "Ongkir aktual berbeda dari ongkir tagihan. Periksa selisih ongkir pesanan ini.",
+      "price_final": 8000, "price_selisih": 3000,
+      "webhook_terakhir": {"event": "order.price", "order_id": "BS-123", "price": 8000},
+      "galat": null
+    },
     "payment": {"provider": "midtrans", "status": "settlement", "transaction_id": "…",
-                "snap_token": "…", "snap_redirect_url": "…", "payment_type": "qris",
+                "metode": {"id": "bca_va", "label": "Transfer BCA Virtual Account", "grup": "va"},
+                "instruksi": {"jenis": "va", "nomor_va": "…", "bank": "bca",
+                              "biller_code": null, "bill_key": null, "payment_code": null,
+                              "store": null, "qr_url": null, "qr_string": null},
+                "payment_type": "bca_va", "fake": false,
                 "gross_amount": 175000, "expires_at": "…", "paid_at": "…"},
+    "timeline": {"created_at": "…", "paid_at": "…", "shipped_at": null},
     "created_at": "…", "paid_at": "…"
-  },
-  "status_berikut": [{"value": "diproses", "label": "Diproses"}, {"value": "batal", "label": "Batal"}]
+  }
 }
 ```
 
-`payment` = `null` bila belum ada baris pembayaran. `status_berikut` = status yang boleh
-dipilih dari status sekarang (rantai `pending`→`dibayar`→`diproses`→`dikirim`→`selesai`, plus
-`batal` selama belum final; `selesai` dan `batal` tidak punya lanjutan).
+`payment` = `null` bila belum ada baris pembayaran.
 `tracking_number` = nomor resi kurir yang diisi manual admin (PRD A15); `null` bila belum diisi.
+Status pesanan **tidak bisa diubah manual**: hanya Midtrans (settlement → `dibayar`, expire/deny/cancel
+→ `batal`) dan webhook Biteship (PRD-v1.3 §2.3, PRD-v1.4 §3). Tidak ada prop `status_berikut`.
 
-### 12.18 PATCH `/admin/pesanan/{order}/status` — `admin.orders.status`
+| Key | Aturan |
+|---|---|
+| `payment.metode` | `{id,label,grup}` dari `MidtransService::channelOf()`; `null` bila kanal belum dipilih |
+| `payment.instruksi` | bentuk §7.7 — semua key selalu ada, yang tidak relevan `null`; `null` bila kanal belum dipilih |
+| `payment.payment_type` | id kanal mentah (mis. `bca_va`) untuk keperluan debug; **bukan** label tampilan |
+| `payment.fake` | `true` bila tagihan uji (`MidtransService::isFakeCharge()`), dipakai badge `Mode uji` panel pembayaran |
+| `shipping` | selalu ada (bukan `null`); field tanpa data = `null` — sumber `orders.shipping_*`, `tracking_number`, `biteship_order_id`, `shipping_status` |
+| `shipping.courier_name`, `shipping.service_name` | nama layanan tersimpan; fallback kode mentah huruf besar; `null` bila kosong (pesanan lama tanpa kurir) |
+| `shipping.status_label` | label Indonesia `BiteshipService::shippingLabel()`; `null` bila `status` null |
+| `shipping.galat` | alasan tombol `Buat resi otomatis` tidak dapat dipakai saat ini (status bukan `dibayar`/`dikirim`, atau kurir/layanan kosong); `null` bila tombol boleh tampil. Guard final tetap di `BiteshipService` saat POST |
+| `shipping.updated_at` | `orders.shipping_updated_at` ISO 8601 — waktu payload webhook terakhir diproses; `null` bila belum ada |
+| `shipping.driver` | `{name, phone, link}` dari payload terakhir (`courier_driver_name`, `courier_driver_phone`, `courier_link`); tiap field boleh `null`; seluruh objek `null` bila tidak ada isinya |
+| `shipping.perlu_tindakan` | `true` bila status kurir bermasalah pada pesanan yang belum `batal`/`selesai`, atau `price_selisih` ≠ 0. Sumber sama dengan baris §12.16 |
+| `shipping.tindakan` | pesan siap tampil saat `perlu_tindakan` (`Kurir membatalkan pengiriman.`, `Kurir menolak paket.`, `Kurir melaporkan paket dikembalikan.`, `Kurir melaporkan paket dibuang.`, `Kurir menahan paket sementara.`, `Ongkir aktual berbeda dari ongkir tagihan. Periksa selisih ongkir pesanan ini.`); `null` bila tidak perlu tindakan. Sejak v1.4 pesan status kurir **tanpa** ajakan ubah status (kontrol itu dihapus, QA-14-03); penutup `Periksa selisih ongkir pesanan ini.` hanya menempel pada pesan selisih ongkir |
+| `shipping.price_final` | `price` payload hanya bila payload terakhir `event = order.price`; `null` bila payload terakhir event lain atau belum ada |
+| `shipping.price_selisih` | `price_final - orders.shipping_cost` (integer, boleh negatif); `null` bila `price_final` null |
+| `shipping.webhook_terakhir` | payload JSON terakhir apa adanya (`orders.shipping_webhook_payload`), untuk debug; `null` bila belum ada |
+| `shipping.events` | riwayat event webhook Biteship dari `orders.shipping_events` (PRD-v1.4 §4.1): daftar `{status, label, at}`, **terbaru → terlama**, maksimum 50 entri tersimpan; `status`/`label` `null` bila payload tanpa status, `at` ISO 8601; `[]` bila belum ada event (bukan `null`) |
+| `mode_uji` | `true` bila `payment.fake` atau `shipping_payload.mode_uji` |
+| `timeline.shipped_at` | `orders.shipped_at`, diisi saat webhook Biteship memajukan status ke `dikirim` (PRD-v1.3 §2.3); `null` bila belum pernah dikirim |
 
-Field: `status` (wajib, salah satu dari `status_berikut`), `note` (opsional, maks 255).
-Galat: `errors.status` (`Status pesanan wajib dipilih.`,
-`Status pesanan tidak bisa diubah dari Dibayar ke Selesai.`). Efek: status berubah; bila
-menjadi `batal` stok semua item dikembalikan lewat `stock_movements` tipe `in` (satu per varian);
-bila menjadi `dibayar` dan `paid_at` masih kosong, `paid_at` diisi sekarang. Sukses: kembali ke
-halaman asal + `flash.success` = `Status pesanan diperbarui.`
+
+### 12.18 (dihapus v1.4) ~~PATCH `/admin/pesanan/{order}/status`~~
+
+Rute, controller, FormRequest, dan prop `status_berikut` dihapus di v1.4 (PRD-v1.4 §3).
+Status pesanan hanya berubah lewat Midtrans dan webhook Biteship. Permintaan ke rute lama
+membalas 404. Pengembalian stok saat batal kini hanya lewat jalur Midtrans (`MidtransService`).
 
 ### 12.18a PATCH `/admin/pesanan/{order}/resi` — `admin.orders.resi`
 
@@ -1792,9 +1973,45 @@ Penolakan: `errors.akun` = `Tidak bisa menghapus akun sendiri.` /
 | 12.8–12.11 Kategori | DRAFT |
 | 12.12–12.15 Stok | DRAFT |
 | 12.16–12.18a Pesanan | DRAFT |
+| 12.16/12.17 — key **baru** `shipping_updated_at`, `shipping_perlu_tindakan` (baris) dan `shipping.updated_at`/`driver`/`perlu_tindakan`/`tindakan`/`price_final`/`price_selisih`/`webhook_terakhir` (detail); key lama tidak berubah | **DRAFT** (25 Okt 2026, kartu `t_5a702574`, PRD-v1.3 §2.6) |
 | 12.19–12.22 Akun | DRAFT |
 
 ---
+
+### 12.25 POST `/admin/pesanan/{order}/resi` — `admin.orders.resi-otomatis`
+
+Akses: admin login + `throttle:admin-write` (sama seperti §12.18a). Tanpa body. Membuat resi
+lewat Biteship Create Order (`POST {biteship.base_url}/v1/orders`, timeout **15 detik**) —
+melengkapi, bukan mengganti §12.18a (PATCH tetap untuk input nomor resi manual). Dasar:
+PRD-v1.2 §8 (F7).
+
+```json
+{"flash": {"success": "Resi dibuat: JX1234567890.", "error": null}}
+```
+
+Guard (semua tanpa panggilan API; hasilnya `flash.error`, tidak ada kolom berubah):
+
+| Kondisi | Pesan |
+|---|---|
+| status bukan `dibayar`/`dikirim` | `Resi otomatis hanya untuk pesanan berstatus Dibayar atau Dikirim. Pesanan ini masih <label>.` |
+| `shipping_courier`/`shipping_service` kosong | `Pesanan ini belum menyimpan kurir/layanan pengiriman. Buat resi manual atau pilih kurir saat checkout.` |
+| setting asal kurang (`shipping_origin_name`, `shipping_origin_phone`, `shipping_origin_address`, `shipping_origin_postal_code`, `contact_email`) | `Pengaturan asal pengiriman belum lengkap: <daftar field>. Lengkapi di halaman Ekspedisi/Pengaturan, lalu coba lagi.` |
+| Biteship menolak / jaringan gagal | `Resi otomatis gagal: <pesan Biteship>` (timeout/gagal hubungi: `Resi otomatis gagal: Biteship tidak bisa dihubungi. Coba lagi.`) |
+
+Idempoten: `orders.biteship_order_id` sudah terisi → **tidak ada panggilan API**, kembali ke
+halaman asal dengan `flash.success` = `Resi pesanan ini sudah dibuat: <nomor resi>.`
+Sukses: menulis `biteship_order_id` (maks 60), `tracking_number` = `courier.waybill_id` ?:
+`courier.tracking_id`, `shipping_status` = `status` jawaban Biteship (maks 30), `shipping_payload`
+(json utuh + `mode_uji` boolean); redirect kembali + `flash.success` = `Resi dibuat: <nomor resi>.`
+Bila Biteship tidak mengirim `waybill_id`/`tracking_id`, kolom resi tetap kosong dan
+`flash.success` = `Resi dibuat, tetapi nomor resi belum tersedia dari Biteship. Periksa dashboard Biteship.`
+Payload dikirim: shipper = setting asal + `contact_email`, destination = alamat/customer pesanan,
+`courier_company` = `shipping_courier`, `courier_type` = `shipping_service`,
+`delivery_type = "now"`, item = order items (berat `products.weight_gram` × qty, fallback
+300 g/item).
+
+Mode uji (tanpa `BITESHIP_API_KEY`): tidak ada panggilan jaringan; payload disimpan dengan
+`mode_uji: true` dan nomor resi `FAKE-<kode pesanan>`.
 
 ## 13. Riwayat pesanan pembeli `GET /history` — name `history.index` (Perbaikan 5)
 
@@ -1808,9 +2025,15 @@ intended URL). Props hanya berisi pesanan milik user login (`orders.user_id` = u
 pembeli lain tidak pernah ikut, dan tidak ada parameter `user_id` dari klien.
 
 Urutan: `created_at` terbaru dulu, `id` terbaru sebagai pemecah seri. **Semua status**
-(`pending`, `dibayar`, `diproses`, `dikirim`, `selesai`, `batal`) ikut tampil — tidak ada filter
-status. Pagination 10 pesanan per halaman; `page` di luar rentang diabaikan paginator Laravel
-(kembali ke halaman yang sah).
+(`pending`, `dibayar`, `diproses`, `dikirim`, `selesai`, `batal`) tampil bila tanpa filter.
+
+Filter (v1.5): query `?status=` menerima satu nilai dari `Order::STATUS_FLOW`
+(`pending`, `dibayar`, `diproses`, `dikirim`, `selesai`) atau `batal`; hanya pesanan berstatus itu
+yang dikirim. Nilai asing/kosong/berulang (`?status[]=`) **diabaikan** → tampil semua. Prop
+`filter: {status: string|null}` selalu ada, `null` bila tidak memfilter. Paginator memakai
+`withQueryString()` sehingga `status` ikut di `links` halaman berikutnya; `ringkasan` **tidak**
+ikut filter (tetap seluruh pesanan user). Pagination 10 pesanan per halaman; `page` di luar
+rentang diabaikan paginator Laravel (kembali ke halaman yang sah).
 
 ```json
 {
@@ -1823,12 +2046,43 @@ status. Pagination 10 pesanan per halaman; `page` di luar rentang diabaikan pagi
         "status_label": "Batal",
         "payment_status": "expire",
         "payment_label": "Kedaluwarsa",
+        "subtotal": 340000,
+        "shipping_cost": 20000,
+        "discount": 0,
         "total": 360000,
         "items_count": 1,
         "total_qty": 4,
         "created_at": "2026-10-23T09:00:00+07:00",
         "paid_at": null,
         "detail_url": null,
+        "customer": {
+          "name": "Siti Aminah",
+          "phone": "081234567890",
+          "address": "Jl. Melati 12",
+          "city": "Pekalongan",
+          "postal_code": "51100"
+        },
+        "shipping": {
+          "courier_code": "jne",
+          "courier_name": "JNE",
+          "service_name": "REG",
+          "etd": "2-3 hari",
+          "tracking_number": "JX1234567890",
+          "status": "confirmed",
+          "status_label": "Dikonfirmasi",
+          "biteship_order_id": "BS-123",
+          "updated_at": "2026-10-21T09:15:00+07:00",
+          "driver": { "name": "Budi", "phone": "081234567891", "link": "https://track.contoh.id/BS-123" },
+          "perlu_tindakan": false,
+          "tindakan": null,
+          "galat": null
+        },
+        "timeline": {
+          "created_at": "2026-10-23T09:00:00+07:00",
+          "paid_at": null,
+          "shipped_at": null,
+          "completed_at": null
+        },
         "items": [
           {
             "id": 91,
@@ -1849,7 +2103,8 @@ status. Pagination 10 pesanan per halaman; `page` di luar rentang diabaikan pagi
   },
   "ringkasan": {
     "total": 1, "pending": 0, "dibayar": 0, "diproses": 0, "dikirim": 0, "selesai": 0, "batal": 1
-  }
+  },
+  "filter": { "status": null }
 }
 ```
 
@@ -1860,9 +2115,16 @@ status. Pagination 10 pesanan per halaman; `page` di luar rentang diabaikan pagi
 | `orders.data[].payment_label` | `Order::paymentLabel()` — label `payment_status`, mis. `Kedaluwarsa` |
 | `items_count` | jumlah **baris** item pesanan (bukan jumlah qty) |
 | `total_qty` | jumlah `qty` seluruh baris item |
+| `subtotal`, `shipping_cost`, `discount`, `total` | integer rupiah dari `orders` (rincian biaya panel §9.2) |
+| `customer` | snapshot penerima: `name`, `phone`, `address`, `city`, `postal_code`; field kosong `null` |
+| `shipping` | kurir/layanan/resi/status pengiriman; semua key selalu ada, tanpa data `null` (bentuk sama §12.17). **`galat` selalu `null` untuk pembeli** — key tetap dikirim agar bentuk sama, tetapi pesan penjaga tombol resi otomatis (bahasa admin §12.17) tidak pernah diisi di riwayat (PRD §9, QA v1.2 B-01/D-05). Sejak v1.3 (PRD-v1.3 §2.6) bentuk pembeli juga memuat `updated_at`, `driver`, `perlu_tindakan`, `tindakan`; `price_final`, `price_selisih`, `webhook_terakhir` **tidak** dikirim ke pembeli |
+| `timeline` | `{created_at, paid_at, shipped_at, completed_at}` ISO 8601; `shipped_at` = `orders.shipped_at`, diisi saat status menjadi `dikirim`. `completed_at` (v1.4) = `at` entri `delivered` terakhir di `orders.shipping_events`, atau `orders.shipping_updated_at` bila `status = selesai` tanpa entri `delivered`; `null` bila belum selesai (PRD-v1.4 §4.2) |
+| `shipping.events` | `[{status, label, at}]` dari `orders.shipping_events` — `label` = `BiteshipService::shippingLabel()`, `at` ISO 8601, urut **terbaru → terlama**, maks 50; `[]` bila belum ada event. Hanya bentuk pembeli (tanpa `price_final`, `webhook_terakhir`, dsb.) — PRD-v1.4 §4.2 |
 | `items[]` | snapshot `order_items` (nama & harga beku). `image` = gambar utama produk saat ini (§3), `null` bila produk/gambar sudah tidak ada; `product_id`/`variant_id` boleh `null` (FK `SET NULL`) |
 | `detail_url` | halaman yang bisa dibuka pembeli, atau `null`: `payment_status = settlement` → `/checkout/{id}/selesai` (`checkout.success`); `status = pending` **dan** `payment_status = pending` → `/checkout/{id}/bayar` (`checkout.pay`); selain itu `null` (termasuk `batal`). Tidak ada rute detail pesanan khusus di PRD, jadi `null` bukan galat |
-| `ringkasan` | dihitung dari **seluruh** pesanan user, bukan hanya halaman ini; `total` = semua status, lalu jumlah per status (status tanpa pesanan tetap `0`) |
+| `ringkasan` | dihitung dari **seluruh** pesanan user, bukan hanya halaman ini; `total` = semua status, lalu jumlah per status (status tanpa pesanan tetap `0`). Tidak ikut `?status=` (v1.5) |
+| `filter` | (v1.5) `{status: string|null}` — status yang sedang difilter, `null` bila tanpa filter atau nilai `?status=` asing. Selalu ada |
+| `orders.links` | paginator + `withQueryString()` (v1.5): tautan halaman mempertahankan `?status=` yang aktif |
 | `created_at`, `paid_at` | ISO 8601 zona proyek, `null` bila kosong |
 
 Galat: tidak ada input tulis; kesalahan validasi tidak ada. Tamu → 302 `/login`.
@@ -1871,4 +2133,8 @@ Galat: tidak ada input tulis; kesalahan validasi tidak ada. Tamu → 302 `/login
 
 | Bagian | Status | Dipakai oleh |
 |---|---|---|
-| §13 | **LOCKED** (23 Okt 2026, kartu `t_5b803c80`) | `t_326f766b` (frontend `Public/History`), QA `t_9376b7dd` |
+| §13 | **LOCKED** (23 Okt 2026, kartu `t_5b803c80`); **revisi aditif** 24 Okt 2026 kartu `t_f4a75237` — key baru `subtotal`, `shipping_cost`, `discount`, `customer{}`, `shipping{}`, `timeline{}` (permintaan desain-v1.2 K4); key lama tidak berubah/hilang. **Klarifikasi** 24 Okt 2026 kartu `t_6032599a` (QA B-01): `shipping.galat` selalu `null` untuk pembeli — key tetap ada, isi pesan penjaga resi hanya milik admin §12.17 | `t_326f766b` (frontend `Public/History`), QA `t_9376b7dd`, `t_220ba320` |
+| §13 — **revisi aditif** `shipping.updated_at`, `shipping.driver`, `shipping.perlu_tindakan`, `shipping.tindakan` (bentuk pembeli, PRD-v1.3 §2.6); juga melengkapi key `shipping.biteship_order_id` yang sudah dikirim kode tetapi belum tertulis di contoh | **DRAFT** (25 Okt 2026, kartu `t_5a702574`) | FE `Public/History`, QA |
+| §12.17 + §13 — **revisi aditif v1.4** `shipping.events` (`{status,label,at}`, terbaru dulu, maks 50) dan `timeline.completed_at` di §13 (PRD-v1.4 §4.1–§4.2) | **DRAFT** (26 Okt 2026, kartu `t_f51f8c36`) | FE `Public/History`, `Public/CheckoutSuccess`, QA |
+| §12.17 — **klarifikasi** `shipping.tindakan`: pesan status kurir tanpa `Periksa pesanan dan ubah status bila perlu.` (QA-14-03, F12 v1.4). Teks berubah, bentuk key tetap | **DRAFT** (26 Okt 2026, kartu `t_4eb06cea`) | FE `Admin/Orders/Show`, QA |
+| §13 + §7.9 — **revisi aditif v1.5**: query `?status=` (nilai sah `Order::STATUS_FLOW` + `batal`, asing diabaikan), prop `filter {status}`, `orders.links` `withQueryString()`, dan `timeline` 4 kunci di `pesanan` halaman selesai. `ringkasan` tetap global; key lama tidak berubah | **DRAFT** (26 Okt 2026, kartu `t_8216e843`) | FE `Public/History`, `Public/CheckoutSuccess`, QA v1.5 |

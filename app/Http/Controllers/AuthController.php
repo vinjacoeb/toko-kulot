@@ -36,6 +36,9 @@ class AuthController extends Controller
             'name' => (string) $request->input('name'),
             'email' => (string) $request->input('email'),
             'phone' => (string) $request->input('phone'),
+            'address' => (string) $request->input('address'),
+            'city' => (string) $request->input('city'),
+            'postal_code' => (string) $request->input('postal_code'),
             'password' => (string) $request->input('password'), // cast `hashed` di model
         ]);
 

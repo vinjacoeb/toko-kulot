@@ -10,9 +10,15 @@ import InlineNotice from '../../../Components/InlineNotice';
 import EmptyState from '../../../Components/EmptyState';
 import StatusBadge from '../../../Components/StatusBadge';
 import SearchInput from '../../../Components/SearchInput';
+import Select from '../../../Components/Select';
 import Toast from '../../../Components/Toast';
 import { TruckIcon } from '../../../Components/icons';
 import { cn, formatNumber, toList, toObject } from '../../../lib/format';
+import {
+    katalogKurir as opsiKatalogKurir,
+    kunciLayanan as courierKey,
+    layananKurir as layananKatalogKurir,
+} from '../../../lib/ekspedisi.mjs';
 
 const asText = (value) => (value === null || value === undefined ? '' : String(value));
 
@@ -27,8 +33,6 @@ const asNumber = (value, fallback = 0) => {
     const number = Number(value);
     return Number.isFinite(number) ? number : fallback;
 };
-
-const courierKey = (row) => `${asText(row.courier_code)}:${asText(row.service_code)}`;
 
 const toRows = (daftar) =>
     toList(daftar).map((item, index) => {
@@ -159,6 +163,9 @@ export default function ShippingIndex({ auth = null, pengaturan = null, kurir = 
     const [manualOpen, setManualOpen] = useState(false);
     const [manual, setManual] = useState({ code: '', label: '', regular: true, active: true });
     const [manualErrors, setManualErrors] = useState({});
+    const [pilihKurir, setPilihKurir] = useState('');
+    const [pilihLayanan, setPilihLayanan] = useState('');
+    const [pilihError, setPilihError] = useState('');
     const [toast, setToast] = useState(null);
 
     useEffect(() => {
@@ -198,6 +205,46 @@ export default function ShippingIndex({ auth = null, pengaturan = null, kurir = 
     const setCourier = (index, patch) => {
         const next = rows.map((row, position) => (position === index ? { ...row, ...patch } : row));
         form.setData('couriers', next);
+    };
+
+    // Design §8.2: sumber tunggal dropdown = `kurir.daftar[]` (bukan baris form yang sedang disunting),
+    // supaya layanan yang sudah ditambahkan tetap bisa dipilih ulang dan ditolak sebagai duplikat.
+    const katalogKurir = opsiKatalogKurir(courier.daftar);
+    const katalogKosong = katalogKurir.length === 0;
+    const layananKurir = layananKatalogKurir(courier.daftar, pilihKurir);
+    const manualWajib = katalogKosong || sumber === 'settings';
+
+    const tambahDariKatalog = () => {
+        const pilihan = layananKurir.find((row) => courierKey(row) === pilihLayanan);
+
+        if (!pilihan) {
+            setPilihError('Pilih kurir dan layanan dulu.');
+            return;
+        }
+
+        if (rows.some((row) => courierKey(row) === pilihLayanan)) {
+            setPilihError('Layanan ini sudah ada di daftar.');
+            return;
+        }
+
+        const namaKurir = asText(pilihan.courier_name) || asText(pilihan.courier_code);
+        const namaLayanan = asText(pilihan.service_name) || asText(pilihan.service_code);
+
+        form.setData('couriers', [
+            ...rows,
+            {
+                uid: `katalog-${pilihLayanan}`,
+                courier_code: asText(pilihan.courier_code),
+                courier_name: namaKurir,
+                service_code: asText(pilihan.service_code),
+                service_name: namaLayanan,
+                label: asText(pilihan.label) || `${namaKurir} ${namaLayanan}`.trim(),
+                is_regular: asBool(pilihan.is_regular),
+                is_active: true,
+            },
+        ]);
+        setPilihLayanan('');
+        setPilihError('');
     };
 
     const addManual = () => {
@@ -286,8 +333,8 @@ export default function ShippingIndex({ auth = null, pengaturan = null, kurir = 
                         </div>
                         <p className="text-meta text-slate-500">
                             {sumber === 'settings'
-                                ? 'Daftar dari pengaturan tersimpan; API belum tersedia.'
-                                : 'Daftar layanan diambil dari Biteship.'}
+                                ? 'Sumber katalog: Layanan tersimpan.'
+                                : 'Sumber katalog: Katalog Biteship.'}
                         </p>
                     </div>
                     {galat !== '' ? (
@@ -467,6 +514,78 @@ export default function ShippingIndex({ auth = null, pengaturan = null, kurir = 
                         title="Layanan kurir"
                         description={`${rows.length} layanan · ${activeCount} aktif`}
                     >
+                        {manualWajib ? (
+                            <InlineNotice
+                                tone="warning"
+                                title="Katalog Biteship tidak tersedia. Isi kode manual."
+                                className="mb-1"
+                            >
+                                {galat !== ''
+                                    ? galat
+                                    : 'Daftar layanan tersimpan tetap bisa dipakai; layanan baru diisi lewat kode kurir:layanan.'}
+                            </InlineNotice>
+                        ) : null}
+
+                        {!katalogKosong ? (
+                            <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+                                <Field label="Kurir" htmlFor="katalog-kurir">
+                                    <Select
+                                        id="katalog-kurir"
+                                        value={pilihKurir}
+                                        disabled={form.processing}
+                                        onChange={(event) => {
+                                            setPilihKurir(event.target.value);
+                                            setPilihLayanan('');
+                                            setPilihError('');
+                                        }}
+                                    >
+                                        <option value="">Pilih kurir</option>
+                                        {katalogKurir.map((opsi) => (
+                                            <option key={opsi.value} value={opsi.value}>
+                                                {opsi.label}
+                                            </option>
+                                        ))}
+                                    </Select>
+                                </Field>
+                                <Field label="Layanan" htmlFor="katalog-layanan">
+                                    <Select
+                                        id="katalog-layanan"
+                                        value={pilihLayanan}
+                                        disabled={form.processing || pilihKurir === ''}
+                                        onChange={(event) => {
+                                            setPilihLayanan(event.target.value);
+                                            setPilihError('');
+                                        }}
+                                    >
+                                        <option value="">Pilih layanan</option>
+                                        {layananKurir.map((layanan) => {
+                                            const kode = asText(layanan.service_code);
+                                            const nama = asText(layanan.service_name) || kode;
+                                            const etd = asText(layanan.etd);
+                                            return (
+                                                <option key={courierKey(layanan)} value={courierKey(layanan)}>
+                                                    {`${nama} (${kode})${etd !== '' ? ` · ${etd}` : ''}`}
+                                                </option>
+                                            );
+                                        })}
+                                    </Select>
+                                </Field>
+                                <Button
+                                    variant="secondary"
+                                    onClick={tambahDariKatalog}
+                                    disabled={form.processing || pilihKurir === '' || pilihLayanan === ''}
+                                >
+                                    Tambah
+                                </Button>
+                            </div>
+                        ) : null}
+
+                        {pilihError !== '' ? (
+                            <p className="text-meta text-danger-strong" role="alert">
+                                {pilihError}
+                            </p>
+                        ) : null}
+
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <SearchInput
                                 value={search}
@@ -495,7 +614,11 @@ export default function ShippingIndex({ auth = null, pengaturan = null, kurir = 
                             <EmptyState
                                 icon={<TruckIcon size={72} />}
                                 title="Belum ada layanan kurir."
-                                description="Tambahkan kode layanan manual, lalu simpan."
+                                description={
+                                    katalogKosong
+                                        ? 'Tambahkan kode layanan manual, lalu simpan.'
+                                        : 'Pilih kurir dan layanan dari katalog di atas, lalu tambahkan.'
+                                }
                             />
                         ) : filteredRows.length === 0 ? (
                             <p className="py-8 text-center text-body text-slate-600">

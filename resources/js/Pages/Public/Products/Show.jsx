@@ -303,7 +303,7 @@ export default function ProductsShow({
                         {categoryName && (
                             <Link
                                 href={categorySlug ? '/produk?kategori=' + encodeURIComponent(categorySlug) : '/produk'}
-                                className="text-badge uppercase tracking-wide text-slate-500 hover:text-brand"
+                                className="text-badge uppercase text-slate-500 hover:text-brand"
                             >
                                 Tipe: {categoryName}
                             </Link>
@@ -329,14 +329,14 @@ export default function ProductsShow({
                         <div className="mt-4">
                             <PriceBlock price={effectivePrice} comparePrice={product?.compare_price} />
                             {hasWholesale && (
-                                <p className="mt-1 text-meta text-success-strong">
+                                <p className="mt-1 text-meta tabular-nums text-success-strong">
                                     Harga grosir {rupiah(wholesalePrice)} mulai {formatNumber(minWholesale)} pcs
                                 </p>
                             )}
                         </div>
 
                         {product.short_description && (
-                            <p className="mt-3 whitespace-pre-line text-body text-ink-soft">{product.short_description}</p>
+                            <p className="mt-3 max-w-[65ch] whitespace-pre-line text-body text-ink-soft">{product.short_description}</p>
                         )}
 
                         {hasSize && (
@@ -453,11 +453,11 @@ export default function ProductsShow({
                                     <tbody className="text-ink">
                                         <tr className="border-t border-line">
                                             <td className="py-1.5">{'1 - ' + formatNumber(Math.max(minWholesale - 1, 1)) + ' pcs'}</td>
-                                            <td className="py-1.5 text-right">{rupiah(basePrice)}</td>
+                                            <td className="py-1.5 text-right tabular-nums">{rupiah(basePrice)}</td>
                                         </tr>
                                         <tr className="border-t border-line">
                                             <td className="py-1.5">{'≥ ' + formatNumber(minWholesale) + ' pcs'}</td>
-                                            <td className="py-1.5 text-right font-semibold text-success-strong">
+                                            <td className="py-1.5 text-right font-semibold tabular-nums text-success-strong">
                                                 {rupiah(wholesalePrice)}
                                             </td>
                                         </tr>
@@ -472,7 +472,7 @@ export default function ProductsShow({
                                     id: section.id,
                                     title: section.title,
                                     content: (
-                                        <div className="whitespace-pre-line text-body text-ink-soft">
+                                        <div className="max-w-[65ch] whitespace-pre-line text-body text-ink-soft">
                                             {section.body ?? section.empty}
                                         </div>
                                     ),

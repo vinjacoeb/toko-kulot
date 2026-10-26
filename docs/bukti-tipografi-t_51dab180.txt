@@ -1,0 +1,35 @@
+# t_51dab180 verifikasi tipografi (design-v1.2 §2.5)
+
+## 1. grep text-[Npx]
+resources/js/Components/KpiCard.jsx:50:                    <p className="text-[28px] font-bold leading-none text-ink">{shownValue}</p>
+
+## 2. grep leading-none
+resources/js/Components/Button.jsx:11:        'inline-flex items-center justify-center gap-2 h-10 px-5 rounded-sm text-label font-semibold leading-none bg-danger text-white transition-colors duration-hover hover:opacity-90 disabled:opacity-45 disabled:cursor-not-allowed',
+resources/js/Components/KpiCard.jsx:50:                    <p className="text-[28px] font-bold leading-none text-ink">{shownValue}</p>
+
+## 3. grep max-w-xl
+
+## 4. grep text-label/meta uppercase
+resources/js/Components/DataTable.jsx:108:                                                'sticky top-0 z-10 h-tableHead whitespace-nowrap border-b border-line bg-surface px-4 text-label uppercase text-slate-600',
+resources/js/Components/KpiCard.jsx:9: * label `text-label uppercase text-slate-500`, angka 28px 700 `ink`,
+resources/js/Components/KpiCard.jsx:32:                <p className="text-label uppercase text-slate-500">{label}</p>
+
+## 5. grep tracking-wide/wider/tight
+resources/js/Layouts/AdminLayout.jsx:130:                    <Link href="/admin" className="text-label font-semibold uppercase tracking-wide">
+resources/js/Layouts/AdminLayout.jsx:156:                            <span className="text-label font-semibold uppercase tracking-wide">Daster Kulot</span>
+
+## 6. tabular per file pemanggil rupiah
+resources/js/Pages/Public/Cart.jsx                   tabular=1
+resources/js/Pages/Public/Checkout.jsx               tabular=2
+resources/js/Pages/Public/CheckoutPay.jsx            tabular=13
+resources/js/Pages/Public/CheckoutSuccess.jsx        tabular=7
+resources/js/Pages/Public/History.jsx                tabular=10
+resources/js/Pages/Public/Products/Show.jsx          tabular=3
+resources/js/Components/CartLine.jsx                 tabular=2
+resources/js/Components/FilterPanel.jsx              tabular=1
+resources/js/Components/KpiCard.jsx                  tabular=0
+resources/js/Components/OrderSummary.jsx             tabular=7
+resources/js/Components/PriceBlock.jsx               tabular=3
+resources/js/Components/ProductCard.jsx              tabular=1
+[2mpublic/build/[22m[36massets/app-B9IwKeWo.js                [39m[1m[2m365.06 kB[22m[1m[22m[2m │ gzip: 114.43 kB[22m
+[32m✓ built in 3.03s[39m

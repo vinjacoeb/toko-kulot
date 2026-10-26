@@ -26,14 +26,11 @@ class RegistrationTest extends TestCase
 
     public function test_pembeli_bisa_mendaftar_dan_langsung_masuk(): void
     {
-        $response = $this->post('/register', [
+        $response = $this->post('/register', $this->payload([
             'name' => 'Siti Aminah',
             'email' => 'Siti@Contoh.Test',
             'phone' => '0812-0000-0001',
-            'password' => 'rahasia123',
-            'password_confirmation' => 'rahasia123',
-            'terms' => '1',
-        ]);
+        ]));
 
         $response->assertRedirect('/');
         $response->assertSessionHas('success', 'Akun berhasil dibuat. Selamat berbelanja!');
@@ -43,6 +40,10 @@ class RegistrationTest extends TestCase
         $user = User::query()->where('email', 'siti@contoh.test')->firstOrFail();
         $this->assertSame('Siti Aminah', $user->name);
         $this->assertSame('0812-0000-0001', $user->phone);
+        // PRD-v1.2 §3: alamat wajib saat register, dipakai mem-prefill checkout.
+        $this->assertSame('Jl. Melati No. 12, RT 02 RW 03', $user->address);
+        $this->assertSame('Pekalongan', $user->city);
+        $this->assertSame('51111', $user->postal_code);
         $this->assertNotNull($user->email_verified_at, 'A4: akun langsung aktif tanpa verifikasi email.');
         $this->assertTrue(Hash::check('rahasia123', $user->password));
         $this->assertNotSame('rahasia123', $user->password, 'Kata sandi harus tersimpan sebagai hash.');
@@ -86,6 +87,46 @@ class RegistrationTest extends TestCase
         $this->assertGuest('web');
     }
 
+    public function test_kode_pos_empat_angka_ditolak(): void
+    {
+        $this->post('/register', $this->payload(['postal_code' => '5111']))
+            ->assertSessionHasErrors(['postal_code' => 'Kode pos harus 5 angka.']);
+
+        $this->assertGuest('web');
+        $this->assertSame(0, User::query()->count());
+    }
+
+    public function test_kode_pos_bukan_angka_ditolak(): void
+    {
+        $this->post('/register', $this->payload(['postal_code' => '5111A']))
+            ->assertSessionHasErrors(['postal_code' => 'Kode pos harus 5 angka.']);
+
+        $this->assertGuest('web');
+    }
+
+    public function test_alamat_kurang_dari_sepuluh_karakter_ditolak(): void
+    {
+        $this->post('/register', $this->payload(['address' => 'Jl. A']))
+            ->assertSessionHasErrors(['address' => 'Alamat terlalu singkat. Tulis jalan, nomor, RT/RW.']);
+
+        $this->assertGuest('web');
+    }
+
+    public function test_alamat_kota_dan_kode_pos_wajib_diisi(): void
+    {
+        $payload = $this->payload();
+        unset($payload['address'], $payload['city'], $payload['postal_code']);
+
+        $this->post('/register', $payload)
+            ->assertSessionHasErrors([
+                'address' => 'Alamat lengkap wajib diisi.',
+                'city' => 'Kota wajib diisi.',
+                'postal_code' => 'Kode pos wajib diisi.',
+            ]);
+
+        $this->assertGuest('web');
+    }
+
     public function test_kata_sandi_kurang_dari_delapan_karakter_ditolak(): void
     {
         $this->post('/register', $this->payload([
@@ -115,6 +156,9 @@ class RegistrationTest extends TestCase
             'name' => 'Pembeli Contoh',
             'email' => 'pembeli@contoh.test',
             'phone' => '081200000002',
+            'address' => 'Jl. Melati No. 12, RT 02 RW 03',
+            'city' => 'Pekalongan',
+            'postal_code' => '51111',
             'password' => 'rahasia123',
             'password_confirmation' => 'rahasia123',
             'terms' => '1',

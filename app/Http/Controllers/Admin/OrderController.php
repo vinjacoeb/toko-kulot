@@ -3,40 +3,45 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Exceptions\CheckoutException;
-use App\Exceptions\OrderStatusException;
 use App\Http\Controllers\Admin\Concerns\ListProps;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\UpdateOrderStatusRequest;
 use App\Http\Requests\Admin\UpdateOrderTrackingRequest;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Services\BiteshipService;
 use App\Services\MidtransService;
-use App\Services\OrderService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Pesanan admin — daftar, detail, perubahan status, nomor resi (PRD §5.2, §7, A15;
- * kontrak props §12.16–§12.18a), dan sinkronisasi status pembayaran (§12.24).
+ * Pesanan admin — daftar, detail, nomor resi (PRD §5.2, §7, A15; kontrak props
+ * §12.16–§12.17, §12.18a), dan sinkronisasi status pembayaran (§12.24).
  *
- * Perubahan status (termasuk pengembalian stok saat batal) dikerjakan OrderService;
- * penerapan status transaksi Midtrans dikerjakan MidtransService (satu jalur dengan webhook).
+ * Status pesanan tidak diubah manual: hanya Midtrans (bayar/batal) dan webhook Biteship
+ * (PRD-v1.4 §3). Penerapan status transaksi Midtrans dikerjakan MidtransService, jalur yang
+ * sama dengan webhook.
  */
 class OrderController extends Controller
 {
     use ListProps;
 
     public function __construct(
-        private readonly OrderService $orders,
         private readonly MidtransService $midtrans,
+        private readonly BiteshipService $biteship,
     ) {}
 
     public function index(Request $request): Response
     {
+        $statusKirim = Order::query()
+            ->whereNotNull('shipping_status')
+            ->distinct()
+            ->orderBy('shipping_status')
+            ->pluck('shipping_status')
+            ->all();
+
         $filter = [
             'q' => $this->teks($request->query('q')),
             'status' => $this->pilihan(
@@ -51,11 +56,12 @@ class OrderController extends Controller
                 Order::PAYMENT_DENY,
                 Order::PAYMENT_CANCEL,
             ], 'semua'),
+            'kirim' => $this->pilihan($request->query('kirim'), [...$statusKirim, 'belum'], 'semua'),
             'dari' => $this->tanggal($request->query('dari')),
             'sampai' => $this->tanggal($request->query('sampai')),
         ];
 
-        $query = Order::query()->withCount('items');
+        $query = Order::query()->with(['payment'])->withCount('items');
 
         if ($filter['q'] !== null) {
             $like = '%'.$filter['q'].'%';
@@ -72,6 +78,12 @@ class OrderController extends Controller
 
         if ($filter['bayar'] !== 'semua') {
             $query->where('payment_status', $filter['bayar']);
+        }
+
+        if ($filter['kirim'] === 'belum') {
+            $query->whereNull('shipping_status');
+        } elseif ($filter['kirim'] !== 'semua') {
+            $query->where('shipping_status', $filter['kirim']);
         }
 
         if ($filter['dari'] !== null) {
@@ -99,13 +111,24 @@ class OrderController extends Controller
             $ringkasan[$status] = (int) $perStatus->get($status, 0);
         }
 
+        $labels = $this->biteship->serviceLabels();
+
         return Inertia::render('Admin/Orders/Index', [
             'pesanan' => [
-                'data' => collect($pesanan->items())->map(fn (Order $row) => $this->row($row))->all(),
+                'data' => collect($pesanan->items())->map(fn (Order $row) => $this->row($row, $labels))->all(),
                 'links' => $pesanan->linkCollection()->all(),
                 'meta' => $this->meta($pesanan),
             ],
             'filter' => $filter,
+            'filter_opsi' => [
+                'kirim' => collect([
+                    ['value' => 'semua', 'label' => 'Semua'],
+                    ['value' => 'belum', 'label' => 'Belum ada status'],
+                ])->concat(collect($statusKirim)->map(fn (string $status) => [
+                    'value' => $status,
+                    'label' => BiteshipService::shippingLabel($status),
+                ]))->values()->all(),
+            ],
             'ringkasan' => $ringkasan,
         ]);
     }
@@ -115,29 +138,8 @@ class OrderController extends Controller
         $order->load(['items', 'payment']);
 
         return Inertia::render('Admin/Orders/Show', [
-            'pesanan' => $this->detail($order),
-            'status_berikut' => collect($order->nextStatuses())
-                ->map(fn (string $status) => [
-                    'value' => $status,
-                    'label' => Order::statusLabel($status),
-                ])
-                ->all(),
+            'pesanan' => $this->detail($order, $this->biteship->serviceLabels()),
         ]);
-    }
-
-    public function status(UpdateOrderStatusRequest $request, Order $order): RedirectResponse
-    {
-        try {
-            $this->orders->changeStatusByAdmin(
-                $order,
-                $request->validated(),
-                $request->user('admin')?->id,
-            );
-        } catch (OrderStatusException $exception) {
-            throw ValidationException::withMessages(['status' => $exception->getMessage()]);
-        }
-
-        return back()->with('success', 'Status pesanan diperbarui.');
     }
 
     /**
@@ -151,6 +153,19 @@ class OrderController extends Controller
         $order->update(['tracking_number' => $request->validated('tracking_number')]);
 
         return back()->with('success', 'Nomor resi pesanan diperbarui.');
+    }
+
+    /**
+     * Buat resi otomatis lewat Biteship (PRD-v1.2 §8, kontrak props §12.25).
+     *
+     * Semua guard dan penulisan kolom ada di `BiteshipService::createOrder`; controller
+     * hanya meneruskan hasil ke `flash.success`/`flash.error` (tidak pernah 500).
+     */
+    public function resiOtomatis(Order $order): RedirectResponse
+    {
+        $hasil = $this->biteship->createOrder($order);
+
+        return back()->with($hasil['ok'] ? 'success' : 'error', $hasil['pesan']);
     }
 
     /**
@@ -207,10 +222,13 @@ class OrderController extends Controller
     }
 
     /**
+     * @param  array<string, array{courier_name: string, service_name: string}>  $labels
      * @return array<string, mixed>
      */
-    private function row(Order $order): array
+    private function row(Order $order, array $labels): array
     {
+        $shipping = $this->biteship->shippingInfo($order, $labels);
+
         return [
             'id' => $order->id,
             'code' => $order->code,
@@ -218,11 +236,20 @@ class OrderController extends Controller
             'status_label' => Order::statusLabel($order->status),
             'payment_status' => $order->payment_status,
             'payment_label' => $this->paymentLabel($order->payment_status),
+            'payment_method_label' => Order::paymentMethodLabel($order->payment_method),
             'customer_name' => $order->customer_name,
             'customer_phone' => $order->customer_phone,
             'customer_email' => $order->customer_email,
             'total' => (int) $order->total,
             'items_count' => (int) ($order->items_count ?? 0),
+            'courier_name' => $shipping['courier_name'],
+            'service_name' => $shipping['service_name'],
+            'tracking_number' => $order->tracking_number,
+            'shipping_status' => $order->shipping_status,
+            'shipping_status_label' => BiteshipService::shippingLabel($order->shipping_status),
+            'shipping_updated_at' => $order->shipping_updated_at?->toIso8601String(),
+            'shipping_perlu_tindakan' => $this->biteship->shippingPerluTindakan($order),
+            'mode_uji' => $this->modeUji($order),
             'paid_at' => $order->paid_at?->toIso8601String(),
             'created_at' => $order->created_at?->toIso8601String(),
             'url' => '/admin/pesanan/'.$order->id,
@@ -230,9 +257,10 @@ class OrderController extends Controller
     }
 
     /**
+     * @param  array<string, array{courier_name: string, service_name: string}>  $labels
      * @return array<string, mixed>
      */
-    private function detail(Order $order): array
+    private function detail(Order $order, array $labels): array
     {
         $payment = $order->payment;
 
@@ -251,6 +279,7 @@ class OrderController extends Controller
             'payment_method_label' => Order::paymentMethodLabel($order->payment_method),
             'notes' => $order->notes,
             'tracking_number' => $order->tracking_number,
+            'mode_uji' => $this->modeUji($order),
             'customer' => [
                 'name' => $order->customer_name,
                 'phone' => $order->customer_phone,
@@ -271,7 +300,13 @@ class OrderController extends Controller
                 ])
                 ->values()
                 ->all(),
+            'shipping' => $this->biteship->shippingInfoAdmin($order, $labels),
             'payment' => $payment === null ? null : $this->paymentRow($payment),
+            'timeline' => [
+                'created_at' => $order->created_at?->toIso8601String(),
+                'paid_at' => $order->paid_at?->toIso8601String(),
+                'shipped_at' => $order->shipped_at?->toIso8601String(),
+            ],
             'created_at' => $order->created_at?->toIso8601String(),
             'paid_at' => $order->paid_at?->toIso8601String(),
         ];
@@ -286,13 +321,23 @@ class OrderController extends Controller
             'provider' => $payment->provider,
             'status' => $payment->status,
             'transaction_id' => $payment->transaction_id,
-            'snap_token' => $payment->snap_token,
-            'snap_redirect_url' => $payment->snap_redirect_url,
+            'metode' => $this->midtrans->channelOf($payment),
+            'instruksi' => $this->midtrans->instructions($payment),
             'payment_type' => $payment->payment_type,
+            'fake' => $this->midtrans->isFakeCharge($payment),
             'gross_amount' => (int) $payment->gross_amount,
             'expires_at' => $payment->expires_at?->toIso8601String(),
             'paid_at' => $payment->paid_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * Badge `Mode uji` (design-v1.2 §7.1): tagihan uji Midtrans atau resi Biteship mode uji.
+     */
+    private function modeUji(Order $order): bool
+    {
+        return $this->midtrans->isFakeCharge($order->payment)
+            || (bool) ($order->shipping_payload['mode_uji'] ?? false);
     }
 
     private function paymentLabel(?string $status): string

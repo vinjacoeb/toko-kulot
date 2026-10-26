@@ -1,0 +1,116 @@
+# Bukti frontend — t_08806cd2 (kolom Aksi lengket di /admin/pesanan)
+
+Sumber masalah: `docs/bugs/t_3f1b4473-detail-tersembunyi.md` §2–§3 (tabel 1191px vs wadah
+958px, kolom Aksi di luar tepi kanan). Tanggal: 24 Okt 2026.
+
+## 1. Berkas diubah
+
+1. `resources/js/Components/DataTable.jsx` — dukungan `column.sticky`:
+   - `tr` dapat `group`;
+   - `th` lengket: `right-0 z-20 border-l` (header biasa tetap `z-10`), latar `bg-surface`
+     yang sudah ada; header lengket harus `z-20` agar tidak tertimpa sel lengket badan
+     (`z-10`) saat halaman digulir;
+   - `td` lengket: `sticky right-0 z-10 border-l border-line bg-white
+     group-hover:bg-surface group-focus-within:bg-surface` (latar wajib opaque karena latar
+     `<tr>` tidak ikut menempel).
+2. `resources/js/Pages/Admin/Orders/Index.jsx` — kolom `aksi` diberi `sticky: true`.
+
+Tanpa komponen, token, atau warna baru. Tabel admin lain tidak mengirim `sticky`, jadi
+kelas barunya tidak aktif (satu-satunya tambahan untuk mereka: kelas `group` pada `tr`,
+tanpa aturan gaya apa pun kecuali bila ada `group-hover:` di dalam sel — tidak ada di
+tabel admin mana pun).
+
+Diff ringkas (potongan milik kartu ini):
+
+```diff
+--- a/resources/js/Components/DataTable.jsx
++++ b/resources/js/Components/DataTable.jsx
+@@
+-                                                'sticky top-0 z-10 h-tableHead whitespace-nowrap border-b border-line bg-surface px-4 text-label uppercase text-slate-600',
++                                                'sticky top-0 h-tableHead whitespace-nowrap border-b border-line bg-surface px-4 text-label uppercase text-slate-600',
++                                                lekat ? 'right-0 z-20 border-l' : 'z-10',
+@@
+-                                            'h-tableRow border-b border-line last:border-b-0',
++                                            'group h-tableRow border-b border-line last:border-b-0',
+@@
+-                                                className={cn('px-4 align-middle text-ink', cellAlign(column))}
++                                                className={cn(
++                                                    'px-4 align-middle text-ink',
++                                                    column.sticky === true &&
++                                                        'sticky right-0 z-10 border-l border-line bg-white group-hover:bg-surface group-focus-within:bg-surface',
++                                                    cellAlign(column)
++                                                )}
+```
+
+```diff
+--- a/resources/js/Pages/Admin/Orders/Index.jsx
++++ b/resources/js/Pages/Admin/Orders/Index.jsx
+@@
+             key: 'aksi',
+             header: 'Aksi',
+             align: 'right',
++            // Selalu terlihat di tepi kanan wadah gulir (docs/bugs/t_3f1b4473-detail-tersembunyi.md §3).
++            sticky: true,
+```
+
+`git diff` Index.jsx memuat hunk lain (filter `kirim`, `Badge`) — itu pekerjaan kartu
+sebelumnya yang belum di-commit, bukan kartu ini.
+
+## 2. Ukur lebar tabel vs wadah (viewport 1280 px)
+
+Metode sama dengan laporan bug: markup dengan kelas persis dari `DataTable.jsx` + isi sel
+persis dari `Index.jsx` disuntik ke halaman publik `http://127.0.0.1:8000` (CSS aplikasi
+hasil `npm run build`), viewport 1280×900. Wadah = 1280 − sidebar `w-sidebar` 240 − padding
+utama 48 − border kartu 2 = **990 px**.
+
+| | sebelum (tanpa `sticky`) | sesudah (`sticky: true`) |
+|---|---|---|
+| lebar wadah | 990 px | 990 px |
+| lebar tabel | 1163 px | 1164 px (+1 px border kiri sel lengket) |
+| overflow horizontal | 173 px | 174 px (scroll tetap jalan) |
+| posisi sel Aksi (rel. wadah) | 1092 → 1163 px | 918 → 990 px |
+| tombol Detail terlihat tanpa scroll | **tidak** (tepi kanan 1163 > 990) | **ya** (tepi kanan pas 990) |
+| `position` sel Aksi | `static` | `sticky` (`right: 0px`, `z-index: 10`) |
+| latar sel Aksi | transparan | `rgb(255, 255, 255)` |
+| border kiri | – | `1px rgb(229, 231, 235)` (`border-line`) |
+
+Uji gulir pada tabel yang sama:
+
+- `scrollLeft = 0` → sel Aksi 918 → 990 (menempel kanan).
+- `scrollLeft = 174` (paling kanan) → sel Aksi tetap 918 → 990 (tidak ikut bergeser, kolom
+  lain yang bergerak).
+- 21 baris + `scrollTop = 200` → header Aksi tetap di `top: 0` wadah dan `elementFromPoint`
+  di atas header mengembalikan `TH.sticky.top-0.h-tableHead` (header tidak tertimpa sel
+  lengket badan); `z-index` header 20 vs sel badan 10.
+- Vertical scrollbar (lebar 15 px) membuat sel menempel ke tepi padding box (975), bukan
+  tepi border box — perilaku normal `overflow-auto`, tombol tetap terlihat penuh.
+
+## 3. Hasil `npm run build`
+
+```
+> build
+> vite build
+
+vite v6.4.4 building for production...
+transforming...
+✓ 737 modules transformed.
+rendering chunks...
+computing gzip size...
+public/build/manifest.json                          35.09 kB │ gzip:   3.02 kB
+public/build/assets/app-CGPWETdR.css                66.56 kB │ gzip:  12.05 kB
+...
+public/build/assets/app-CmuwYEyq.js                365.06 kB │ gzip: 114.42 kB
+✓ built in 4.01s
+```
+
+exit 0, tanpa warning/error. Aturan CSS hasil build memuat `group:hover .group-hover\:bg-surface`
+dan `group:focus-within .group-focus-within\:bg-surface` (1 aturan masing-masing), jadi latar
+sel lengket ikut berubah saat baris di-hover/di-fokus.
+
+## 4. Belum diuji
+
+- Halaman `/admin/pesanan` asli sebagai admin **belum dilihat di browser** (perlu kata sandi;
+  agent tidak mengetik kata sandi). Angka di §2 dari markup setara ber-CSS aplikasi, bukan
+  tangkapan sesi admin. Verifikasi akhir: kartu QA `t_eb32d784`.
+- Uji 360/768/1024 px, keyboard, dan zoom 200% belum dilakukan; sticky tidak bergantung lebar
+  layar, tetapi QA perlu memastikan tombol Detail tetap bisa diklik di layar sempit.

@@ -212,9 +212,12 @@ class CheckoutTest extends TestCase
         $payment = Payment::query()->where('order_id', $order->id)->firstOrFail();
         $this->assertSame(Order::PAYMENT_PENDING, $payment->status);
         $this->assertSame(190000, (int) $payment->gross_amount);
-        $this->assertNotEmpty($payment->qr_string);
-        $this->assertStringStartsWith('000201', $payment->qr_string);
-        $this->assertNotNull($payment->expires_at);
+        // Checkout tidak memanggil Midtrans: kanal & QR baru ada setelah pembeli
+        // memilih metode di halaman bayar (PRD-v1.2 §2.3).
+        $this->assertNull($payment->payment_type);
+        $this->assertNull($payment->order_id_midtrans);
+        $this->assertNull($payment->qr_string);
+        $this->assertNull($payment->expires_at);
 
         $this->assertDatabaseCount('cart_items', 0);
         $this->assertSame(0, session('cart_count'));
@@ -395,7 +398,47 @@ class CheckoutTest extends TestCase
         $this->assertSame(0, Order::query()->count());
     }
 
-    public function test_halaman_bayar_menampilkan_qr_string_dan_batas_waktu(): void
+    public function test_checkout_mem_prefill_alamat_dari_profil_user(): void
+    {
+        // User lama yang sudah melengkapi profil (PRD-v1.2 §3): checkout terisi otomatis.
+        $this->user->forceFill([
+            'phone' => '081234567890',
+            'address' => 'Jl. Melati No. 12, RT 02 RW 03',
+            'city' => 'Pekalongan',
+            'postal_code' => '51111',
+        ])->save();
+
+        $this->isiKeranjang(1);
+
+        $this->get('/checkout')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Public/Checkout', false)
+                ->where('prefill.customer_name', $this->user->name)
+                ->where('prefill.customer_phone', '081234567890')
+                ->where('prefill.customer_email', $this->user->email)
+                ->where('prefill.customer_address', 'Jl. Melati No. 12, RT 02 RW 03')
+                ->where('prefill.customer_city', 'Pekalongan')
+                ->where('prefill.customer_postal_code', '51111')
+                ->where('prefill.note', null)
+            );
+    }
+
+    public function test_checkout_prefill_kosong_untuk_user_tanpa_alamat(): void
+    {
+        // User lama yang mendaftar sebelum v1.2: field alamat null, pembeli mengisi sendiri.
+        $this->isiKeranjang(1);
+
+        $this->get('/checkout')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('prefill.customer_address', null)
+                ->where('prefill.customer_city', null)
+                ->where('prefill.customer_postal_code', null)
+            );
+    }
+
+    public function test_halaman_bayar_menampilkan_kanal_dan_menunggu_pilihan(): void
     {
         $this->isiKeranjang(1);
         $this->post('/checkout', $this->dataCheckout());
@@ -408,8 +451,10 @@ class CheckoutTest extends TestCase
             ->component('Public/CheckoutPay', false)
             ->where('pesanan.code', $order->code)
             ->where('pesanan.total', (int) $order->total)
-            ->where('pembayaran.method', 'midtrans')
+            ->where('pembayaran.provider', 'midtrans')
+            ->where('pembayaran.metode', null)
             ->where('pembayaran.status', Order::PAYMENT_PENDING)
+            ->has('pembayaran.kanal', 8)
             ->where('midtrans.fake', true)
         );
     }
@@ -534,8 +579,8 @@ class CheckoutTest extends TestCase
     {
         $order = $this->pesananDuaProdukLunas();
 
-        // Status pesanan bisa berpindah ke `batal` setelah lunas (Order::nextStatuses()
-        // selalu menawarkan `batal`) tanpa mengubah `payment_status`.
+        // v1.4 (F12) menghapus ubah status manual: status `batal` kini hanya bisa datang
+        // dari pembatalan di sisi pembayaran/Biteship, dan `payment_status` tidak ikut berubah.
         $order->update(['status' => Order::STATUS_CANCELLED]);
         $order->refresh();
 

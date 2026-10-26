@@ -286,12 +286,18 @@ var SOCIAL_ICONS = {
 };
 
 // resources/js/Components/Footer.jsx
+var formatCopyright = (template, year, storeName) => {
+  const raw = typeof template === "string" ? template.trim() : "";
+  if (raw === "") return `\xA9 ${year} ${storeName}`;
+  return raw.split("{tahun}").join(String(year)).split("{toko}").join(storeName);
+};
 function Footer({
   about = null,
   links = [],
   social = [],
   contact = null,
-  storeName = "Toko Kulot"
+  storeName = "Toko Kulot",
+  copyright = null
 }) {
   const {
     phone = null,
@@ -319,6 +325,7 @@ function Footer({
     address && { icon: MapPinIcon, text: address, href: null }
   ].filter(Boolean);
   const year = (/* @__PURE__ */ new Date()).getFullYear();
+  const copyrightText = formatCopyright(copyright, year, storeName);
   return /* @__PURE__ */ jsx("footer", { className: "bg-footer pb-8 pt-section text-white/75", children: /* @__PURE__ */ jsxs("div", { className: "container", children: [
     /* @__PURE__ */ jsxs("div", { className: "grid gap-8 md:grid-cols-2 lg:grid-cols-4 lg:gap-gutterLg", children: [
       /* @__PURE__ */ jsxs("div", { className: "md:col-span-1", children: [
@@ -375,7 +382,7 @@ function Footer({
         ] }, row.text)) })
       ] })
     ] }),
-    /* @__PURE__ */ jsx("div", { className: "mt-10 border-t border-white/15 pt-6", children: /* @__PURE__ */ jsx("p", { className: "text-meta text-white/60", children: `\xA9 ${year} ${storeName}. Semua hak dilindungi.` }) })
+    /* @__PURE__ */ jsx("div", { className: "mt-10 border-t border-white/15 pt-6", children: /* @__PURE__ */ jsx("p", { className: "text-meta text-white/60", children: copyrightText }) })
   ] }) });
 }
 
@@ -386,6 +393,10 @@ var rupiah = (value) => {
   const number = Number(value);
   if (!Number.isFinite(number)) return null;
   return `Rp${Math.round(number).toLocaleString("id-ID")}`;
+};
+var formatNumber = (value) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toLocaleString("id-ID") : "0";
 };
 
 // resources/js/lib/hooks.js
@@ -480,6 +491,7 @@ function IconButton({ label, badge = null, children, className = "", type = "but
 }
 
 // resources/js/Components/Header.jsx
+var itemMenu = "flex min-h-touch w-full items-center gap-2 rounded-md px-3 text-left text-meta transition-colors duration-hover hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2";
 function Header({
   nav = [],
   cartCount = 0,
@@ -493,7 +505,43 @@ function Header({
 }) {
   const scrolled = useScrolled(8);
   const count = Number(cartCount) || 0;
-  const wordmark = logoUrl ? /* @__PURE__ */ jsx("img", { src: logoUrl, alt: storeName, className: "h-8 w-auto", loading: "eager" }) : /* @__PURE__ */ jsx("span", { className: "font-display text-h2 uppercase tracking-[0.02em] text-brand", children: storeName });
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoFailed, setLogoFailed] = useState(false);
+  const menuButtonRef = useRef(null);
+  const skipFocusOpen = useRef(false);
+  const displayName = user?.name ?? user?.email ?? "Akun";
+  const displayEmail = user?.name && user?.email ? user.email : null;
+  const tutupMenu = () => setMenuOpen(false);
+  const tutupDanFokus = () => {
+    setMenuOpen(false);
+    skipFocusOpen.current = true;
+    menuButtonRef.current?.focus();
+    skipFocusOpen.current = false;
+  };
+  const onMenuKeyDown = (event) => {
+    if (event.key !== "Escape" || !menuOpen) return;
+    event.stopPropagation();
+    tutupDanFokus();
+  };
+  useEffect(() => {
+    if (!menuOpen) return void 0;
+    const onEscape = (event) => {
+      if (event.key === "Escape") tutupDanFokus();
+    };
+    document.addEventListener("keydown", onEscape);
+    return () => document.removeEventListener("keydown", onEscape);
+  }, [menuOpen]);
+  const keluar = () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    router.post("/logout", {}, {
+      onFinish: () => {
+        setLoggingOut(false);
+        setMenuOpen(false);
+      }
+    });
+  };
   return /* @__PURE__ */ jsx(
     "header",
     {
@@ -503,7 +551,28 @@ function Header({
       ),
       children: /* @__PURE__ */ jsxs("div", { className: "container flex h-headerMobile items-center justify-between gap-4 md:h-header", children: [
         /* @__PURE__ */ jsx("div", { className: "flex items-center gap-2 md:hidden", children: /* @__PURE__ */ jsx(IconButton, { label: "Buka menu", onClick: onOpenDrawer, className: "-ml-2", children: /* @__PURE__ */ jsx(MenuIcon, { size: 20 }) }) }),
-        /* @__PURE__ */ jsx(Link, { href: "/", className: "flex items-center md:mr-6", "aria-label": `${storeName} \u2014 beranda`, children: wordmark }),
+        /* @__PURE__ */ jsxs(
+          Link,
+          {
+            href: "/",
+            title: storeName,
+            "aria-label": `${storeName} \u2014 beranda`,
+            className: "flex min-w-0 items-center gap-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 md:mr-6",
+            children: [
+              logoUrl && !logoFailed && /* @__PURE__ */ jsx(
+                "img",
+                {
+                  src: logoUrl,
+                  alt: "",
+                  className: "h-8 w-auto shrink-0",
+                  loading: "eager",
+                  onError: () => setLogoFailed(true)
+                }
+              ),
+              /* @__PURE__ */ jsx("span", { className: "max-w-[42vw] truncate font-display text-h2 uppercase tracking-[0.02em] text-brand md:max-w-[24rem]", children: storeName })
+            ]
+          }
+        ),
         /* @__PURE__ */ jsx("nav", { className: "hidden flex-1 items-center gap-1 md:flex", "aria-label": "Navigasi utama", children: nav.map((item) => /* @__PURE__ */ jsx(
           Link,
           {
@@ -533,18 +602,65 @@ function Header({
               children: /* @__PURE__ */ jsx(CartIcon, { size: 20 })
             }
           ),
-          user ? /* @__PURE__ */ jsxs("div", { className: "hidden items-center gap-2 md:flex", children: [
-            /* @__PURE__ */ jsx("span", { className: "max-w-[120px] truncate text-meta text-ink", children: user.name ?? user.email ?? "Akun" }),
-            /* @__PURE__ */ jsx(
-              "button",
-              {
-                type: "button",
-                onClick: () => router.post("/logout"),
-                className: "text-meta text-brand underline underline-offset-4",
-                children: "Keluar"
-              }
-            )
-          ] }) : /* @__PURE__ */ jsxs(Fragment2, { children: [
+          user ? /* @__PURE__ */ jsxs(
+            "div",
+            {
+              className: "relative hidden md:block",
+              onMouseEnter: () => setMenuOpen(true),
+              onMouseLeave: () => setMenuOpen(false),
+              onBlur: (event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) setMenuOpen(false);
+              },
+              onKeyDown: onMenuKeyDown,
+              children: [
+                /* @__PURE__ */ jsx(
+                  "button",
+                  {
+                    type: "button",
+                    ref: menuButtonRef,
+                    "aria-haspopup": "true",
+                    "aria-expanded": menuOpen,
+                    "aria-controls": "menu-profil",
+                    "aria-label": `Menu akun ${displayName}`,
+                    title: "Menu akun",
+                    onClick: () => setMenuOpen(true),
+                    onFocus: (event) => {
+                      if (!skipFocusOpen.current && event.target.matches(":focus-visible")) {
+                        setMenuOpen(true);
+                      }
+                    },
+                    className: "inline-flex h-touch w-touch items-center justify-center rounded-md text-brand transition-colors duration-hover hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
+                    children: /* @__PURE__ */ jsx(UserIcon, { size: 20 })
+                  }
+                ),
+                menuOpen && /* @__PURE__ */ jsx("div", { className: "absolute right-0 top-full pt-2", children: /* @__PURE__ */ jsxs(
+                  "div",
+                  {
+                    id: "menu-profil",
+                    className: "w-60 rounded-xl border border-line bg-white p-2 shadow-raised",
+                    children: [
+                      /* @__PURE__ */ jsxs("div", { className: "border-b border-line px-3 pb-3 pt-2", children: [
+                        /* @__PURE__ */ jsx("p", { className: "truncate text-label font-semibold text-ink", children: displayName }),
+                        displayEmail && /* @__PURE__ */ jsx("p", { className: "mt-0.5 truncate text-meta text-slate-500", children: displayEmail })
+                      ] }),
+                      /* @__PURE__ */ jsx(Link, { href: "/history", onClick: tutupMenu, className: cn(itemMenu, "mt-2 text-ink"), children: "Riwayat pesanan" }),
+                      /* @__PURE__ */ jsx(
+                        "button",
+                        {
+                          type: "button",
+                          onClick: keluar,
+                          disabled: loggingOut,
+                          "aria-busy": loggingOut || void 0,
+                          className: cn(itemMenu, "text-brand disabled:cursor-not-allowed disabled:opacity-45"),
+                          children: loggingOut ? "Memproses\u2026" : "Keluar"
+                        }
+                      )
+                    ]
+                  }
+                ) })
+              ]
+            }
+          ) : /* @__PURE__ */ jsxs(Fragment2, { children: [
             /* @__PURE__ */ jsx(
               Link,
               {
@@ -647,10 +763,16 @@ var toCount = (value) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0;
 };
-function PublicLayout({ settings = {}, cartCount = null, user = null, children }) {
+function PublicLayout({ settings: settingsProp = null, cartCount = null, user = null, children }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
   const page = usePage();
-  const storeName = settings?.store_name ?? "Toko Kulot";
+  const sharedSettings = page?.props?.settings;
+  const settings = {
+    ...sharedSettings && typeof sharedSettings === "object" ? sharedSettings : {},
+    ...settingsProp && typeof settingsProp === "object" ? settingsProp : {}
+  };
+  const storeName = settings.store_name || "Toko Kulot";
   const rawNav = settings?.header_nav;
   const nav = Array.isArray(rawNav) && rawNav.length > 0 ? rawNav.filter((item) => item && item.label && hrefOf(item)).map((item) => ({ label: item.label, href: hrefOf(item) })) : DEFAULT_NAV;
   const announcement = settings?.landing_sections?.announcement ?? null;
@@ -658,6 +780,11 @@ function PublicLayout({ settings = {}, cartCount = null, user = null, children }
   const announcementHref = announcement ? hrefOf(announcement) : settings?.announcement_href ?? null;
   const currentUser = user ?? page?.props?.auth?.user ?? null;
   const count = toCount(page?.props?.cart?.count) ?? toCount(cartCount) ?? toCount(settings?.cart_count) ?? 0;
+  const keluar = () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    router.post("/logout", {}, { onFinish: () => setLoggingOut(false) });
+  };
   return /* @__PURE__ */ jsxs("div", { className: "flex min-h-screen flex-col bg-white text-ink", children: [
     /* @__PURE__ */ jsx(
       "a",
@@ -686,7 +813,29 @@ function PublicLayout({ settings = {}, cartCount = null, user = null, children }
         nav,
         onClose: () => setDrawerOpen(false),
         title: "Menu",
-        footer: currentUser ? /* @__PURE__ */ jsx("p", { className: "text-meta text-ink-soft", children: `Masuk sebagai ${currentUser.name ?? currentUser.email ?? "Akun"}` }) : /* @__PURE__ */ jsxs("div", { className: "flex flex-col gap-2", children: [
+        footer: currentUser ? /* @__PURE__ */ jsxs("div", { className: "flex flex-col gap-3", children: [
+          /* @__PURE__ */ jsx("p", { className: "text-meta text-ink-soft", children: `Masuk sebagai ${currentUser.name ?? currentUser.email ?? "Akun"}` }),
+          /* @__PURE__ */ jsx(
+            Link,
+            {
+              href: "/history",
+              onClick: () => setDrawerOpen(false),
+              className: "btn-secondary w-full justify-center",
+              children: "Riwayat pesanan"
+            }
+          ),
+          /* @__PURE__ */ jsx(
+            "button",
+            {
+              type: "button",
+              onClick: keluar,
+              disabled: loggingOut,
+              "aria-busy": loggingOut || void 0,
+              className: "btn-ghost w-full justify-center disabled:cursor-not-allowed disabled:opacity-45",
+              children: loggingOut ? "Memproses\u2026" : "Keluar"
+            }
+          )
+        ] }) : /* @__PURE__ */ jsxs("div", { className: "flex flex-col gap-2", children: [
           /* @__PURE__ */ jsx(Link, { href: "/register", className: "btn-primary w-full justify-center", children: "Daftar" }),
           /* @__PURE__ */ jsx(Link, { href: "/login", className: "btn-secondary w-full justify-center", children: "Masuk" })
         ] })
@@ -705,10 +854,34 @@ function PublicLayout({ settings = {}, cartCount = null, user = null, children }
           email: settings?.contact_email ?? null,
           address: settings?.contact_address ?? null
         },
-        storeName
+        storeName,
+        copyright: settings.footer_copyright ?? null
       }
     )
   ] });
+}
+
+// resources/js/Components/Badge.jsx
+var CLASSES = {
+  brand: "bg-brand/10 text-brand",
+  accent: "bg-accent-500 text-ink",
+  sale: "bg-sale-500 text-white",
+  success: "bg-success/10 text-success-strong",
+  warning: "bg-warning/10 text-warning-strong",
+  danger: "bg-danger/10 text-danger-strong"
+};
+function Badge({ tone = "brand", children, className = "" }) {
+  return /* @__PURE__ */ jsx(
+    "span",
+    {
+      className: cn(
+        "inline-flex items-center rounded-full px-2.5 py-1 text-badge uppercase",
+        CLASSES[tone] ?? CLASSES.brand,
+        className
+      ),
+      children
+    }
+  );
 }
 
 // resources/js/Components/Breadcrumb.jsx
@@ -747,6 +920,7 @@ function Button({
   href = null,
   type = "button",
   loading = false,
+  loadingLabel = "Memproses\u2026",
   disabled = false,
   fullWidth = false,
   icon = null,
@@ -763,7 +937,7 @@ function Button({
   );
   const content = loading ? /* @__PURE__ */ jsxs(Fragment2, { children: [
     /* @__PURE__ */ jsx(SpinnerIcon, { size: 16 }),
-    /* @__PURE__ */ jsx("span", { children: "Memproses\u2026" })
+    /* @__PURE__ */ jsx("span", { children: loadingLabel })
   ] }) : /* @__PURE__ */ jsxs(Fragment2, { children: [
     icon,
     /* @__PURE__ */ jsx("span", { children })
@@ -880,36 +1054,61 @@ function Input({ error = null, className = "", id = null, ...rest }) {
 
 // resources/js/Components/OrderSummary.jsx
 function OrderSummary({
+  items = null,
   subtotal = null,
   shipping = null,
   total = null,
+  shippingText = null,
+  shippingBadge = null,
+  totalLabel = "Total",
+  helper = null,
   ctaLabel = null,
   ctaHref = null,
   onSubmit = null,
   formId = null,
   loading = false,
   disabled = false,
-  note = "Pembayaran QRIS",
+  note = null,
   className = "",
   children = null
 }) {
   const row = "flex items-baseline justify-between gap-4";
+  const teksOngkir = typeof shippingText === "string" && shippingText.trim() !== "" ? shippingText : null;
+  const daftarItem = Array.isArray(items) ? items : [];
   return /* @__PURE__ */ jsxs("section", { className: cn("card p-6", className), "aria-label": "Ringkasan pesanan", children: [
     /* @__PURE__ */ jsx("h2", { className: "text-h3 text-ink", children: "Ringkasan Pesanan" }),
-    /* @__PURE__ */ jsxs("dl", { className: "mt-4 flex flex-col gap-3", children: [
+    daftarItem.length > 0 && /* @__PURE__ */ jsx("ul", { className: "mt-4 flex flex-col gap-3 border-b border-line pb-4", children: daftarItem.map((item, index) => /* @__PURE__ */ jsxs("li", { className: "flex items-start gap-3", children: [
+      /* @__PURE__ */ jsx("span", { className: "h-12 w-12 shrink-0 overflow-hidden rounded-md bg-surface", children: item?.image ? /* @__PURE__ */ jsx("img", { src: item.image, alt: "", className: "h-full w-full object-cover", loading: "lazy" }) : null }),
+      /* @__PURE__ */ jsxs("span", { className: "min-w-0 flex-1", children: [
+        /* @__PURE__ */ jsx("span", { className: "block text-body text-ink", children: item?.name ?? "-" }),
+        item?.variant_label ? /* @__PURE__ */ jsx("span", { className: "block text-meta text-slate-500", children: item.variant_label }) : null,
+        /* @__PURE__ */ jsxs("span", { className: "block text-meta text-slate-500", children: [
+          /* @__PURE__ */ jsx("span", { className: "tabular-nums", children: formatNumber(item?.qty ?? 0) ?? "-" }),
+          " \xD7",
+          " ",
+          /* @__PURE__ */ jsx("span", { className: "tabular-nums", children: rupiah(item?.unit_price) ?? "-" })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsx("span", { className: "shrink-0 whitespace-nowrap text-body font-semibold text-ink tabular-nums", children: rupiah(item?.line_total) ?? "-" })
+    ] }, item?.id ?? index)) }),
+    /* @__PURE__ */ jsxs("dl", { className: cn("flex flex-col gap-3", daftarItem.length > 0 ? "mt-4" : "mt-4"), children: [
       /* @__PURE__ */ jsxs("div", { className: row, children: [
         /* @__PURE__ */ jsx("dt", { className: "text-body text-ink-soft", children: "Subtotal" }),
-        /* @__PURE__ */ jsx("dd", { className: "text-body text-ink", children: rupiah(subtotal) ?? "-" })
+        /* @__PURE__ */ jsx("dd", { className: "text-body text-ink tabular-nums", children: rupiah(subtotal) ?? "-" })
       ] }),
       /* @__PURE__ */ jsxs("div", { className: row, children: [
         /* @__PURE__ */ jsx("dt", { className: "text-body text-ink-soft", children: "Ongkir" }),
-        /* @__PURE__ */ jsx("dd", { className: "text-body text-ink", children: rupiah(shipping) ?? "-" })
+        /* @__PURE__ */ jsxs("dd", { className: "flex items-baseline justify-end gap-2 text-body text-ink", children: [
+          /* @__PURE__ */ jsx("span", { className: "whitespace-nowrap tabular-nums", "aria-live": "polite", children: teksOngkir ?? rupiah(shipping) ?? "-" }),
+          shippingBadge
+        ] })
       ] }),
       /* @__PURE__ */ jsxs("div", { className: cn(row, "mt-1 border-t border-line pt-4"), children: [
-        /* @__PURE__ */ jsx("dt", { className: "text-body font-bold text-ink", children: "Total" }),
-        /* @__PURE__ */ jsx("dd", { className: "text-[20px] font-bold leading-none text-ink", children: rupiah(total) ?? "-" })
+        /* @__PURE__ */ jsx("dt", { className: "text-body font-bold text-ink", children: totalLabel }),
+        /* @__PURE__ */ jsx("dd", { className: "whitespace-nowrap text-h3 font-bold text-ink tabular-nums", "aria-live": "polite", children: rupiah(total) ?? "-" })
       ] })
     ] }),
+    helper && /* @__PURE__ */ jsx("p", { className: "mt-2 text-meta tabular-nums text-slate-500", children: helper }),
     children,
     ctaLabel && (ctaHref || onSubmit) && /* @__PURE__ */ jsx("div", { className: "mt-5", children: onSubmit ? /* @__PURE__ */ jsx(
       Button,
@@ -927,8 +1126,42 @@ function OrderSummary({
   ] });
 }
 
+// resources/js/Components/Select.jsx
+var BASE2 = "w-full h-field appearance-none rounded-md border border-line bg-white pl-3.5 pr-10 text-body text-ink transition-colors duration-hover focus:border-brand focus:outline-none focus:ring-[3px] focus:ring-brand/15 disabled:cursor-not-allowed disabled:bg-surface";
+function Select({ error = null, className = "", id = null, children, ...rest }) {
+  return /* @__PURE__ */ jsxs("span", { className: "relative block", children: [
+    /* @__PURE__ */ jsx(
+      "select",
+      {
+        id,
+        "aria-invalid": error ? "true" : void 0,
+        "aria-describedby": error && id ? id + "-error" : void 0,
+        className: cn(BASE2, error ? "border-danger" : null, className),
+        ...rest,
+        children
+      }
+    ),
+    /* @__PURE__ */ jsx(
+      "svg",
+      {
+        viewBox: "0 0 24 24",
+        width: "16",
+        height: "16",
+        fill: "none",
+        stroke: "currentColor",
+        strokeWidth: "1.5",
+        strokeLinecap: "round",
+        strokeLinejoin: "round",
+        "aria-hidden": "true",
+        className: "pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400",
+        children: /* @__PURE__ */ jsx("path", { d: "M6 9l6 6 6-6" })
+      }
+    )
+  ] });
+}
+
 // resources/js/Components/Textarea.jsx
-var BASE2 = "w-full min-h-[120px] resize-y rounded-md border border-line bg-white px-3.5 py-3 text-body text-ink transition-colors duration-hover placeholder:text-slate-500 focus:border-brand focus:outline-none focus:ring-[3px] focus:ring-brand/15 disabled:cursor-not-allowed disabled:bg-surface";
+var BASE3 = "w-full min-h-[120px] resize-y rounded-md border border-line bg-white px-3.5 py-3 text-body text-ink transition-colors duration-hover placeholder:text-slate-500 focus:border-brand focus:outline-none focus:ring-[3px] focus:ring-brand/15 disabled:cursor-not-allowed disabled:bg-surface";
 function Textarea({ error = null, className = "", id = null, ...rest }) {
   return /* @__PURE__ */ jsx(
     "textarea",
@@ -936,7 +1169,7 @@ function Textarea({ error = null, className = "", id = null, ...rest }) {
       id,
       "aria-invalid": error ? "true" : void 0,
       "aria-describedby": error && id ? id + "-error" : void 0,
-      className: cn(BASE2, error ? "border-danger" : null, className),
+      className: cn(BASE3, error ? "border-danger" : null, className),
       ...rest
     }
   );
@@ -946,6 +1179,8 @@ function Textarea({ error = null, className = "", id = null, ...rest }) {
 var PHONE_PATTERN = /^(\+62|62|0)8[0-9]{7,12}$/;
 var POSTAL_PATTERN = /^\d{5}$/;
 var EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+var TARIF_DEBOUNCE_MS = 600;
+var TARIF_TIMEOUT_MS = 1e4;
 var URUTAN_KOLOM = [
   "customer_name",
   "customer_phone",
@@ -992,15 +1227,29 @@ function validate(values) {
   if (teks(values.note).length > 500) errors.note = "Catatan maksimal 500 karakter.";
   return errors;
 }
-function gulirKeKolom(id, { fokus = true } = {}) {
+function gulirKe(id, { fokus = true } = {}) {
   if (!id || typeof document === "undefined") return;
   const elemen = document.getElementById(id);
-  if (!elemen || typeof elemen.scrollIntoView !== "function") return;
+  if (!elemen) return;
   const gerakDikurangi2 = typeof window !== "undefined" && typeof window.matchMedia === "function" ? window.matchMedia("(prefers-reduced-motion: reduce)").matches : false;
-  elemen.scrollIntoView({ behavior: gerakDikurangi2 ? "instant" : "smooth", block: "center" });
+  if (typeof elemen.scrollIntoView === "function") {
+    elemen.scrollIntoView({ behavior: gerakDikurangi2 ? "instant" : "smooth", block: "center" });
+  }
   if (fokus && typeof elemen.focus === "function") elemen.focus({ preventScroll: true });
 }
-function Checkout({ keranjang = null, prefill = null, pembayaran = null, flash = null }) {
+function SkeletonOpsi() {
+  return /* @__PURE__ */ jsxs("div", { "aria-busy": "true", "aria-live": "polite", className: "mt-4 flex flex-col gap-3", children: [
+    /* @__PURE__ */ jsx("span", { className: "text-meta text-slate-500", children: "Memuat tarif\u2026" }),
+    [0, 1].map((baris) => /* @__PURE__ */ jsxs("div", { className: "flex items-start gap-3 rounded-md border border-line p-4 motion-safe:animate-pulse", children: [
+      /* @__PURE__ */ jsx("span", { className: "mt-1 h-4 w-4 shrink-0 rounded-full bg-line", "aria-hidden": "true" }),
+      /* @__PURE__ */ jsxs("span", { className: "flex min-w-0 flex-1 flex-col gap-2", children: [
+        /* @__PURE__ */ jsx("span", { className: "h-3 w-2/5 rounded bg-line", "aria-hidden": "true" }),
+        /* @__PURE__ */ jsx("span", { className: "h-3 w-3/5 rounded bg-line", "aria-hidden": "true" })
+      ] })
+    ] }, baris))
+  ] });
+}
+function Checkout({ keranjang = null, prefill = null, pengiriman = null, flash = null }) {
   const [clientErrors, setClientErrors] = useState({});
   const [throttle, setThrottle] = useState(null);
   const form = useForm({
@@ -1010,11 +1259,40 @@ function Checkout({ keranjang = null, prefill = null, pembayaran = null, flash =
     customer_address: prefill?.customer_address ?? "",
     customer_city: prefill?.customer_city ?? "",
     customer_postal_code: prefill?.customer_postal_code ?? "",
-    note: prefill?.note ?? ""
+    note: prefill?.note ?? "",
+    shipping_courier: null,
+    shipping_service: null,
+    shipping_cost: null
   });
+  const [opsi, setOpsi] = useState([]);
+  const [gratis, setGratis] = useState(pengiriman?.gratis ?? null);
+  const [pilihan, setPilihan] = useState(null);
+  const [statusTarif, setStatusTarif] = useState("menunggu");
+  const [galatTarif, setGalatTarif] = useState(null);
+  const [kodePosOpsi, setKodePosOpsi] = useState(null);
+  const [versiTarif, setVersiTarif] = useState(0);
+  const abortRef = useRef(null);
+  const cacheRef = useRef(/* @__PURE__ */ new Map());
   const items = Array.isArray(keranjang?.items) ? keranjang.items : [];
   const isEmpty = keranjang?.is_empty === true || items.length === 0;
-  const expiryMinutes = Number(pembayaran?.expiry_minutes ?? 0) || null;
+  const subtotal = Number(keranjang?.subtotal ?? 0) || 0;
+  const modeFake = pengiriman?.mode === "fake";
+  const galatKonfig = pengiriman?.galat ?? null;
+  const asal = pengiriman?.asal ?? null;
+  const beratGram = Number(pengiriman?.berat_gram ?? 0) || 0;
+  const tarifUji = Number(pengiriman?.tarif_uji ?? 0) || 0;
+  const gratisAktif = gratis?.aktif === true;
+  const gratisTerpenuhi = gratis?.terpenuhi === true;
+  const gratisMin = Number(gratis?.min ?? 0) || 0;
+  const postal = String(form.data.customer_postal_code ?? "");
+  const alamat = String(form.data.customer_address ?? "");
+  const postalValid = POSTAL_PATTERN.test(postal);
+  const tarifSiap = postalValid && alamat.trim().length >= 10;
+  const biayaOngkir = pilihan ? pilihan.gratis === true ? 0 : Number(pilihan.cost ?? 0) || 0 : modeFake && statusTarif === "siap" ? tarifUji : null;
+  const ongkirFinal = biayaOngkir !== null;
+  const total = subtotal + (biayaOngkir ?? 0);
+  const tarifMemblokir = ["memuat", "kosong", "galat", "timeout"].includes(statusTarif);
+  const siapKirim = !isEmpty && !galatKonfig && !tarifMemblokir && (Boolean(pilihan) || modeFake);
   const fieldError = (key) => clientErrors[key] ?? form.errors?.[key] ?? null;
   const kolomBermasalah = URUTAN_KOLOM.filter((key) => Boolean(fieldError(key)));
   const kolomPertama = kolomBermasalah[0] ?? null;
@@ -1022,18 +1300,201 @@ function Checkout({ keranjang = null, prefill = null, pembayaran = null, flash =
   const kunciGalatServer = URUTAN_KOLOM.filter((key) => Boolean(form.errors?.[key])).join(",");
   useEffect(() => {
     if (kunciGalatServer === "") return;
-    gulirKeKolom(kunciGalatServer.split(",")[0], { fokus: false });
+    gulirKe(kunciGalatServer.split(",")[0], { fokus: false });
   }, [kunciGalatServer]);
+  useEffect(() => {
+    if (String(prefill?.customer_address ?? "").trim().length >= 10) return void 0;
+    const timer = window.setTimeout(() => document.getElementById("customer_address")?.focus?.(), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+  useEffect(() => {
+    if (typeof flash?.error !== "string" || !flash.error.includes("Ongkir berubah")) return;
+    setPilihan(null);
+    form.setData((data) => ({ ...data, shipping_courier: null, shipping_service: null, shipping_cost: null }));
+    cacheRef.current.delete(String(form.data.customer_postal_code ?? ""));
+    setVersiTarif((nilai) => nilai + 1);
+  }, [flash?.error]);
   const update = (key, value) => {
     form.setData(key, value);
     if (clientErrors[key]) setClientErrors((prev) => ({ ...prev, [key]: void 0 }));
   };
+  const kosongkanKurir = () => {
+    form.setData((nilai) => ({
+      ...nilai,
+      shipping_courier: null,
+      shipping_service: null,
+      shipping_cost: null
+    }));
+  };
+  const updateKodePos = (value) => {
+    update("customer_postal_code", value);
+    if (value !== postal) {
+      setOpsi([]);
+      setPilihan(null);
+      setKodePosOpsi(null);
+      setGalatTarif(null);
+      setStatusTarif("menunggu");
+      kosongkanKurir();
+    }
+  };
+  useEffect(() => {
+    let debounce = null;
+    let controller = null;
+    let batas = null;
+    let lewat = false;
+    if (abortRef.current) abortRef.current.abort();
+    abortRef.current = null;
+    if (galatKonfig) {
+      setStatusTarif("menunggu");
+      return void 0;
+    }
+    if (!tarifSiap) {
+      setOpsi([]);
+      setPilihan(null);
+      setKodePosOpsi(null);
+      setGalatTarif(null);
+      setStatusTarif("menunggu");
+      kosongkanKurir();
+      return void 0;
+    }
+    const tersimpan = cacheRef.current.get(postal);
+    if (tersimpan) {
+      setOpsi(tersimpan.opsi);
+      setGratis(tersimpan.gratis ?? null);
+      setKodePosOpsi(postal);
+      setGalatTarif(null);
+      setStatusTarif(tersimpan.opsi.length > 0 ? "siap" : "kosong");
+      return void 0;
+    }
+    const mulai = () => {
+      controller = new AbortController();
+      abortRef.current = controller;
+      setStatusTarif("memuat");
+      setGalatTarif(null);
+      batas = window.setTimeout(() => {
+        lewat = true;
+        controller.abort();
+      }, TARIF_TIMEOUT_MS);
+      fetch(`/checkout/ongkir?postal_code=${encodeURIComponent(postal)}`, {
+        headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+        credentials: "same-origin",
+        signal: controller.signal
+      }).then(async (response) => {
+        if (abortRef.current !== controller) return;
+        let data = null;
+        try {
+          data = await response.json();
+        } catch {
+          data = null;
+        }
+        if (abortRef.current !== controller) return;
+        if (!data || typeof data !== "object") {
+          setOpsi([]);
+          setPilihan(null);
+          setKodePosOpsi(null);
+          setGalatTarif(null);
+          setStatusTarif("galat");
+          kosongkanKurir();
+          return;
+        }
+        if (!response.ok) {
+          const pesan = data?.errors?.postal_code?.[0] ?? data?.errors?.customer_postal_code?.[0] ?? data?.message ?? null;
+          setOpsi([]);
+          setPilihan(null);
+          setKodePosOpsi(null);
+          setGalatTarif(pesan);
+          setStatusTarif("galat");
+          kosongkanKurir();
+          return;
+        }
+        const daftar = Array.isArray(data?.opsi) ? data.opsi : [];
+        const pesanGalat = typeof data?.galat === "string" && data.galat.trim() !== "" ? data.galat : null;
+        setOpsi(daftar);
+        setKodePosOpsi(postal);
+        setPilihan(null);
+        setGratis(data?.gratis ?? null);
+        if (pesanGalat) {
+          setGalatTarif(pesanGalat);
+          setStatusTarif("galat");
+          kosongkanKurir();
+          return;
+        }
+        cacheRef.current.set(postal, { opsi: daftar, gratis: data?.gratis ?? null });
+        setGalatTarif(null);
+        setStatusTarif(daftar.length > 0 ? "siap" : "kosong");
+        kosongkanKurir();
+      }).catch((error) => {
+        if (abortRef.current !== controller) return;
+        if (error?.name === "AbortError") {
+          if (lewat) {
+            setGalatTarif(null);
+            setStatusTarif("timeout");
+          }
+          return;
+        }
+        setOpsi([]);
+        setPilihan(null);
+        setKodePosOpsi(null);
+        setGalatTarif(null);
+        setStatusTarif("galat");
+        kosongkanKurir();
+      }).finally(() => {
+        if (batas) window.clearTimeout(batas);
+        if (abortRef.current === controller) abortRef.current = null;
+      });
+    };
+    debounce = window.setTimeout(mulai, TARIF_DEBOUNCE_MS);
+    return () => {
+      if (debounce) window.clearTimeout(debounce);
+      if (batas) window.clearTimeout(batas);
+      if (controller) controller.abort();
+      if (abortRef.current === controller) abortRef.current = null;
+    };
+  }, [postal, tarifSiap, galatKonfig, versiTarif]);
+  const cobaLagiTarif = () => setVersiTarif((nilai) => nilai + 1);
+  const pilihOpsi = (opsiDipilih) => {
+    setPilihan(opsiDipilih);
+    form.setData((nilai) => ({
+      ...nilai,
+      shipping_courier: opsiDipilih?.courier_code ?? null,
+      shipping_service: opsiDipilih?.service_code ?? null,
+      shipping_cost: opsiDipilih ? opsiDipilih.gratis === true ? 0 : Number(opsiDipilih.cost ?? 0) || 0 : null
+    }));
+  };
+  const nilaiOpsi = pilihan ? `${pilihan.courier_code}|${pilihan.service_code}` : "";
+  const cariOpsi = (nilai) => {
+    const [kodeKurir, kodeLayanan] = String(nilai ?? "").split("|");
+    return opsi.find((item) => item?.courier_code === kodeKurir && item?.service_code === kodeLayanan) ?? null;
+  };
+  const teksOpsi = (item) => {
+    const layanan = item?.service_name || item?.service_code || "-";
+    const harga = item?.gratis === true ? "GRATIS" : rupiah(item?.cost) ?? "-";
+    return `${layanan} \xB7 ${item?.etd || "\u2014"} \xB7 ${harga}`;
+  };
+  const grup = [];
+  opsi.forEach((item) => {
+    const kode = item?.courier_code ?? "-";
+    let kelompok = grup.find((pasangan) => pasangan[0] === kode);
+    if (!kelompok) {
+      kelompok = [kode, { courier_name: item?.courier_name || kode, opsi: [] }];
+      grup.push(kelompok);
+    }
+    kelompok[1].opsi.push(item);
+  });
   const submit = (event) => {
     event.preventDefault();
     if (form.processing) return;
     const found = validate(form.data);
     setClientErrors(found);
-    if (Object.keys(found).length > 0) return;
+    if (Object.keys(found).length > 0) {
+      gulirKe(URUTAN_KOLOM.find((key) => found[key]) ?? null);
+      return;
+    }
+    if (!siapKirim) {
+      gulirKe("judul-pengiriman", { fokus: false });
+      if (!pilihan) document.getElementById("pilih-layanan")?.focus?.({ preventScroll: true });
+      return;
+    }
     setThrottle(null);
     form.post("/checkout", {
       preserveScroll: true,
@@ -1051,69 +1512,84 @@ function Checkout({ keranjang = null, prefill = null, pembayaran = null, flash =
     const label = LABEL_KOLOM[kolomPertama] ?? kolomPertama;
     const pesan = fieldError(kolomPertama);
     const ringkas = jumlahBermasalah === 1 ? `Kolom ${label}: ${pesan}` : `Kolom pertama ${label}: ${pesan}`;
-    return /* @__PURE__ */ jsxs(
-      InlineNotice,
-      {
-        tone: "error",
-        className,
-        title: `Ada ${jumlahBermasalah} kolom yang perlu diperbaiki`,
-        children: [
-          /* @__PURE__ */ jsx("p", { children: ringkas }),
-          /* @__PURE__ */ jsx(Button, { variant: "secondary", className: "mt-3", onClick: () => gulirKeKolom(kolomPertama), children: "Perbaiki kolom" })
-        ]
-      }
-    );
+    return /* @__PURE__ */ jsxs(InlineNotice, { tone: "error", className, title: `Ada ${jumlahBermasalah} kolom yang perlu diperbaiki`, children: [
+      /* @__PURE__ */ jsx("p", { children: ringkas }),
+      /* @__PURE__ */ jsx(Button, { variant: "secondary", className: "mt-3", onClick: () => gulirKe(kolomPertama), children: "Perbaiki kolom" })
+    ] });
   };
+  const sisaGratis = gratisAktif && !gratisTerpenuhi && gratisMin > subtotal ? gratisMin - subtotal : 0;
+  const helperRingkasan = pilihan ? pilihan.gratis === true ? "Gratis ongkir reguler aktif." : gratisTerpenuhi && pilihan.is_regular !== true ? "Layanan ini tidak termasuk gratis ongkir." : sisaGratis > 0 ? `Tambah ${rupiah(sisaGratis) ?? "-"} lagi untuk gratis ongkir reguler.` : null : null;
+  const alasanTolak = !isEmpty && !modeFake && statusTarif === "siap" && !pilihan ? "Pilih layanan pengiriman dulu." : null;
+  const ringkasan = (className, { tanpaCta = false } = {}) => /* @__PURE__ */ jsx(
+    OrderSummary,
+    {
+      className,
+      items,
+      subtotal: keranjang?.subtotal ?? null,
+      shipping: biayaOngkir,
+      shippingText: pilihan?.gratis === true ? "GRATIS" : ongkirFinal ? null : "\u2014",
+      shippingBadge: ongkirFinal && modeFake ? /* @__PURE__ */ jsx(Badge, { tone: "warning", children: "Tarif uji" }) : null,
+      total,
+      helper: helperRingkasan,
+      ctaLabel: tanpaCta ? null : form.processing ? "Membuat pesanan\u2026" : "Buat pesanan",
+      formId: "checkout-form",
+      onSubmit: submit,
+      loading: form.processing,
+      disabled: form.processing || isEmpty || !siapKirim,
+      note: tanpaCta ? null : alasanTolak ?? "Pembayaran dipilih di langkah berikutnya.",
+      children: noticeValidasi("mt-4")
+    }
+  );
   return /* @__PURE__ */ jsxs(PublicLayout, { children: [
     /* @__PURE__ */ jsx(Head, { title: "Checkout" }),
     /* @__PURE__ */ jsxs("div", { className: "container py-4", children: [
       /* @__PURE__ */ jsx(
         Breadcrumb,
         {
-          items: [
-            { label: "Beranda", href: "/" },
-            { label: "Keranjang", href: "/keranjang" },
-            { label: "Checkout" }
-          ]
+          items: [{ label: "Beranda", href: "/" }, { label: "Keranjang", href: "/keranjang" }, { label: "Checkout" }]
         }
       ),
       /* @__PURE__ */ jsxs("header", { className: "mt-2", children: [
         /* @__PURE__ */ jsx("h1", { className: "text-h1 text-ink", children: "Checkout" }),
-        /* @__PURE__ */ jsx("p", { className: "mt-1 text-body text-ink-soft", children: "Lengkapi data penerima, lalu selesaikan pembayaran QRIS." })
+        /* @__PURE__ */ jsx("p", { className: "mt-1 text-body text-ink-soft", children: "Lengkapi data penerima, pilih pengiriman, lalu buat pesanan." })
       ] }),
       isEmpty && /* @__PURE__ */ jsx(InlineNotice, { tone: "warning", className: "mt-4", children: /* @__PURE__ */ jsxs("p", { children: [
-        "Keranjang masih kosong. ",
+        "Keranjang masih kosong.",
+        " ",
         /* @__PURE__ */ jsx(Link, { href: "/keranjang", className: "underline underline-offset-4", children: "Kembali ke keranjang" }),
-        " untuk menambah produk."
+        " ",
+        "untuk menambah produk."
       ] }) }),
       flash?.error && /* @__PURE__ */ jsx(InlineNotice, { tone: "error", className: "mt-4", children: /* @__PURE__ */ jsx("p", { children: flash.error }) }),
       throttle && /* @__PURE__ */ jsx(InlineNotice, { tone: "error", className: "mt-4", children: /* @__PURE__ */ jsx("p", { children: throttle }) }),
       noticeValidasi("mt-4"),
-      /* @__PURE__ */ jsxs("div", { className: "mt-6 flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-10", children: [
-        /* @__PURE__ */ jsxs(
-          "form",
-          {
-            id: "checkout-form",
-            className: "min-w-0 flex-1 lg:basis-[60%]",
-            onSubmit: submit,
-            noValidate: true,
-            children: [
-              /* @__PURE__ */ jsxs("section", { className: "card p-6", "aria-labelledby": "judul-penerima", children: [
-                /* @__PURE__ */ jsx("h2", { id: "judul-penerima", className: "text-h3 text-ink", children: "Data Penerima" }),
-                /* @__PURE__ */ jsxs("div", { className: "mt-4 flex flex-col gap-4", children: [
-                  /* @__PURE__ */ jsx(Field, { label: "Nama Penerima", htmlFor: "customer_name", required: true, error: fieldError("customer_name"), children: /* @__PURE__ */ jsx(
-                    Input,
-                    {
-                      id: "customer_name",
-                      name: "customer_name",
-                      autoComplete: "name",
-                      maxLength: 100,
-                      value: form.data.customer_name,
-                      error: fieldError("customer_name"),
-                      onChange: (event) => update("customer_name", event.target.value)
-                    }
-                  ) }),
-                  /* @__PURE__ */ jsx(Field, { label: "Nomor WhatsApp", htmlFor: "customer_phone", required: true, error: fieldError("customer_phone"), children: /* @__PURE__ */ jsx(
+      /* @__PURE__ */ jsxs("div", { className: "mt-6 flex flex-col gap-6 lg:grid lg:grid-cols-12 lg:items-start lg:gap-10", children: [
+        /* @__PURE__ */ jsxs("form", { id: "checkout-form", className: "min-w-0 lg:col-span-7", onSubmit: submit, noValidate: true, children: [
+          /* @__PURE__ */ jsxs("section", { className: "card p-6", "aria-labelledby": "judul-penerima", children: [
+            /* @__PURE__ */ jsx("h2", { id: "judul-penerima", className: "text-h3 text-ink", children: "Kontak & Penerima" }),
+            /* @__PURE__ */ jsxs("div", { className: "mt-4 flex flex-col gap-4", children: [
+              /* @__PURE__ */ jsx(Field, { label: "Nama Penerima", htmlFor: "customer_name", required: true, error: fieldError("customer_name"), children: /* @__PURE__ */ jsx(
+                Input,
+                {
+                  id: "customer_name",
+                  name: "customer_name",
+                  autoComplete: "name",
+                  required: true,
+                  maxLength: 100,
+                  value: form.data.customer_name,
+                  error: fieldError("customer_name"),
+                  onChange: (event) => update("customer_name", event.target.value)
+                }
+              ) }),
+              /* @__PURE__ */ jsx(
+                Field,
+                {
+                  label: "Nomor WhatsApp",
+                  htmlFor: "customer_phone",
+                  required: true,
+                  error: fieldError("customer_phone"),
+                  hint: "Format 08\u2026, 62\u2026, atau +62\u2026",
+                  children: /* @__PURE__ */ jsx(
                     Input,
                     {
                       id: "customer_phone",
@@ -1123,144 +1599,219 @@ function Checkout({ keranjang = null, prefill = null, pembayaran = null, flash =
                       autoComplete: "tel",
                       placeholder: "08xxxxxxxxxx",
                       maxLength: 20,
+                      required: true,
                       value: form.data.customer_phone,
                       error: fieldError("customer_phone"),
                       onChange: (event) => update("customer_phone", event.target.value)
                     }
-                  ) }),
-                  /* @__PURE__ */ jsx(Field, { label: "Email", htmlFor: "customer_email", required: true, error: fieldError("customer_email"), children: /* @__PURE__ */ jsx(
-                    Input,
+                  )
+                }
+              ),
+              /* @__PURE__ */ jsx(Field, { label: "Email", htmlFor: "customer_email", required: true, error: fieldError("customer_email"), children: /* @__PURE__ */ jsx(
+                Input,
+                {
+                  id: "customer_email",
+                  name: "customer_email",
+                  type: "email",
+                  autoComplete: "email",
+                  maxLength: 150,
+                  value: form.data.customer_email,
+                  error: fieldError("customer_email"),
+                  onChange: (event) => update("customer_email", event.target.value)
+                }
+              ) })
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxs("section", { className: "card mt-6 p-6", "aria-labelledby": "judul-alamat", children: [
+            /* @__PURE__ */ jsx("h2", { id: "judul-alamat", className: "text-h3 text-ink", children: "Alamat Pengiriman" }),
+            /* @__PURE__ */ jsx("p", { className: "mt-1 text-meta text-slate-500", children: "Diisi dari alamat akun. Perubahan hanya berlaku untuk pesanan ini." }),
+            String(prefill?.customer_address ?? "").trim().length < 10 && String(form.data.customer_address ?? "").trim().length < 10 && /* @__PURE__ */ jsx(
+              InlineNotice,
+              {
+                tone: "warning",
+                className: "mt-4",
+                title: "Lengkapi alamat pengiriman untuk menghitung ongkir."
+              }
+            ),
+            /* @__PURE__ */ jsxs("div", { className: "mt-4 flex flex-col gap-4", children: [
+              /* @__PURE__ */ jsx(
+                Field,
+                {
+                  label: "Alamat Lengkap",
+                  htmlFor: "customer_address",
+                  required: true,
+                  error: fieldError("customer_address"),
+                  hint: "Nama jalan, nomor rumah, RT/RW, kelurahan, dan patokan bila ada.",
+                  children: /* @__PURE__ */ jsx(
+                    Textarea,
                     {
-                      id: "customer_email",
-                      name: "customer_email",
-                      type: "email",
-                      autoComplete: "email",
-                      maxLength: 150,
-                      value: form.data.customer_email,
-                      error: fieldError("customer_email"),
-                      onChange: (event) => update("customer_email", event.target.value)
-                    }
-                  ) })
-                ] })
-              ] }),
-              /* @__PURE__ */ jsxs("section", { className: "card mt-6 p-6", "aria-labelledby": "judul-alamat", children: [
-                /* @__PURE__ */ jsx("h2", { id: "judul-alamat", className: "text-h3 text-ink", children: "Alamat Pengiriman" }),
-                /* @__PURE__ */ jsxs("div", { className: "mt-4 flex flex-col gap-4", children: [
-                  /* @__PURE__ */ jsx(
-                    Field,
-                    {
-                      label: "Alamat Lengkap",
-                      htmlFor: "customer_address",
-                      required: true,
+                      id: "customer_address",
+                      name: "customer_address",
+                      autoComplete: "street-address",
+                      maxLength: 500,
+                      value: form.data.customer_address,
                       error: fieldError("customer_address"),
-                      hint: "Nama jalan, nomor rumah, RT/RW, kelurahan, dan patokan bila ada.",
-                      children: /* @__PURE__ */ jsx(
-                        Textarea,
-                        {
-                          id: "customer_address",
-                          name: "customer_address",
-                          autoComplete: "street-address",
-                          maxLength: 500,
-                          value: form.data.customer_address,
-                          error: fieldError("customer_address"),
-                          onChange: (event) => update("customer_address", event.target.value)
-                        }
-                      )
-                    }
-                  ),
-                  /* @__PURE__ */ jsxs("div", { className: "grid gap-4 sm:grid-cols-2", children: [
-                    /* @__PURE__ */ jsx(Field, { label: "Kota/Kecamatan", htmlFor: "customer_city", required: true, error: fieldError("customer_city"), children: /* @__PURE__ */ jsx(
-                      Input,
-                      {
-                        id: "customer_city",
-                        name: "customer_city",
-                        autoComplete: "address-level2",
-                        maxLength: 100,
-                        value: form.data.customer_city,
-                        error: fieldError("customer_city"),
-                        onChange: (event) => update("customer_city", event.target.value)
-                      }
-                    ) }),
-                    /* @__PURE__ */ jsx(Field, { label: "Kode Pos", htmlFor: "customer_postal_code", required: true, error: fieldError("customer_postal_code"), children: /* @__PURE__ */ jsx(
-                      Input,
-                      {
-                        id: "customer_postal_code",
-                        name: "customer_postal_code",
-                        inputMode: "numeric",
-                        autoComplete: "postal-code",
-                        maxLength: 5,
-                        value: form.data.customer_postal_code,
-                        error: fieldError("customer_postal_code"),
-                        onChange: (event) => update("customer_postal_code", event.target.value.replace(/[^0-9]/g, ""))
-                      }
-                    ) })
-                  ] }),
-                  /* @__PURE__ */ jsx(
-                    Field,
-                    {
-                      label: "Catatan (opsional)",
-                      htmlFor: "note",
-                      error: fieldError("note"),
-                      hint: "Contoh: ukuran atau warna alternatif bila stok habis.",
-                      children: /* @__PURE__ */ jsx(
-                        Textarea,
-                        {
-                          id: "note",
-                          name: "note",
-                          maxLength: 500,
-                          value: form.data.note,
-                          error: fieldError("note"),
-                          onChange: (event) => update("note", event.target.value)
-                        }
-                      )
+                      onChange: (event) => update("customer_address", event.target.value)
                     }
                   )
-                ] })
-              ] }),
-              /* @__PURE__ */ jsxs("section", { className: "card mt-6 p-6", "aria-labelledby": "judul-pembayaran", children: [
-                /* @__PURE__ */ jsx("h2", { id: "judul-pembayaran", className: "text-h3 text-ink", children: "Metode Pembayaran" }),
-                /* @__PURE__ */ jsxs("label", { className: "mt-3 block rounded-md border-2 border-brand p-4", children: [
-                  /* @__PURE__ */ jsxs("span", { className: "flex items-center gap-3", children: [
-                    /* @__PURE__ */ jsx(
-                      "input",
-                      {
-                        type: "radio",
-                        name: "payment_method",
-                        value: "qris",
-                        defaultChecked: true,
-                        disabled: true,
-                        "aria-describedby": "metode-qris-hint",
-                        className: "h-4 w-4 accent-brand"
-                      }
-                    ),
-                    /* @__PURE__ */ jsx("span", { className: "text-body font-semibold text-ink", children: pembayaran?.label ?? "QRIS (semua e-wallet & m-banking)" })
-                  ] }),
-                  /* @__PURE__ */ jsxs("span", { id: "metode-qris-hint", className: "mt-1 block pl-7 text-meta text-slate-500", children: [
-                    "Pindai kode QR dengan aplikasi e-wallet atau m-banking",
-                    expiryMinutes ? `, lalu bayar dalam ${expiryMinutes} menit.` : "."
-                  ] })
-                ] }),
-                /* @__PURE__ */ jsx("p", { className: "mt-2 text-meta text-slate-500", children: "Metode pembayaran lain belum tersedia." })
+                }
+              ),
+              /* @__PURE__ */ jsxs("div", { className: "grid gap-4 sm:grid-cols-2", children: [
+                /* @__PURE__ */ jsx(Field, { label: "Kota/Kecamatan", htmlFor: "customer_city", required: true, error: fieldError("customer_city"), children: /* @__PURE__ */ jsx(
+                  Input,
+                  {
+                    id: "customer_city",
+                    name: "customer_city",
+                    autoComplete: "address-level2",
+                    maxLength: 100,
+                    value: form.data.customer_city,
+                    error: fieldError("customer_city"),
+                    onChange: (event) => update("customer_city", event.target.value)
+                  }
+                ) }),
+                /* @__PURE__ */ jsx(Field, { label: "Kode Pos", htmlFor: "customer_postal_code", required: true, error: fieldError("customer_postal_code"), children: /* @__PURE__ */ jsx(
+                  Input,
+                  {
+                    id: "customer_postal_code",
+                    name: "customer_postal_code",
+                    inputMode: "numeric",
+                    autoComplete: "postal-code",
+                    maxLength: 5,
+                    value: form.data.customer_postal_code,
+                    error: fieldError("customer_postal_code"),
+                    onChange: (event) => updateKodePos(event.target.value.replace(/[^0-9]/g, ""))
+                  }
+                ) })
               ] })
-            ]
-          }
-        ),
-        /* @__PURE__ */ jsx("div", { className: "lg:w-summary lg:shrink-0", children: /* @__PURE__ */ jsx(
-          OrderSummary,
-          {
-            className: "lg:sticky lg:top-20",
-            subtotal: keranjang?.subtotal ?? null,
-            shipping: keranjang?.shipping_cost ?? null,
-            total: keranjang?.total ?? null,
-            ctaLabel: "Buat Pesanan",
-            formId: "checkout-form",
-            onSubmit: submit,
-            loading: form.processing,
-            disabled: form.processing || isEmpty,
-            note: "Pembayaran QRIS",
-            children: noticeValidasi("mt-4")
-          }
-        ) })
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxs("section", { className: "card mt-6 p-6", "aria-labelledby": "judul-pengiriman", children: [
+            /* @__PURE__ */ jsxs("div", { className: "flex flex-wrap items-center justify-between gap-2", children: [
+              /* @__PURE__ */ jsx("h2", { id: "judul-pengiriman", className: "text-h3 text-ink", children: "Pengiriman" }),
+              modeFake ? /* @__PURE__ */ jsx(Badge, { tone: "warning", children: "Tarif uji" }) : /* @__PURE__ */ jsx(Badge, { tone: "success", children: "Tarif Biteship" })
+            ] }),
+            /* @__PURE__ */ jsxs("p", { className: "mt-2 text-meta text-slate-500", children: [
+              asal?.nama ? `Dikirim dari ${asal.nama}${asal.kode_pos ? ` (${asal.kode_pos})` : ""}.` : "Asal pengiriman belum diatur penjual.",
+              beratGram > 0 ? ` Berat ${formatNumber(beratGram)} g.` : ""
+            ] }),
+            galatKonfig && /* @__PURE__ */ jsxs(InlineNotice, { tone: "error", className: "mt-4", title: "Pengiriman belum siap", children: [
+              /* @__PURE__ */ jsx("p", { children: galatKonfig }),
+              /* @__PURE__ */ jsxs("p", { className: "mt-1", children: [
+                /* @__PURE__ */ jsx(Link, { href: "/kontak-kami", className: "underline underline-offset-4", children: "Hubungi penjual" }),
+                " ",
+                "untuk menyelesaikan pesanan."
+              ] })
+            ] }),
+            !galatKonfig && statusTarif === "menunggu" && /* @__PURE__ */ jsx("p", { className: "mt-4 text-body text-ink-soft", children: "Tarif muncul otomatis setelah alamat dan kode pos terisi." }),
+            !galatKonfig && statusTarif === "memuat" && /* @__PURE__ */ jsx(SkeletonOpsi, {}),
+            !galatKonfig && statusTarif === "galat" && /* @__PURE__ */ jsxs(InlineNotice, { tone: "error", className: "mt-4", title: "Tarif gagal dimuat.", children: [
+              galatTarif ? /* @__PURE__ */ jsx("p", { children: galatTarif }) : null,
+              /* @__PURE__ */ jsx(Button, { variant: "secondary", className: "mt-3", onClick: cobaLagiTarif, children: "Coba lagi" })
+            ] }),
+            !galatKonfig && statusTarif === "timeout" && /* @__PURE__ */ jsx(InlineNotice, { tone: "warning", className: "mt-4", title: "Tarif lama dimuat. Coba lagi.", children: /* @__PURE__ */ jsx(Button, { variant: "secondary", className: "mt-3", onClick: cobaLagiTarif, children: "Coba lagi" }) }),
+            !galatKonfig && statusTarif === "kosong" && /* @__PURE__ */ jsxs("p", { className: "mt-4 text-body text-ink-soft", children: [
+              "Belum ada layanan aktif untuk kode pos ini.",
+              " ",
+              /* @__PURE__ */ jsx(Link, { href: "/kontak-kami", className: "underline underline-offset-4", children: "Hubungi penjual." })
+            ] }),
+            !galatKonfig && statusTarif === "siap" && opsi.length > 0 && /* @__PURE__ */ jsxs("div", { className: "mt-4", children: [
+              /* @__PURE__ */ jsx(
+                Field,
+                {
+                  label: "Pilih layanan pengiriman",
+                  htmlFor: "pilih-layanan",
+                  hint: `Tarif untuk kode pos ${kodePosOpsi ?? "-"}`,
+                  children: /* @__PURE__ */ jsxs(
+                    Select,
+                    {
+                      id: "pilih-layanan",
+                      "aria-describedby": "pilih-layanan-hint",
+                      value: nilaiOpsi,
+                      onChange: (event) => pilihOpsi(cariOpsi(event.target.value)),
+                      children: [
+                        /* @__PURE__ */ jsx("option", { value: "", disabled: true, children: "Pilih layanan pengiriman" }),
+                        grup.map(([kode, kelompok]) => /* @__PURE__ */ jsx("optgroup", { label: kelompok.courier_name, children: kelompok.opsi.map((item) => {
+                          const nilai = `${item?.courier_code}|${item?.service_code}`;
+                          return /* @__PURE__ */ jsx("option", { value: nilai, children: teksOpsi(item) }, nilai);
+                        }) }, kode))
+                      ]
+                    }
+                  )
+                }
+              ),
+              pilihan && /* @__PURE__ */ jsxs("div", { className: "mt-3", role: "status", "aria-live": "polite", children: [
+                /* @__PURE__ */ jsx("p", { className: "text-body font-semibold text-ink", children: `${pilihan.courier_name ?? pilihan.courier_code ?? "-"} ${pilihan.service_name ?? pilihan.service_code ?? "-"} \xB7 ${pilihan.etd ?? "\u2014"}` }),
+                /* @__PURE__ */ jsxs("p", { className: "mt-1 flex flex-wrap items-center gap-2 text-body", children: [
+                  /* @__PURE__ */ jsx(
+                    "span",
+                    {
+                      className: pilihan.gratis ? "font-semibold tabular-nums text-success-strong" : "font-semibold tabular-nums text-ink",
+                      children: pilihan.gratis ? "GRATIS" : rupiah(pilihan.cost) ?? "-"
+                    }
+                  ),
+                  pilihan.is_regular === true && /* @__PURE__ */ jsx(Badge, { tone: "brand", children: "Reguler" }),
+                  pilihan.gratis === true && /* @__PURE__ */ jsx(Badge, { tone: "success", children: "Gratis Ongkir" })
+                ] }),
+                gratisTerpenuhi && pilihan.is_regular !== true && /* @__PURE__ */ jsx("p", { className: "mt-1 text-meta text-slate-500", children: "Layanan ini tidak termasuk gratis ongkir." })
+              ] }),
+              gratisAktif && gratisTerpenuhi && /* @__PURE__ */ jsx("p", { className: "mt-3 text-meta text-success-strong", children: "Gratis ongkir reguler aktif." }),
+              sisaGratis > 0 && pilihan && /* @__PURE__ */ jsxs("p", { className: "mt-3 text-meta tabular-nums text-slate-500", children: [
+                "Tambah ",
+                rupiah(sisaGratis) ?? "-",
+                " lagi untuk gratis ongkir reguler."
+              ] })
+            ] })
+          ] }),
+          /* @__PURE__ */ jsx("div", { className: "mt-6 lg:hidden", children: ringkasan(null, { tanpaCta: true }) }),
+          /* @__PURE__ */ jsxs("section", { className: "card mt-6 p-6", "aria-labelledby": "judul-catatan", children: [
+            /* @__PURE__ */ jsx("h2", { id: "judul-catatan", className: "text-h3 text-ink", children: "Catatan (opsional)" }),
+            /* @__PURE__ */ jsxs("div", { className: "mt-4", children: [
+              /* @__PURE__ */ jsx(
+                Field,
+                {
+                  label: "Catatan",
+                  htmlFor: "note",
+                  error: fieldError("note"),
+                  hint: "Contoh: ukuran atau warna alternatif bila stok habis.",
+                  children: /* @__PURE__ */ jsx(
+                    Textarea,
+                    {
+                      id: "note",
+                      name: "note",
+                      maxLength: 500,
+                      value: form.data.note,
+                      error: fieldError("note"),
+                      onChange: (event) => update("note", event.target.value)
+                    }
+                  )
+                }
+              ),
+              /* @__PURE__ */ jsxs("p", { className: "mt-1 text-right text-meta text-slate-500", "aria-live": "polite", children: [
+                String(form.data.note ?? "").length,
+                "/500"
+              ] })
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxs("div", { className: "mt-6 lg:hidden", children: [
+            /* @__PURE__ */ jsx(
+              Button,
+              {
+                type: "submit",
+                form: "checkout-form",
+                fullWidth: true,
+                loading: form.processing,
+                disabled: form.processing || isEmpty || !siapKirim,
+                children: "Buat pesanan"
+              }
+            ),
+            /* @__PURE__ */ jsx("p", { className: "mt-2 text-meta text-slate-500", children: alasanTolak ?? "Pembayaran dipilih di langkah berikutnya." })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsx("div", { className: "hidden lg:col-span-5 lg:block", children: ringkasan("lg:sticky lg:top-[88px]") })
+      ] }),
+      /* @__PURE__ */ jsxs("p", { className: "mt-4 text-meta text-slate-500", children: [
+        "Pembayaran aman lewat Midtrans.",
+        asal?.nama ? ` Dikirim dari ${asal.nama}.` : ""
       ] })
     ] })
   ] });

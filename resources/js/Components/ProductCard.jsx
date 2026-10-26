@@ -102,7 +102,7 @@ export default function ProductCard({ product, onAddToCart = null, priority = fa
                 <PriceBlock price={Number(product?.base_price ?? 0)} comparePrice={product?.compare_price} size="sm" />
 
                 {wholesalePrice && minWholesale > 0 && (
-                    <p className="text-meta text-ink-soft">
+                    <p className="text-meta tabular-nums text-ink-soft">
                         {`Grosir ${wholesalePrice} mulai ${formatNumber(minWholesale)} pcs`}
                     </p>
                 )}

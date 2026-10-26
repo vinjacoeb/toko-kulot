@@ -36,6 +36,18 @@ class MidtransExpiryTest extends TestCase
     {
         $this->assertSame(5, MidtransService::DEFAULT_EXPIRY_MINUTES);
         $this->assertSame(5, $this->bacaBerkasConfig(null)['expiry_minutes'], 'Bawaan: 5 menit (keputusan pemilik 21 Okt 2026).');
+        $this->assertSame(60, $this->bacaBerkasConfig(null)['expiry_va_minutes'], 'Bawaan VA/gerai: 60 menit (PRD-v1.2 §2.2).');
+    }
+
+    public function test_expiry_per_kanal_memakai_lima_menit_untuk_qris_dan_enam_puluh_untuk_lainnya(): void
+    {
+        config(['midtrans.expiry_minutes' => 5, 'midtrans.expiry_va_minutes' => 60]);
+
+        $this->assertSame(5, $this->service->expiryMinutesFor('qris'));
+        $this->assertSame(60, $this->service->expiryMinutesFor('bca_va'));
+        $this->assertSame(60, $this->service->expiryMinutesFor('mandiri_bill'));
+        $this->assertSame(60, $this->service->expiryMinutesFor('alfamart'));
+        $this->assertSame(60, $this->service->expiryMinutesFor(null), 'Belum ada kanal → batas VA.');
     }
 
     public function test_override_env_dipakai_berkas_config(): void

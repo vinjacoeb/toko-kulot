@@ -21,7 +21,8 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Keranjang → checkout → pembayaran QRIS (PRD §5.1 langkah 3–7, kontrak §7.5–§7.9).
+ * Keranjang → checkout → pembayaran Midtrans 8 kanal (PRD-v1.2 §2,
+ * kontrak §7.5–§7.8a).
  *
  * Checkout wajib login (PRD §5.1 langkah 3). Akses halaman pesanan hanya untuk
  * pemilik order; order pembeli lain dijawab 404 (cegah IDOR).
@@ -53,9 +54,9 @@ class CheckoutController extends Controller
                 'customer_name' => $user?->name,
                 'customer_phone' => $user?->phone,
                 'customer_email' => $user?->email,
-                'customer_address' => null,
-                'customer_city' => null,
-                'customer_postal_code' => null,
+                'customer_address' => $user?->address,
+                'customer_city' => $user?->city,
+                'customer_postal_code' => $user?->postal_code,
                 'note' => null,
             ],
             'pembayaran' => $this->paymentMethodPayload(),
@@ -91,7 +92,6 @@ class CheckoutController extends Controller
     {
         $data = $request->validate([
             'postal_code' => ['required', 'string', 'digits:5'],
-            'city' => ['nullable', 'string', 'max:100'],
         ], [
             'postal_code.required' => 'Kode pos wajib diisi.',
             'postal_code.digits' => 'Kode pos harus 5 angka.',
@@ -125,7 +125,6 @@ class CheckoutController extends Controller
             $data['postal_code'],
             $this->carts->shippingItems($cart),
             $summary['subtotal'],
-            $data['city'] ?? null,
         );
 
         $payload['opsi'] = $result['opsi'];
@@ -134,6 +133,11 @@ class CheckoutController extends Controller
         return response()->json($payload);
     }
 
+    /**
+     * Halaman bayar (kontrak §7.7). Tidak membuat tagihan: kanal dipilih
+     * pembeli lewat `method()`, baru Midtrans di-charge (§7.7a). Dirender
+     * meski belum ada kanal; `pembayaran.metode` = null.
+     */
     public function pay(Request $request, Order $order): Response|RedirectResponse
     {
         $this->authorizeOrder($request, $order);
@@ -149,28 +153,45 @@ class CheckoutController extends Controller
             return redirect()->route('checkout.success', $order);
         }
 
-        // Tagihan mode uji yang tertinggal dibuat ulang ke baris `payments` yang
-        // sama sebelum halaman dirender (kontrak §7.7). Gagal menghubungi
-        // Midtrans → halaman tetap tampil, tagihan lama tidak diubah.
-        $galat = null;
-
-        if ($this->midtrans->needsRegeneration($payment)) {
-            try {
-                $payment = $this->midtrans->regenerateCharge($payment, $order);
-            } catch (CheckoutException $exception) {
-                $galat = $exception->getMessage();
-            }
-        }
-
         return Inertia::render('Public/CheckoutPay', [
             'pesanan' => $this->orderPayload($order),
-            'pembayaran' => $this->paymentPayload($payment, $galat),
+            'pembayaran' => $this->paymentPayload($payment),
             'midtrans' => $this->midtrans->modeInfo(),
         ]);
     }
 
     /**
-     * Panel simulasi mode uji: tandai tagihan lunas (kontrak §7.12). Hanya
+     * Pilih / ganti kanal pembayaran (kontrak §7.7a). Kanal sama yang belum
+     * kedaluwarsa tidak di-charge ulang; ganti kanal membuat `order_id_midtrans`
+     * baru (`-2`, `-3`, …). Gagal charge → halaman bayar + `flash.error`.
+     */
+    public function method(Request $request, Order $order): RedirectResponse
+    {
+        $this->authorizeOrder($request, $order);
+
+        $data = $request->validate([
+            'metode' => ['required', 'string', 'max:40'],
+        ], [
+            'metode.required' => 'Pilih metode pembayaran dulu.',
+        ]);
+
+        $payment = $order->payment;
+
+        if (! $payment) {
+            return redirect()->route('cart.index')->with('error', 'Pesanan ini tidak memiliki tagihan pembayaran.');
+        }
+
+        try {
+            $this->midtrans->startCharge($order, $payment, $data['metode']);
+        } catch (CheckoutException $exception) {
+            return redirect()->route('checkout.pay', $order)->with('error', $exception->getMessage());
+        }
+
+        return redirect()->route('checkout.pay', $order);
+    }
+
+    /**
+     * Panel simulasi mode uji: tandai tagihan lunas (kontrak §7.13). Hanya
      * berlaku untuk tagihan yang dibuat mode uji; service menolak sisanya.
      */
     public function simulate(Request $request, Order $order): RedirectResponse
@@ -181,6 +202,10 @@ class CheckoutController extends Controller
 
         if (! $payment) {
             return redirect()->route('cart.index')->with('error', 'Pesanan ini tidak memiliki tagihan pembayaran.');
+        }
+
+        if (blank($payment->payment_type)) {
+            return redirect()->route('checkout.pay', $order)->with('error', 'Pilih metode pembayaran dulu.');
         }
 
         try {
@@ -196,6 +221,7 @@ class CheckoutController extends Controller
 
     /**
      * Polling status pembayaran oleh halaman bayar (kontrak §7.7, §7.8).
+     * Satu tanya Midtrans, best effort, hanya bila kanal sudah dipilih.
      */
     public function status(Request $request, Order $order): JsonResponse
     {
@@ -203,27 +229,17 @@ class CheckoutController extends Controller
 
         $payment = $order->payment;
 
-        if ($payment && $payment->status === Order::PAYMENT_PENDING) {
-            // Tagihan mode uji dibuat ulang dulu (kontrak §7.8) supaya QRIS yang
-            // sedang ditampilkan benar-benar bisa dibayar.
-            if ($this->midtrans->needsRegeneration($payment)) {
-                try {
-                    $payment = $this->midtrans->regenerateCharge($payment, $order);
-                } catch (CheckoutException $exception) {
-                    Log::warning('Pembuatan ulang tagihan mode uji gagal', [
-                        'order' => $order->code,
-                        'error' => $exception->getMessage(),
-                    ]);
-                }
-            }
+        $shouldSync = $payment
+            && $payment->status === Order::PAYMENT_PENDING
+            && filled($payment->order_id_midtrans)
+            && ! $this->midtrans->isFake()
+            && ! $this->midtrans->isFakeCharge($payment);
 
-            // Tagihan mode uji tidak ditanyakan ke Midtrans; kegagalan jaringan
-            // ditangani di dalam syncStatus (best effort, tanpa 500).
-            if (! $this->midtrans->isFake() && ! $this->midtrans->isFakeCharge($payment)) {
-                $this->midtrans->syncStatus($payment);
-                $payment->refresh();
-                $order->refresh();
-            }
+        if ($shouldSync) {
+            // Kegagalan jaringan ditangani di dalam syncStatus (tanpa 500).
+            $this->midtrans->syncStatus($payment);
+            $payment->refresh();
+            $order->refresh();
         }
 
         return response()->json([
@@ -231,6 +247,41 @@ class CheckoutController extends Controller
             'paid_at' => $payment?->paid_at?->toIso8601String(),
             'expires_at' => $payment?->expires_at?->toIso8601String(),
         ]);
+    }
+
+    /**
+     * Halaman kembali dari Midtrans (kontrak §7.8a): publik, tanpa CSRF.
+     * Mencari order lewat `order_id` transaksi; tidak menampilkan data pembeli.
+     */
+    public function midtransSelesai(Request $request): RedirectResponse
+    {
+        $orderId = trim((string) $request->query('order_id', ''));
+
+        $payment = $orderId === ''
+            ? null
+            : Payment::query()->where('order_id_midtrans', $orderId)->first();
+
+        $order = $payment?->order;
+
+        if (! $payment || ! $order) {
+            return redirect('/')->with('error', 'Pembayaran tidak dikenal.');
+        }
+
+        if ($payment->status === Order::PAYMENT_PENDING && ! $this->midtrans->isFake()) {
+            $this->midtrans->syncStatus($payment);
+        }
+
+        $user = $request->user('web');
+
+        if (! $user) {
+            return redirect()->route('login');
+        }
+
+        if ((int) $order->user_id !== (int) $user->id) {
+            return redirect('/')->with('error', 'Pembayaran tidak dikenal.');
+        }
+
+        return redirect()->route('checkout.pay', $order);
     }
 
     public function success(Request $request, Order $order): Response|RedirectResponse
@@ -312,8 +363,21 @@ class CheckoutController extends Controller
             'shipping_etd' => $order->shipping_etd,
             'shipping_is_free' => (bool) $order->shipping_is_free,
             'note' => $order->notes,
+            // Bentuk pembeli (PRD-v1.3 §2.6): tanpa `price_final`, `price_selisih`, `webhook_terakhir`;
+            // `galat` null seperti §13 (pesan penjaga resi hanya milik admin).
+            'shipping' => array_merge(
+                $this->biteship->shippingInfo($order, $this->biteship->serviceLabels()),
+                ['galat' => null],
+            ),
             'created_at' => $order->created_at?->toIso8601String(),
             'paid_at' => $order->paid_at?->toIso8601String(),
+            // v1.5: empat kunci selalu ada; `completed_at` sama dengan riwayat §13.
+            'timeline' => [
+                'created_at' => $order->created_at?->toIso8601String(),
+                'paid_at' => $order->paid_at?->toIso8601String(),
+                'shipped_at' => $order->shipped_at?->toIso8601String(),
+                'completed_at' => $this->biteship->shippingCompletedAt($order),
+            ],
             'items' => $order->items->map(fn ($item) => [
                 'id' => (int) $item->id,
                 'product_id' => (int) $item->product_id,
@@ -384,39 +448,42 @@ class CheckoutController extends Controller
     }
 
     /**
-     * @param  string|null  $galat  Pesan galat siap tampil bila pembuatan ulang tagihan gagal.
+     * Blok `pembayaran` halaman bayar (kontrak §7.7).
+     *
      * @return array<string, mixed>
      */
-    private function paymentPayload(?Payment $payment, ?string $galat = null): array
+    private function paymentPayload(?Payment $payment): array
     {
+        $metode = $this->midtrans->channelOf($payment);
+
         return [
-            'method' => 'midtrans',
-            'label' => 'Semua metode pembayaran (Midtrans)',
             'provider' => $payment?->provider ?? 'midtrans',
-            'type' => $payment?->payment_type,
-            'type_label' => Order::paymentMethodLabel($payment?->payment_type),
             'status' => $payment?->status ?? Order::PAYMENT_PENDING,
-            'snap_token' => $payment?->snap_token,
-            'snap_redirect_url' => $payment?->snap_redirect_url,
-            'qr_string' => $payment?->qr_string,
-            'qris_url' => $payment?->qris_url,
             'gross_amount' => (int) ($payment?->gross_amount ?? 0),
+            'metode' => $metode === null ? null : ['id' => $metode['id'], 'label' => $metode['label'], 'grup' => $metode['grup']],
+            'instruksi' => $this->midtrans->instructions($payment),
+            'kanal' => $this->midtrans->channels(),
+            'expiry_minutes' => $this->midtrans->expiryMinutes(),
+            'expiry_va_minutes' => $this->midtrans->expiryVaMinutes(),
             'expires_at' => $payment?->expires_at?->toIso8601String(),
             'paid_at' => $payment?->paid_at?->toIso8601String(),
             'fake' => $this->midtrans->isFakeCharge($payment),
-            'galat' => $galat,
+            'galat' => null,
         ];
     }
 
     /**
+     * Blok `pembayaran` halaman checkout (kontrak §7.5) — kanal baru dipilih
+     * di halaman bayar, bukan di sini.
+     *
      * @return array<string, mixed>
      */
     private function paymentMethodPayload(): array
     {
         return [
-            'method' => 'midtrans',
-            'label' => 'Semua metode pembayaran (Midtrans)',
             'expiry_minutes' => $this->midtrans->expiryMinutes(),
+            'expiry_va_minutes' => $this->midtrans->expiryVaMinutes(),
+            'kanal' => $this->midtrans->channels(),
         ];
     }
 }

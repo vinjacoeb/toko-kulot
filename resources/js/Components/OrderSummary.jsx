@@ -9,9 +9,9 @@ import Button from './Button';
  *
  * Angka selalu dari server (kontrak §7.0/§7.5/§7.7/§7.9); nilai kosong tampil "-".
  * `ctaHref` = tombol tautan Inertia, `onSubmit` + `formId` = tombol kirim formulir.
- * `shippingText` mengganti nominal ongkir dengan teks ("Dihitung saat checkout",
- * "Belum dipilih"); `shippingBadge` = badge di samping nominal; `totalLabel` menjadi
- * "Subtotal" bila ongkir belum final; `helper` = penjelas di bawah total.
+ * `shippingText` mengganti nominal ongkir dengan teks ("—" saat tarif belum siap);
+ * `shippingBadge` = badge di samping nominal; `helper` = penjelas di bawah total;
+ * `ctaLabel` null = ringkasan tanpa tombol (varian mobile di atas Catatan).
  * `items` = `keranjang.items` (§7.0), hanya dirender bila diberikan.
  */
 export default function OrderSummary({
@@ -56,10 +56,11 @@ export default function OrderSummary({
                                     <span className="block text-meta text-slate-500">{item.variant_label}</span>
                                 ) : null}
                                 <span className="block text-meta text-slate-500">
-                                    {formatNumber(item?.qty ?? 0) ?? '-'} × {rupiah(item?.unit_price) ?? '-'}
+                                    <span className="tabular-nums">{formatNumber(item?.qty ?? 0) ?? '-'}</span> ×{' '}
+                                    <span className="tabular-nums">{rupiah(item?.unit_price) ?? '-'}</span>
                                 </span>
                             </span>
-                            <span className="shrink-0 text-body font-semibold text-ink">
+                            <span className="shrink-0 whitespace-nowrap text-body font-semibold text-ink tabular-nums">
                                 {rupiah(item?.line_total) ?? '-'}
                             </span>
                         </li>
@@ -70,24 +71,26 @@ export default function OrderSummary({
             <dl className={cn('flex flex-col gap-3', daftarItem.length > 0 ? 'mt-4' : 'mt-4')}>
                 <div className={row}>
                     <dt className="text-body text-ink-soft">Subtotal</dt>
-                    <dd className="text-body text-ink">{rupiah(subtotal) ?? '-'}</dd>
+                    <dd className="text-body text-ink tabular-nums">{rupiah(subtotal) ?? '-'}</dd>
                 </div>
                 <div className={row}>
                     <dt className="text-body text-ink-soft">Ongkir</dt>
-                    <dd className="flex flex-wrap items-center justify-end gap-2 text-body text-ink">
-                        <span aria-live="polite">{teksOngkir ?? rupiah(shipping) ?? '-'}</span>
+                    <dd className="flex items-baseline justify-end gap-2 text-body text-ink">
+                        <span className="whitespace-nowrap tabular-nums" aria-live="polite">
+                            {teksOngkir ?? rupiah(shipping) ?? '-'}
+                        </span>
                         {shippingBadge}
                     </dd>
                 </div>
                 <div className={cn(row, 'mt-1 border-t border-line pt-4')}>
                     <dt className="text-body font-bold text-ink">{totalLabel}</dt>
-                    <dd className="text-[20px] font-bold leading-none text-ink" aria-live="polite">
+                    <dd className="whitespace-nowrap text-h3 font-bold text-ink tabular-nums" aria-live="polite">
                         {rupiah(total) ?? '-'}
                     </dd>
                 </div>
             </dl>
 
-            {helper && <p className="mt-2 text-meta text-slate-500">{helper}</p>}
+            {helper && <p className="mt-2 text-meta tabular-nums text-slate-500">{helper}</p>}
 
             {children}
 

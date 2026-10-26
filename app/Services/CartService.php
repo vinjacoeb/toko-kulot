@@ -281,11 +281,11 @@ class CartService
     }
 
     /**
-     * Berat per unit; produk tanpa berat dianggap 500 gram (PRD v1.1 A19).
+     * Berat per unit, satu dasar dengan tarif & create order (PRD-v1.4 §2.2).
      */
     private function unitWeight(Product $product): int
     {
-        return max(500, (int) $product->weight_gram);
+        return BiteshipService::beratUnit((int) $product->weight_gram);
     }
 
     public function count(): int

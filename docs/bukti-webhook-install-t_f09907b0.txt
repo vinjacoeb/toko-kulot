@@ -1,0 +1,41 @@
+# Bukti — probe instalasi webhook Biteship dijawab ok (kartu t_f09907b0)
+
+Tanggal: 25 Okt 2026. Endpoint: https://nonpsychopathically-unmarriageable-ruben.ngrok-free.dev/biteship/webhook
+
+## Sebelum (dari docs/bukti-webhook-install-t_7584d46c.txt)
+POST body kosong -> 422; GET -> 405.
+
+## Sesudah (curl langsung ke tunnel, server pemilik yang berjalan)
+```
+--- POST body kosong tanpa token ---
+{"status":"ok","success":true}
+status: 200  content-type: application/json
+--- GET tanpa token ---
+{"status":"ok","success":true}
+status: 200  content-type: application/json
+--- POST payload nyata tanpa token (env token masih kosong) ---
+{"message":"ok"}
+status: 200  content-type: application/json
+--- POST body rusak non-kosong tanpa token ---
+{"message":"invalid payload"}
+status: 422  content-type: application/json
+```
+
+Catatan:
+- `POST` payload nyata tanpa token dijawab **200** karena `BITESHIP_WEBHOOK_TOKEN` belum
+  diisi di runtime (mode uji lokal, PRD-v1.3 §2.1). Begitu pemilik mengisi env, jalur ini
+  **403**; diuji di `BiteshipWebhookTest::test_token_salah_ditolak_403` (phpunit, token
+  terisi) — tidak bisa dibuktikan lewat tunnel selama env kosong (F-13-03).
+- Body rusak **non-kosong** tetap `422`; payload valid tetap `200 {"message":"ok"}` dengan
+  efek yang sama (tidak berubah).
+- Server lokal `http://127.0.0.1:8000/biteship/webhook`: POST kosong 200, GET 200 (sama).
+
+## Uji otomatis
+
+```
+php -d extension=pdo_sqlite -d extension=sqlite3 vendor/bin/phpunit tests/Feature/Checkout/BiteshipWebhookTest.php
+OK (12 tests, 69 assertions)
+```
+
+Probe POST kosong (token terisi, `?token=salah`) → `200 {"status":"ok","success":true}` +
+`Log::info`; GET → `200` body memuat `"status":"ok"`.

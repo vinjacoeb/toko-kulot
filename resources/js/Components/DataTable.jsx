@@ -16,6 +16,13 @@ import Skeleton from './Skeleton';
  * 884px) bergulir di dalam kartu dan header tetap terlihat; daftar pendek tidak
  * berubah karena tingginya di bawah batas. `<th>` wajib punya latar sendiri
  * (`bg-surface`) — latar di `<tr>` tidak ikut menempel dan baris akan tembus.
+ *
+ * Kolom boleh diberi `sticky: true` (docs/bugs/t_3f1b4473-detail-tersembunyi.md §3):
+ * sel menempel di kanan (`sticky right-0`) supaya tombol aksi tidak keluar tepi
+ * kartu saat tabel lebih lebar dari wadah. Sel lengket wajib berlatar sendiri
+ * (`bg-white`) karena latar `<tr>` tidak ikut menempel; `group` di `<tr>` membuat
+ * sel itu ikut berubah saat baris di-hover/di-fokus. Header sel lengket `z-20`
+ * agar tidak tertimpa sel lengket badan (`z-10`) saat halaman digulir.
  */
 export default function DataTable({
     columns = [],
@@ -97,6 +104,7 @@ export default function DataTable({
                                 {columns.map((column) => {
                                     const isSorted = sort && sort.key === column.key;
                                     const sortable = Boolean(onSort && column.sortable !== false);
+                                    const lekat = column.sticky === true;
 
                                     return (
                                         <th
@@ -105,7 +113,8 @@ export default function DataTable({
                                             aria-sort={isSorted ? sortState(column) : undefined}
                                             style={{ width: lebarKolom(column) }}
                                             className={cn(
-                                                'sticky top-0 z-10 h-tableHead whitespace-nowrap border-b border-line bg-surface px-4 text-label uppercase text-slate-600',
+                                                'sticky top-0 h-tableHead whitespace-nowrap border-b border-line bg-surface px-4 text-label uppercase text-slate-600',
+                                                lekat ? 'right-0 z-20 border-l' : 'z-10',
                                                 cellAlign(column)
                                             )}
                                         >
@@ -139,7 +148,7 @@ export default function DataTable({
                                     <tr
                                         key={rowKey(row, index)}
                                         className={cn(
-                                            'h-tableRow border-b border-line last:border-b-0',
+                                            'group h-tableRow border-b border-line last:border-b-0',
                                             clickable &&
                                                 'cursor-pointer transition-colors duration-hover hover:bg-surface focus-within:bg-surface'
                                         )}
@@ -148,7 +157,12 @@ export default function DataTable({
                                         {columns.map((column) => (
                                             <td
                                                 key={column.key}
-                                                className={cn('px-4 align-middle text-ink', cellAlign(column))}
+                                                className={cn(
+                                                    'px-4 align-middle text-ink',
+                                                    column.sticky === true &&
+                                                        'sticky right-0 z-10 border-l border-line bg-white group-hover:bg-surface group-focus-within:bg-surface',
+                                                    cellAlign(column)
+                                                )}
                                             >
                                                 {column.render ? column.render(row, index) : (row?.[column.key] ?? '-')}
                                             </td>

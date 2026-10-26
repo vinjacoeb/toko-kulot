@@ -28,7 +28,7 @@ print(row['body'])
 print('--- KOMENTAR ---')
 try:
     cur.execute(
-        'select author, body from comments where task_id=? order by created_at', (task_id,)
+        'select author, body from task_comments where task_id=? order by created_at', (task_id,)
     )
     for c in cur.fetchall():
         print(f"[{c['author']}] {c['body']}")

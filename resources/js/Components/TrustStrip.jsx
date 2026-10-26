@@ -52,7 +52,7 @@ export default function TrustStrip({ items = [], className = '', label = 'Keungg
                         >
                             <span
                                 aria-hidden="true"
-                                className="font-display text-h3 leading-none text-brand"
+                                className="font-display text-h3 tabular-nums text-brand"
                             >
                                 {String(index + 1).padStart(2, '0')}
                             </span>

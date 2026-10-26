@@ -42,7 +42,7 @@ function Tile({ item, index, delay = 0, className = '', ratio = 'aspect-portrait
                     <figcaption className="mt-2 flex items-baseline gap-2">
                         <span
                             aria-hidden="true"
-                            className="font-display text-[24px] leading-none text-accent transition-transform duration-hover ease-smooth group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0"
+                            className="font-display text-h2 text-accent transition-transform duration-hover ease-smooth group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0"
                         >
                             {number}
                         </span>
@@ -64,7 +64,7 @@ export default function LandingGallery({ items = [] }) {
     const header = (
         <div className="mb-8 grid gap-2 md:grid-cols-12 md:items-end md:gap-6">
             <Reveal className="md:col-span-7">
-                <p className="text-label uppercase tracking-[0.08em] text-brand">Galeri</p>
+                <p className="text-badge uppercase text-brand">Galeri</p>
                 <h2 id="galeri-heading" className="mt-2 font-display text-h2 text-brand">
                     Potongan nyata, bukan foto katalog.
                 </h2>

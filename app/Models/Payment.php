@@ -18,8 +18,6 @@ class Payment extends Model
         'provider',
         'transaction_id',
         'order_id_midtrans',
-        'snap_token',
-        'snap_redirect_url',
         'payment_type',
         'qris_url',
         'qr_string',

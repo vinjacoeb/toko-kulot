@@ -75,7 +75,7 @@ export default function WhyUs({ section = null, gallery = [] }) {
             <div className="container">
                 <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-12 lg:gap-6">
                     <Reveal className="md:col-span-2 lg:col-span-5 lg:row-start-1">
-                        <p className="text-label uppercase tracking-[0.08em] text-accent">
+                        <p className="text-badge uppercase text-accent">
                             {eyebrow}
                         </p>
                         <h2
@@ -110,7 +110,7 @@ export default function WhyUs({ section = null, gallery = [] }) {
                                 >
                                     <span
                                         aria-hidden="true"
-                                        className="mt-1 w-8 shrink-0 font-display text-[24px] leading-none text-accent"
+                                        className="mt-1 w-8 shrink-0 font-display text-h2 text-accent"
                                     >
                                         {String(index + 1).padStart(2, '0')}
                                     </span>

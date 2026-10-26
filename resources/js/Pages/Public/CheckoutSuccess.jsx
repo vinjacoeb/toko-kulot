@@ -4,12 +4,32 @@ import PublicLayout from '../../Layouts/PublicLayout';
 import Breadcrumb from '../../Components/Breadcrumb';
 import InlineNotice from '../../Components/InlineNotice';
 import ReviewForm from '../../Components/ReviewForm';
+import ShippingEvents from '../../Components/ShippingEvents';
+import TimelinePesanan from '../../Components/TimelinePesanan';
+import SalinButton from '../../Components/SalinButton';
 import Button from '../../Components/Button';
 import { CheckIcon } from '../../Components/icons';
 import { formatDateTime, formatNumber, rupiah } from '../../lib/format';
 
 /** Status order yang boleh dinilai — kontrak §9.1, sama dengan `ReviewService::isEligible`. */
 const STATUS_BOLEH_DINILAI = ['dibayar', 'diproses', 'dikirim', 'selesai'];
+
+/** Nilai teks opsional: kosong → `null` supaya barisnya tidak dirender (design-v1.3 §0). */
+const isi = (value) => {
+    const str = String(value ?? '').trim();
+
+    return str === '' ? null : str;
+};
+
+/** Satu baris `<dl>` dua kolom — design-v1.3 §4. */
+function BarisKirim({ label, children }) {
+    return (
+        <div className="flex flex-col gap-0.5">
+            <dt className="text-body text-ink-soft">{label}</dt>
+            <dd className="min-w-0 break-words text-body text-ink">{children}</dd>
+        </div>
+    );
+}
 
 /**
  * `/checkout/{order}/selesai` — kontrak props §7.9 dan §9.1, design §5.8.
@@ -20,6 +40,15 @@ export default function CheckoutSuccess({ pesanan = null, ulasan = null, errors 
     const orderId = pesanan?.id ?? null;
     const items = Array.isArray(pesanan?.items) ? pesanan.items : [];
     const sudah = (Array.isArray(ulasan?.sudah) ? ulasan.sudah : []).map((id) => Number(id));
+
+    /** Bentuk pembeli §7.9/§13 — tanpa `price_final`/`price_selisih`/`webhook_terakhir`. */
+    const shipping = pesanan?.shipping ?? null;
+    const statusKirim = isi(shipping?.status_label);
+    const resi = isi(shipping?.tracking_number);
+    const kurirKirim = [isi(shipping?.courier_name), isi(shipping?.service_name)].filter(Boolean).join(' · ');
+    const petugasKirim = isi(shipping?.driver?.name);
+    const diperbaruiKirim = formatDateTime(shipping?.updated_at);
+    const linkLacak = /^https?:\/\//i.test(isi(shipping?.driver?.link) ?? '') ? isi(shipping?.driver?.link) : null;
 
     /** Gerbang penilaian dari server — kontrak §7.9. */
     const boleh = ulasan?.boleh === true;
@@ -32,14 +61,39 @@ export default function CheckoutSuccess({ pesanan = null, ulasan = null, errors 
     const [submittedId, setSubmittedId] = useState(null);
     const [justRated, setJustRated] = useState({});
 
+    /**
+     * `pesanan.items` berisi satu baris per varian, sedangkan ulasan berlaku per produk
+     * (design §5.8, kontrak §9.1): kelompokkan per `product_id` unik lebih dulu supaya satu
+     * produk dengan 2+ varian tetap dapat satu kartu penilaian. Ringkasan pesanan di atas
+     * tetap memakai `items` per baris varian.
+     */
+    const produkUnik = items.reduce((daftar, item) => {
+        const id = Number(item?.product_id);
+        if (!Number.isFinite(id) || id <= 0) return daftar;
+
+        let produk = daftar.find((row) => row.product_id === id);
+        if (!produk) {
+            produk = { ...item, product_id: id, labelVarian: [] };
+            daftar.push(produk);
+        }
+
+        const label = String(item?.variant_label ?? '').trim();
+        if (label && !produk.labelVarian.includes(label)) produk.labelVarian.push(label);
+
+        return daftar;
+    }, []).map(({ labelVarian, ...produk }) => ({
+        ...produk,
+        variant_label: labelVarian.length > 0 ? labelVarian.join(', ') : null,
+    }));
+
     /** Produk yang belum dinilai pada pesanan ini — server menolak produk yang sudah dinilai. */
-    const pending = items.filter(
-        (item) => !sudah.includes(Number(item.product_id)) && justRated[item.product_id] === undefined
+    const pending = produkUnik.filter(
+        (item) => !sudah.includes(item.product_id) && justRated[item.product_id] === undefined
     );
 
     /** Produk yang ulasannya sudah tersimpan — dari server atau dari kiriman di sesi ini. */
-    const sudahAda = items.filter(
-        (item) => sudah.includes(Number(item.product_id)) || justRated[item.product_id] !== undefined
+    const sudahAda = produkUnik.filter(
+        (item) => sudah.includes(item.product_id) || justRated[item.product_id] !== undefined
     );
 
     /**
@@ -115,12 +169,12 @@ export default function CheckoutSuccess({ pesanan = null, ulasan = null, errors 
 
                     {pesanan?.code && (
                         <p className="mt-1 text-body text-ink-soft">
-                            Kode order <span className="font-mono">{pesanan.code}</span>
+                            Kode order <span className="font-mono tabular-nums">{pesanan.code}</span>
                         </p>
                     )}
 
                     {pesanan?.paid_at && (
-                        <p className="mt-1 text-meta text-slate-500">Dibayar {formatDateTime(pesanan.paid_at)}</p>
+                        <p className="mt-1 text-meta tabular-nums text-slate-500">Dibayar {formatDateTime(pesanan.paid_at)}</p>
                     )}
                 </div>
 
@@ -136,22 +190,31 @@ export default function CheckoutSuccess({ pesanan = null, ulasan = null, errors 
                     </InlineNotice>
                 )}
 
+                {pesanan?.timeline && (
+                    <section className="card mt-6 p-6" aria-labelledby="judul-status-pesanan">
+                        <h2 id="judul-status-pesanan" className="text-h3 text-ink">
+                            Status pesanan
+                        </h2>
+                        <TimelinePesanan timeline={pesanan.timeline} />
+                    </section>
+                )}
+
                 <section className="card mt-6 p-6" aria-labelledby="judul-ringkasan">
                     <h2 id="judul-ringkasan" className="text-h3 text-ink">
                         Ringkasan Pesanan
                     </h2>
 
                     <ul className="mt-4 flex flex-col gap-3">
-                        {items.map((item) => (
-                            <li key={item.product_id} className="flex items-start justify-between gap-4">
+                        {items.map((item, index) => (
+                            <li key={`${item.product_id ?? 'x'}-${index}`} className="flex items-start justify-between gap-4">
                                 <span className="min-w-0">
                                     <span className="block text-body text-ink">{item.name ?? 'Produk'}</span>
-                                    <span className="block text-meta text-slate-500">
+                                    <span className="block text-meta tabular-nums text-slate-500">
                                         {item.variant_label ? `${item.variant_label} · ` : ''}
                                         {formatNumber(item.qty)} × {rupiah(item.unit_price) ?? '-'}
                                     </span>
                                 </span>
-                                <span className="shrink-0 text-body text-ink">{rupiah(item.line_total) ?? '-'}</span>
+                                <span className="shrink-0 whitespace-nowrap text-body tabular-nums text-ink">{rupiah(item.line_total) ?? '-'}</span>
                             </li>
                         ))}
                     </ul>
@@ -160,22 +223,22 @@ export default function CheckoutSuccess({ pesanan = null, ulasan = null, errors 
                         <dl className="flex flex-col gap-3">
                             <div className="flex items-baseline justify-between gap-4">
                                 <dt className="text-body text-ink-soft">Subtotal</dt>
-                                <dd className="text-body text-ink">{rupiah(pesanan?.subtotal) ?? '-'}</dd>
+                                <dd className="text-body tabular-nums text-ink">{rupiah(pesanan?.subtotal) ?? '-'}</dd>
                             </div>
                             <div className="flex items-baseline justify-between gap-4">
                                 <dt className="text-body text-ink-soft">Ongkir</dt>
-                                <dd className="text-body text-ink">{rupiah(pesanan?.shipping_cost) ?? '-'}</dd>
+                                <dd className="text-body tabular-nums text-ink">{rupiah(pesanan?.shipping_cost) ?? '-'}</dd>
                             </div>
                             <div className="flex items-baseline justify-between gap-4">
                                 <dt className="text-body font-bold text-ink">Total</dt>
-                                <dd className="text-[20px] font-bold leading-none text-ink">{rupiah(pesanan?.total) ?? '-'}</dd>
+                                <dd className="whitespace-nowrap text-h2 font-bold tabular-nums text-ink">{rupiah(pesanan?.total) ?? '-'}</dd>
                             </div>
                         </dl>
                     </div>
 
                     {pesanan?.customer_name && (
                         <div className="mt-5 border-t border-line pt-5">
-                            <h3 className="text-label uppercase text-slate-500">Dikirim ke</h3>
+                            <h3 className="text-h3 text-ink">Dikirim ke</h3>
                             <p className="mt-2 text-body text-ink">{pesanan.customer_name}</p>
                             <p className="mt-1 text-meta text-slate-500">{pesanan.customer_phone ?? '-'}</p>
                             <p className="mt-2 text-body text-ink-soft">
@@ -184,6 +247,55 @@ export default function CheckoutSuccess({ pesanan = null, ulasan = null, errors 
                             </p>
                         </div>
                     )}
+
+                    <section className="mt-5 border-t border-line pt-5" aria-labelledby="judul-pengiriman">
+                        <h3 id="judul-pengiriman" className="text-h3 text-ink">
+                            Status pengiriman
+                        </h3>
+                        <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                            <BarisKirim label="Status">{statusKirim ?? '—'}</BarisKirim>
+
+                            <BarisKirim label="Resi">
+                                {resi ? (
+                                    <SalinButton
+                                        value={resi}
+                                        ariaLabel={`Salin nomor resi ${pesanan?.code ?? ''}`.trim()}
+                                        valueClassName="font-mono tabular-nums"
+                                    >
+                                        {resi}
+                                    </SalinButton>
+                                ) : (
+                                    'Resi sedang disiapkan.'
+                                )}
+                            </BarisKirim>
+
+                            {kurirKirim && <BarisKirim label="Kurir">{kurirKirim}</BarisKirim>}
+                            {petugasKirim && <BarisKirim label="Petugas kurir">{petugasKirim}</BarisKirim>}
+                            {diperbaruiKirim !== '-' && (
+                                <BarisKirim label="Diperbarui">
+                                    <span className="tabular-nums">{diperbaruiKirim}</span>
+                                </BarisKirim>
+                            )}
+                        </dl>
+
+                        {linkLacak && (
+                            <Button
+                                as="a"
+                                variant="secondary"
+                                href={linkLacak}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-4"
+                            >
+                                Lacak paket
+                            </Button>
+                        )}
+
+                        <ShippingEvents
+                            events={shipping?.events}
+                            className="mt-5 border-t border-line pt-5"
+                        />
+                    </section>
                 </section>
 
                 <section className="mt-8" aria-labelledby="judul-penilaian">

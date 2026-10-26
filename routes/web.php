@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BiteshipWebhookController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\ContactController;
@@ -123,6 +124,10 @@ Route::prefix('checkout')->name('checkout.')->middleware('auth:web')->group(func
         ->middleware('throttle:checkout-shipping')
         ->name('shipping');
     Route::get('/{order}/bayar', [CheckoutController::class, 'pay'])->name('pay');
+    // Pilih / ganti kanal pembayaran → Core API charge (kontrak §7.7a).
+    Route::post('/{order}/bayar/metode', [CheckoutController::class, 'method'])
+        ->middleware('throttle:checkout')
+        ->name('method');
     Route::post('/{order}/simulasi-bayar', [CheckoutController::class, 'simulate'])
         ->middleware('throttle:checkout')
         ->name('simulate');
@@ -140,6 +145,20 @@ Route::prefix('checkout')->name('checkout.')->middleware('auth:web')->group(func
 // Webhook Midtrans (server-ke-server, tanpa CSRF — lihat bootstrap/app.php).
 Route::post('/midtrans/notification', MidtransNotificationController::class)
     ->name('midtrans.notification');
+
+// Webhook Biteship (server-ke-server, tanpa CSRF — lihat bootstrap/app.php).
+// PRD-v1.3 §2.1 + v1.5 B2: publik, token bersama lewat ?token= atau header apa
+// pun (nilainya yang menentukan), dibatasi 120 request/menit per IP. GET ikut
+// dilayani: probe instalasi dashboard Biteship kadang GET tanpa body (dibalas
+// 200 ok di controller).
+Route::match(['get', 'post'], '/biteship/webhook', BiteshipWebhookController::class)
+    ->middleware('throttle:120,1')
+    ->name('biteship.webhook');
+
+// Halaman kembali dari Midtrans (kontrak §7.8a) — publik, tanpa CSRF; hanya
+// mengalihkan, tidak menampilkan data pembeli.
+Route::get('/midtrans/selesai', [CheckoutController::class, 'midtransSelesai'])
+    ->name('midtrans.selesai');
 
 /*
 |--------------------------------------------------------------------------

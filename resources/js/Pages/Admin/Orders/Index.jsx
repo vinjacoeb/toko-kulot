@@ -11,18 +11,21 @@ import Button from '../../../Components/Button';
 import DataTable from '../../../Components/DataTable';
 import Pagination from '../../../Components/Pagination';
 import StatusBadge from '../../../Components/StatusBadge';
+import Badge from '../../../Components/Badge';
 import InlineNotice from '../../../Components/InlineNotice';
 import Toast from '../../../Components/Toast';
-import { formatDate, formatNumber, rupiah } from '../../../lib/format';
+import { AlertIcon } from '../../../Components/icons';
+import { formatDate, formatDateTime, formatNumber, rupiah } from '../../../lib/format';
 
 /**
  * Daftar pesanan admin — kontrak props §12.16 (GET /admin/pesanan, rute admin.pesanan.index).
  * Filter dan paginasi dikirim ke server lewat query string; server adalah sumber hasil.
  * Query: page (min 1), q (max 100), status (semua|pending|dibayar|diproses|dikirim|selesai|batal),
- * bayar (semua|pending|settlement|expire|deny|cancel), dari & sampai (YYYY-MM-DD).
+ * bayar (semua|pending|settlement|expire|deny|cancel), kirim (§12.16 `filter_opsi.kirim`),
+ * dari & sampai (YYYY-MM-DD).
  */
 
-const DASAR = { q: '', status: 'semua', bayar: 'semua', dari: '', sampai: '' };
+const DASAR = { q: '', status: 'semua', bayar: 'semua', kirim: 'semua', dari: '', sampai: '' };
 
 const STATUS = [
     { value: 'semua', label: 'Semua status' },
@@ -43,25 +46,32 @@ const BAYAR = [
     { value: 'cancel', label: 'Dibatalkan' },
 ];
 
+// Hanya label netral yang boleh dikarang di klien; label status kirim berasal dari server
+// (`filter_opsi.kirim`, §12.16) supaya istilahnya sama dengan `shippingLabel()`.
+const KIRIM_BAWAAN = [{ value: 'semua', label: 'Semua status kirim' }];
+
 const asText = (value) => (value === null || value === undefined ? '' : String(value));
 
 const keFilter = (sumber) => ({
     q: asText(sumber?.q),
     status: sumber?.status ? asText(sumber.status) : DASAR.status,
     bayar: sumber?.bayar ? asText(sumber.bayar) : DASAR.bayar,
+    kirim: sumber?.kirim ? asText(sumber.kirim) : DASAR.kirim,
     dari: asText(sumber?.dari),
     sampai: asText(sumber?.sampai),
 });
 
-export default function Index({ pesanan = null, filter = null, ringkasan = null, flash = null }) {
+export default function Index({ pesanan = null, filter = null, filter_opsi = null, ringkasan = null, flash = null }) {
     const daftar = Array.isArray(pesanan?.data) ? pesanan.data : [];
     const meta = pesanan?.meta ?? null;
+    const opsiKirim = Array.isArray(filter_opsi?.kirim) && filter_opsi.kirim.length > 0 ? filter_opsi.kirim : KIRIM_BAWAAN;
 
     const aktif = keFilter(filter);
     const adaFilter =
         aktif.q !== '' ||
         aktif.status !== DASAR.status ||
         aktif.bayar !== DASAR.bayar ||
+        aktif.kirim !== DASAR.kirim ||
         aktif.dari !== '' ||
         aktif.sampai !== '';
 
@@ -88,6 +98,7 @@ export default function Index({ pesanan = null, filter = null, ringkasan = null,
         if (berikut.q !== '') query.set('q', berikut.q);
         if (berikut.status !== DASAR.status) query.set('status', berikut.status);
         if (berikut.bayar !== DASAR.bayar) query.set('bayar', berikut.bayar);
+        if (berikut.kirim !== DASAR.kirim) query.set('kirim', berikut.kirim);
         if (berikut.dari !== '') query.set('dari', berikut.dari);
         if (berikut.sampai !== '') query.set('sampai', berikut.sampai);
 
@@ -103,6 +114,7 @@ export default function Index({ pesanan = null, filter = null, ringkasan = null,
         if (berikut.q !== '') query.q = berikut.q;
         if (berikut.status !== DASAR.status) query.status = berikut.status;
         if (berikut.bayar !== DASAR.bayar) query.bayar = berikut.bayar;
+        if (berikut.kirim !== DASAR.kirim) query.kirim = berikut.kirim;
         if (berikut.dari !== '') query.dari = berikut.dari;
         if (berikut.sampai !== '') query.sampai = berikut.sampai;
         if (opsi.page && Number(opsi.page) > 1) query.page = Number(opsi.page);
@@ -151,7 +163,12 @@ export default function Index({ pesanan = null, filter = null, ringkasan = null,
         {
             key: 'code',
             header: 'Kode pesanan',
-            render: (baris) => <span className="font-semibold text-ink">{asText(baris?.code) || '-'}</span>,
+            render: (baris) => (
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-ink">{asText(baris?.code) || '-'}</span>
+                    {baris?.mode_uji === true && <Badge tone="warning">Mode uji</Badge>}
+                </div>
+            ),
         },
         {
             key: 'created_at',
@@ -169,6 +186,49 @@ export default function Index({ pesanan = null, filter = null, ringkasan = null,
                     </p>
                 </div>
             ),
+        },
+        {
+            key: 'shipping_status',
+            header: 'Kurir / Resi',
+            render: (baris) => {
+                const kurir = [asText(baris?.courier_name), asText(baris?.service_name)]
+                    .filter((bagian) => bagian !== '')
+                    .join(' · ');
+                const resi = asText(baris?.tracking_number);
+                const statusKirim = asText(baris?.shipping_status);
+                // design-v1.3 §2: penanda perlu tindakan tetap tampil walau kurir/resi/status kosong.
+                const perluTindakan = baris?.shipping_perlu_tindakan === true;
+                const diperbarui = asText(baris?.shipping_updated_at);
+
+                if (kurir === '' && resi === '' && statusKirim === '' && !perluTindakan) {
+                    return <span className="text-slate-500">—</span>;
+                }
+
+                return (
+                    <div className="flex min-w-0 flex-col items-start gap-1">
+                        {kurir !== '' && <p className="truncate font-semibold text-ink">{kurir}</p>}
+                        <p className="truncate font-mono text-meta text-slate-500 tabular-nums">
+                            {resi !== '' ? resi : '—'}
+                        </p>
+                        {statusKirim !== '' && (
+                            <StatusBadge
+                                status={statusKirim}
+                                label={asText(baris?.shipping_status_label) || null}
+                            />
+                        )}
+                        {perluTindakan && (
+                            <Badge tone="warning">
+                                <AlertIcon size={14} /> Perlu tindakan
+                            </Badge>
+                        )}
+                        {diperbarui !== '' && (
+                            <p className="text-meta text-slate-500">
+                                Diperbarui {formatDateTime(diperbarui)}
+                            </p>
+                        )}
+                    </div>
+                );
+            },
         },
         {
             key: 'items_count',
@@ -189,9 +249,12 @@ export default function Index({ pesanan = null, filter = null, ringkasan = null,
         },
         {
             key: 'payment_status',
-            header: 'Status bayar',
+            header: 'Pembayaran',
             render: (baris) => (
-                <StatusBadge status={baris?.payment_status} label={asText(baris?.payment_label) || null} />
+                <div className="flex flex-col gap-1">
+                    <span className="text-ink">{asText(baris?.payment_method_label) || '—'}</span>
+                    <StatusBadge status={baris?.payment_status} label={asText(baris?.payment_label) || null} />
+                </div>
             ),
         },
         {
@@ -203,6 +266,8 @@ export default function Index({ pesanan = null, filter = null, ringkasan = null,
             key: 'aksi',
             header: 'Aksi',
             align: 'right',
+            // Selalu terlihat di tepi kanan wadah gulir (docs/bugs/t_3f1b4473-detail-tersembunyi.md §3).
+            sticky: true,
             render: (baris) => (
                 <Button
                     variant="link"
@@ -247,7 +312,7 @@ export default function Index({ pesanan = null, filter = null, ringkasan = null,
                         placeholder="Cari kode, nama, telepon, atau email"
                     />
 
-                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
                         <Field label="Status pesanan" htmlFor="filter-status">
                             <Select
                                 id="filter-status"
@@ -273,6 +338,21 @@ export default function Index({ pesanan = null, filter = null, ringkasan = null,
                                 {BAYAR.map((item) => (
                                     <option key={item.value} value={item.value}>
                                         {item.label}
+                                    </option>
+                                ))}
+                            </Select>
+                        </Field>
+
+                        <Field label="Status pengiriman" htmlFor="filter-kirim">
+                            <Select
+                                id="filter-kirim"
+                                value={aktif.kirim}
+                                disabled={memuat}
+                                onChange={(event) => buka({ kirim: event.target.value })}
+                            >
+                                {opsiKirim.map((item) => (
+                                    <option key={item.value} value={item.value}>
+                                        {asText(item.label) || asText(item.value)}
                                     </option>
                                 ))}
                             </Select>

@@ -21,7 +21,7 @@ use Tests\TestCase;
  * Verifikasi QA independen untuk PRD v1.1 D1–D5 (kartu `t_4c147c9f`).
  *
  * Fokus pada celah yang belum ditutup test regresi pemilik:
- * - D1 AC1: halaman bayar membawa `snap_redirect_url` dan tidak membocorkan server key;
+ * - D1 AC1: halaman bayar menampilkan 8 kanal dan tidak membocorkan server key;
  * - D1 AC2: webhook settlement bank_transfer idempoten (paid_at & stok tidak berubah);
  * - D2 AC4: kegagalan API Biteship tidak membuat pesanan;
  * - D3 AC1–AC3: batas gratis ongkir Rp300.000 dan layanan non-reguler;
@@ -71,6 +71,7 @@ class QaV11OngkirPembayaranTest extends TestCase
             ['shipping_origin_address', '[CONTOH] Jl. Kauman No. 45, Pekalongan', 'shipping', 'textarea'],
             ['shipping_origin_postal_code', '51122', 'shipping', 'text'],
             ['store_name', '[CONTOH] Toko Daster Kulot', 'umum', 'text'],
+            ['contact_email', 'toko@contoh.test', 'umum', 'text'],
         ] as [$key, $value, $group, $type]) {
             Setting::create(compact('key', 'value', 'group', 'type'));
         }
@@ -103,7 +104,7 @@ class QaV11OngkirPembayaranTest extends TestCase
         $this->variantId = (int) $variant->id;
     }
 
-    public function test_halaman_bayar_memakai_snap_dan_tidak_membocorkan_server_key(): void
+    public function test_halaman_bayar_menampilkan_8_kanal_dan_tidak_membocorkan_server_key(): void
     {
         $order = $this->buatPesanan();
 
@@ -111,8 +112,11 @@ class QaV11OngkirPembayaranTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('Public/CheckoutPay', false)
-                ->where('pembayaran.method', 'midtrans')
-                ->where('pembayaran.snap_redirect_url', fn ($url) => is_string($url) && str_contains($url, 'midtrans'))
+                ->where('pembayaran.provider', 'midtrans')
+                ->where('pembayaran.metode', null)
+                ->where('pembayaran.expiry_minutes', 5)
+                ->where('pembayaran.expiry_va_minutes', 60)
+                ->has('pembayaran.kanal', 8)
                 ->where('midtrans.server_key_terisi', true)
                 ->where('midtrans.mode', 'asli'))
             ->assertDontSee('test-server-key');
@@ -121,6 +125,10 @@ class QaV11OngkirPembayaranTest extends TestCase
     public function test_webhook_settlement_bank_transfer_idempoten(): void
     {
         $order = $this->buatPesanan();
+
+        // Charge dulu: kanal dipilih pembeli di halaman bayar (PRD-v1.2 §2.3).
+        $this->post(route('checkout.method', $order), ['metode' => 'bca_va']);
+
         $payment = $order->payment()->firstOrFail();
         $stockAwal = (int) ProductVariant::query()->findOrFail($this->variantId)->stock;
 
@@ -134,7 +142,9 @@ class QaV11OngkirPembayaranTest extends TestCase
         $paidAt = $payment->paid_at?->toIso8601String();
 
         $this->assertSame(Order::PAYMENT_SETTLEMENT, $payment->status);
-        $this->assertSame('bank_transfer', $payment->payment_type);
+        // `payment_type` menyimpan id kanal pilihan pembeli; nilai generik Midtrans
+        // (`bank_transfer`) tidak menimpanya (kontrak §7.8 aturan 5).
+        $this->assertSame('bca_va', $payment->payment_type);
 
         // Notifikasi ulang: status sama, tidak boleh mengubah paid_at atau stok.
         $this->postJson('/midtrans/notification', $payload)->assertOk();

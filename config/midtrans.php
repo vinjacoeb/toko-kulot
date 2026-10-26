@@ -22,6 +22,13 @@ $expiryMinutes = filter_var(env('MIDTRANS_EXPIRY_MINUTES', $expiryDefault), FILT
     'options' => ['min_range' => 1],
 ]);
 
+// Masa berlaku kanal non-QRIS (VA / Mandiri Bill / gerai): bawaan 60 menit,
+// aturan yang sama — hanya bilangan bulat >= 1.
+$expiryVaDefault = 60;
+$expiryVaMinutes = filter_var(env('MIDTRANS_EXPIRY_VA_MINUTES', $expiryVaDefault), FILTER_VALIDATE_INT, [
+    'options' => ['min_range' => 1],
+]);
+
 // Acquirer QRIS Core API yang SAH: `gopay` (bawaan) atau `airpay shopee`
 // (QRIS acquirer lain). `other_qris` bukan acquirer Core API (metode Snap;
 // dijawab Midtrans 413 "Payload format is not supported"), tetapi tetap
@@ -56,16 +63,17 @@ return [
     // Override lewat MIDTRANS_EXPIRY_MINUTES, lalu `php artisan config:clear`.
     'expiry_minutes' => $expiryMinutes === false ? $expiryDefault : $expiryMinutes,
 
+    // Masa berlaku kanal VA / Mandiri Bill / gerai dalam menit (bawaan 60 —
+    // PRD-v1.2 §2.2). Override lewat MIDTRANS_EXPIRY_VA_MINUTES.
+    'expiry_va_minutes' => $expiryVaMinutes === false ? $expiryVaDefault : $expiryVaMinutes,
+
     // Kanal QRIS Core API (`payment_type = qris`). Core API memilih kanal lewat
     // `qris.acquirer`, bukan `enabled_payments` (parameter Snap). Mengirim
     // `enabled_payments = ["other_qris"]` bersama `acquirer = gopay` membuat
-    // Midtrans menjawab 402 "Payment channel is not activated" — notif
-    // "Gagal membuat pembayaran QRIS. Coba lagi." (kartu t_2f443b75).
-    // Nilai sah: `gopay` (QRIS GoPay) atau `airpay shopee` (QRIS acquirer lain).
-    // `other_qris` bukan acquirer Core API; nilai config lama itu dipetakan ke
-    // `airpay shopee` di atas (kartu t_56062a5c).
-    // Bila kanal ini belum aktif, server mencoba acquirer sah satunya otomatis;
-    // bila percobaan pertama 402, pesan akhir tetap pesan aktivasi kanal.
+    // Midtrans menjawab 402 "Payment channel is not activated" (kartu t_2f443b75).
+    // Nilai sah: `gopay` (QRIS GoPay) atau `airpay shopee` (QRIS acquirer lain);
+    // `other_qris` dipetakan ke `airpay shopee` di atas (kartu t_56062a5c).
+    // Bila kanal belum aktif, pembeli melihat pesan aktivasi kanal (§7.5).
     // Override lewat MIDTRANS_QRIS_ACQUIRER, lalu `php artisan config:clear`.
     'qris_acquirer' => $qrisAcquirer,
 

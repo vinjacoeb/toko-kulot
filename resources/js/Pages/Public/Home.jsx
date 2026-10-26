@@ -331,7 +331,7 @@ export default function Home({
                         <div className="grid items-center gap-6 md:grid-cols-12 md:gap-8">
                             <div className="md:col-span-7">
                                 <h2 className="font-display text-h2 text-brand">{cta.title}</h2>
-                                <p className="mt-2 text-body text-ink-soft">
+                                <p className="mt-2 max-w-[65ch] text-body text-ink-soft">
                                     <CtaSubtitle text={cta.subtitle} />
                                 </p>
                             </div>

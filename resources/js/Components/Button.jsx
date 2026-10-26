@@ -30,6 +30,7 @@ export default function Button({
     href = null,
     type = 'button',
     loading = false,
+    loadingLabel = 'Memproses…',
     disabled = false,
     fullWidth = false,
     icon = null,
@@ -48,7 +49,7 @@ export default function Button({
     const content = loading ? (
         <>
             <SpinnerIcon size={16} />
-            <span>Memproses…</span>
+            <span>{loadingLabel}</span>
         </>
     ) : (
         <>

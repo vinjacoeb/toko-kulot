@@ -54,7 +54,7 @@ export default function HeroSection({
             <div className="absolute inset-0">
                 <div className="container flex h-full flex-col items-center justify-center gap-3 text-center text-white md:items-start md:justify-end md:pb-16 md:text-left">
                     {title && <h1 className="max-w-2xl font-display text-display">{title}</h1>}
-                    {subtitle && <p className="max-w-xl text-body text-white/85">{subtitle}</p>}
+                    {subtitle && <p className="max-w-[65ch] text-body text-white/85">{subtitle}</p>}
                     {ctaLabel && ctaHref && (
                         <Link href={ctaHref} className="btn-primary mt-2">
                             {ctaLabel}

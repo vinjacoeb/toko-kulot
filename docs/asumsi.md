@@ -468,3 +468,82 @@ sehingga tidak ada jalur XSS dari isian admin.
   tidak mencantumkan `code` untuk kasus saldo, pesan `GALAT_SALDO` dideteksi dari kata `balance` di
   `error` (case-insensitive), bukan dari kode. Bila Biteship kelak memberi `code` untuk kasus ini,
   tambahkan pasangan kode di `pesanGalat()` dan baris tabel kontrak §7.12.
+
+## v1.3 — webhook Biteship (24 Okt 2026, kartu `t_c04dd4c7`)
+
+- `order_id` pada payload webhook = `orders.biteship_order_id` yang disimpan saat create order;
+  tidak ada pencocokan lewat `reference_id`.
+- `courier_waybill_id` diutamakan daripada `courier_tracking_id` (sama dengan aturan F7).
+- `order.price` hanya informasi: `shipping_cost`, `total`, dan `payments.gross_amount` tidak
+  diubah otomatis; refund/selisih adalah keputusan pemilik.
+- Status `cancelled`/`rejected`/`returned`/`disposed`/`on_hold` tidak membatalkan pesanan dan
+  tidak mengembalikan stok; hanya menandai `perlu_tindakan` untuk admin.
+- Biteship tidak menyediakan HMAC; keamanan memakai token bersama di query `?token=` atau
+  header `X-Webhook-Token`, dibandingkan dengan `BITESHIP_WEBHOOK_TOKEN`.
+- Payload webhook disimpan sebagai payload terakhir saja (satu kolom json), bukan riwayat event.
+
+## v1.3 B2 — props data webhook ke halaman (25 Okt 2026, kartu `t_5a702574`)
+
+- `shipping.price_final` hanya diisi bila **payload terakhir** `event = order.price` (PRD-v1.3 §2.4
+  menyimpan payload terakhir, bukan riwayat). Karena `order.status` biasanya datang setelah
+  `order.price`, `price_final`/`price_selisih` bisa `null` walau harga pernah dilaporkan; admin
+  tetap bisa melihatnya di `webhook_terakhir`. Bila nanti butuh nilai tetap, perlu kolom
+  `shipping_price_final` (migrasi baru) — tidak dibuat di kartu ini.
+- `perlu_tindakan` tidak menandai pesanan yang sudah `selesai`/`batal` walau status kurir
+  bermasalah (tidak ada lagi tindakan yang berguna, dan asumsi v1.3 `t_c04dd4c7` sudah menyatakan
+  status bermasalah tidak mengubah status pesanan).
+- Teks `shipping.tindakan` tidak ada di `docs/design-v1.3.md` (design hanya memakai nilainya apa
+  adanya). Kalimat ditulis backend: satu kalimat sebab per kondisi + penutup
+  `Periksa pesanan dan ubah status bila perlu.` (masalah status) atau
+  `Periksa selisih ongkir pesanan ini.` (selisih saja). Bila pemilik ingin teks lain, ubah di
+  `BiteshipService::shippingTindakan()` + tabel kontrak §12.17.
+- `driver` dibaca dari payload terakhir (`courier_driver_name`, `courier_driver_phone`,
+  `courier_link`); payload `order.price` tidak memuatnya sehingga `driver` menjadi `null` sampai
+  ada payload `order.status` — sesuai design (baris disembunyikan bila null).
+
+## v1.4 — ongkir, status, timeline (26 Okt 2026, kartu `t_b6a1ee89`)
+
+- `order.price` dianggap ongkir yang ditagih Biteship untuk layanan yang dipilih, bukan harga
+  barang. Perbandingan tarif nyata belum diuji (butuh key/saldo Biteship pemilik).
+- Penyebab pasti selisih 62k vs 11k belum terbukti; yang diperbaiki adalah pembeda basis hitung
+  (minimum 500 g, berat create order, `destination_city`) + log bukti. Bila setelah itu masih
+  berbeda, selisih ditampilkan sebagai `price_selisih` dan keputusan ada di pemilik.
+- "Riwayat pengiriman auto mengikuti Biteship" berarti data berubah tanpa aksi admin/pembeli;
+  halaman diperbarui saat dimuat ulang, tanpa polling/realtime.
+- `orders.shipping_events` menyimpan maksimum 50 event; event lebih lama dibuang.
+- Menghapus ubah status manual berarti pesanan retur/gagal tidak bisa dibatalkan admin dari UI
+  (lihat `docs/pertanyaan-pemilik-v1.4.md` P1).
+- Daftar riwayat pengiriman menampilkan maksimum 10 event terbaru; data lengkap tetap di DB.
+- Timeline `Selesai` hanya aktif dari event `delivered` (atau `shipping_updated_at` bila status
+  sudah `selesai`); pesanan lama tanpa event tidak diisi ulang.
+
+- [t_3a264fac] Field `weight` pada `POST /v1/orders` dikirim **per unit** (sama dengan body
+  `/v1/rates/couriers`), karena Biteship mengalikan sendiri dengan `quantity`; total berat kirim =
+  Σ `weight × quantity` = `orders.shipping_weight_gram`. Bila Biteship ternyata tidak mengalikan,
+  ubah `orderPayload()` agar mengirim `beratUnit × qty` dan sesuaikan test.
+- [t_3a264fac] Guard asal kirim lengkap juga dipakai `rates()`, bukan hanya `createOrder()`, mengikuti
+  PRD-v1.4 §2.2 ("sebelum memanggil API tarif atau create order"). Mode `fake` tidak terpengaruh
+  karena tidak memanggil API.
+
+## v1.4 copy `shipping.tindakan` (26 Okt 2026, kartu `t_4eb06cea`, QA-14-03)
+
+- Ajakan `Periksa pesanan dan ubah status bila perlu.` dibuang dari pesan status kurir karena tidak
+  ada lagi kontrol ubah status (F12 v1.4). Pesan kembali ke daftar §12.17 apa adanya; **tidak**
+  ditambah arahan pengganti (mis. "selesaikan di luar aplikasi") supaya redaksi tetap milik
+  uiux/pemilik. Bila arahan ingin ditambah, satu baris di `BiteshipService::shippingTindakan()` +
+  tabel §12.17 + test `ShippingPropsV13Test`.
+- Penutup `Periksa selisih ongkir pesanan ini.` tetap, karena memeriksa ongkir masih tersedia di
+  halaman detail pesanan.
+- `docs/PRD-v1.3.md:87` masih memuat contoh lama (dokumen historis) — acuan yang berlaku
+  `PRD-v1.4` + kontrak §12.17.
+
+## v1.4 berat create order (26 Okt 2026, kartu `t_65362988`, QA-14-02)
+
+- Dipilih opsi "pakai total tersimpan" dari kartu (bukan snapshot kolom baru di `order_items`) supaya
+  **tidak** perlu migrasi + persetujuan techlead. Konsekuensi: pembagian berat per baris adalah
+  rekonstruksi proporsional dari `orders.shipping_weight_gram`, jadi per baris bisa beda beberapa gram
+  dari berat produk aslinya walau **total kirim selalu sama** dengan nilai yang dipakai saat tarif.
+  Bila kelak butuh berat per baris yang persis, tambahkan kolom snapshot `weight_gram` di `order_items`
+  saat checkout (migrasi baru) dan pakai di `orderPayload()`.
+- Berat per baris tidak boleh 0 (Biteship menolak), jadi baris minimal 1 g/unit. Order lama dengan
+  `shipping_weight_gram` null/0 tetap memakai berat produk hidup seperti sebelumnya.

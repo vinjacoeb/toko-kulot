@@ -67,7 +67,6 @@ class RouteContractTest extends TestCase
         'admin.stocks.history',
         'admin.orders.index',
         'admin.orders.show',
-        'admin.orders.status',
         'admin.orders.resi',
         'admin.orders.sinkron-pembayaran',
         'admin.messages.index',
@@ -196,7 +195,6 @@ class RouteContractTest extends TestCase
         $harapan = [
             'admin.stocks.in' => 'POST',
             'admin.stocks.out' => 'POST',
-            'admin.orders.status' => 'PATCH',
             'admin.messages.read' => 'PATCH',
             'admin.messages.reply' => 'POST',
             'admin.reviews.reply' => 'POST',

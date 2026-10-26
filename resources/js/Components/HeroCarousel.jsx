@@ -63,7 +63,7 @@ export default function HeroCarousel({
                     </p>
                     <h1 className="font-display text-display">{fallback?.title ?? 'Daster & Kulot Premium'}</h1>
                     {fallback?.subtitle && (
-                        <p className="max-w-xl text-body text-white/75">{fallback.subtitle}</p>
+                        <p className="max-w-[65ch] text-body text-white/75">{fallback.subtitle}</p>
                     )}
                     {fallback?.ctaLabel && fallback?.ctaHref && (
                         <Link
@@ -125,7 +125,7 @@ export default function HeroCarousel({
                         <h1 className="max-w-2xl font-display text-display">{slide.title}</h1>
                     )}
                     {slide.subtitle && (
-                        <p className="max-w-xl text-body text-white/85">{slide.subtitle}</p>
+                        <p className="max-w-[65ch] text-body text-white/85">{slide.subtitle}</p>
                     )}
                     {slide.ctaLabel && slide.ctaHref && (
                         <Link href={slide.ctaHref} className="btn-primary mt-2">

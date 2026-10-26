@@ -6,6 +6,7 @@ use App\Models\Admin;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\StockMovement;
@@ -14,6 +15,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 /**
@@ -84,7 +86,7 @@ class AdminSalesTest extends TestCase
         return $order;
     }
 
-    public function test_daftar_dan_detail_pesanan_menampilkan_langkah_status_berikut(): void
+    public function test_daftar_dan_detail_pesanan_admin_tanpa_prop_ubah_status(): void
     {
         $admin = Admin::factory()->create();
         [$product, $variant] = $this->produk();
@@ -105,68 +107,38 @@ class AdminSalesTest extends TestCase
                 ->component('Admin/Orders/Show', false)
                 ->where('pesanan.status', Order::STATUS_PENDING)
                 ->has('pesanan.items', 1)
-                ->where('status_berikut.0.value', Order::STATUS_PAID)
-                ->where('status_berikut.1.value', Order::STATUS_CANCELLED));
+                ->missing('status_berikut'));
     }
 
-    public function test_ubah_status_menolak_transisi_tidak_sah(): void
+    public function test_daftar_pesanan_mengirim_label_kanal_bukan_id_mentah(): void
+    {
+        $admin = Admin::factory()->create();
+        [$product, $variant] = $this->produk();
+        $order = $this->pesanan($product, $variant);
+        $order->update(['payment_method' => 'bca_va']);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/pesanan')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Admin/Orders/Index')
+                ->where('pesanan.data.0.payment_method_label', 'Transfer Bank'));
+    }
+
+    public function test_rute_ubah_status_manual_sudah_dihapus(): void
     {
         $admin = Admin::factory()->create();
         [$product, $variant] = $this->produk();
         $order = $this->pesanan($product, $variant);
 
-        $this->actingAs($admin, 'admin')
-            ->patch('/admin/pesanan/'.$order->id.'/status', ['status' => Order::STATUS_COMPLETED])
-            ->assertSessionHasErrors('status');
-
-        $this->assertSame(Order::STATUS_PENDING, $order->fresh()->status);
-    }
-
-    public function test_pembatalan_mengembalikan_stok_dan_mencatat_riwayat(): void
-    {
-        $admin = Admin::factory()->create();
-        [$product, $variant] = $this->produk(5);
-        $order = $this->pesanan($product, $variant, 2);
-
-        $this->actingAs($admin, 'admin')
-            ->patch('/admin/pesanan/'.$order->id.'/status', [
-                'status' => Order::STATUS_CANCELLED,
-                'note' => '[CONTOH] Pembeli membatalkan',
-            ])
-            ->assertSessionHas('success');
-
-        $this->assertSame(Order::STATUS_CANCELLED, $order->fresh()->status);
-        $this->assertSame(7, (int) $variant->fresh()->stock);
-
-        $this->assertDatabaseHas('stock_movements', [
-            'product_variant_id' => $variant->id,
-            'type' => StockMovement::TYPE_IN,
-            'qty' => 2,
-            'admin_id' => $admin->id,
-        ]);
-
-        $pergerakan = StockMovement::query()
-            ->where('product_variant_id', $variant->id)
-            ->orderByDesc('id')
-            ->firstOrFail();
-
-        $this->assertStringContainsString($order->code, (string) $pergerakan->note);
-        $this->assertStringContainsString('[CONTOH] Pembeli membatalkan', (string) $pergerakan->note);
-    }
-
-    public function test_pesanan_final_tidak_bisa_diubah_lagi(): void
-    {
-        $admin = Admin::factory()->create();
-        [$product, $variant] = $this->produk();
-        $order = $this->pesanan($product, $variant);
-        $order->forceFill(['status' => Order::STATUS_COMPLETED])->save();
-
+        // PRD-v1.4 §3.2: rute lama tidak lagi menerima permintaan (405/404, bukan 200).
         $this->actingAs($admin, 'admin')
             ->patch('/admin/pesanan/'.$order->id.'/status', ['status' => Order::STATUS_CANCELLED])
-            ->assertSessionHasErrors('status');
+            ->assertNotFound();
 
-        $this->assertSame(Order::STATUS_COMPLETED, $order->fresh()->status);
+        $this->assertSame(Order::STATUS_PENDING, $order->fresh()->status);
         $this->assertSame(5, (int) $variant->fresh()->stock);
+        $this->assertSame(0, StockMovement::query()->count());
     }
 
     public function test_daftar_akun_menandai_akun_sendiri(): void
@@ -363,5 +335,91 @@ class AdminSalesTest extends TestCase
             ->assertJsonPath('errors.tracking_number.0', 'Nomor resi maksimal 60 karakter.');
 
         $this->assertNull($order->fresh()->tracking_number);
+    }
+
+    public function test_daftar_dan_detail_menyertakan_kurir_resi_mode_uji_dan_filter_kirim(): void
+    {
+        $admin = Admin::factory()->create();
+        [$product, $variant] = $this->produk();
+        $order = $this->pesanan($product, $variant);
+
+        $order->forceFill([
+            'status' => Order::STATUS_PAID,
+            'payment_status' => Order::PAYMENT_SETTLEMENT,
+            'shipping_courier' => 'jne',
+            'shipping_service' => 'reg',
+            'shipping_etd' => '2-3 hari',
+            'shipping_cost' => 20000,
+            'tracking_number' => 'JX1234567890',
+            'shipping_status' => 'confirmed',
+        ])->save();
+
+        Payment::create([
+            'order_id' => $order->id,
+            'provider' => 'midtrans',
+            'transaction_id' => 'fake-1',
+            'payment_type' => 'bca_va',
+            'gross_amount' => 198000,
+            'status' => Order::PAYMENT_SETTLEMENT,
+            'payload' => ['mode' => 'fake'],
+        ]);
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/pesanan?kirim=confirmed')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('pesanan.data', 1)
+                ->where('pesanan.data.0.courier_name', 'JNE')
+                ->where('pesanan.data.0.service_name', 'REG')
+                ->where('pesanan.data.0.tracking_number', 'JX1234567890')
+                ->where('pesanan.data.0.shipping_status_label', 'Dikonfirmasi')
+                ->where('pesanan.data.0.mode_uji', true)
+                ->where('filter.kirim', 'confirmed')
+                ->where('filter_opsi.kirim.2.value', 'confirmed')
+                ->where('filter_opsi.kirim.2.label', 'Dikonfirmasi')
+            );
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/pesanan?kirim=belum')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->has('pesanan.data', 0));
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/pesanan/'.$order->id)
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('pesanan.shipping.courier_code', 'jne')
+                ->where('pesanan.shipping.courier_name', 'JNE')
+                ->where('pesanan.shipping.service_name', 'REG')
+                ->where('pesanan.shipping.etd', '2-3 hari')
+                ->where('pesanan.shipping.weight_gram', null)
+                ->where('pesanan.shipping.galat', null)
+                ->where('pesanan.payment.metode.id', 'bca_va')
+                ->where('pesanan.payment.fake', true)
+                ->where('pesanan.payment.payment_type', 'bca_va')
+                ->where('pesanan.mode_uji', true)
+                ->where('pesanan.timeline.shipped_at', null)
+            );
+    }
+
+    public function test_detail_pesanan_menampilkan_shipped_at_status_dikirim(): void
+    {
+        $admin = Admin::factory()->create();
+        [$product, $variant] = $this->produk();
+        $order = $this->pesanan($product, $variant);
+
+        // Status `dikirim` kini hanya datang dari webhook Biteship (PRD-v1.4 §3); di sini
+        // keadaan DB disiapkan langsung untuk memeriksa prop `timeline.shipped_at`.
+        $order->forceFill([
+            'status' => Order::STATUS_SHIPPED,
+            'payment_status' => Order::PAYMENT_SETTLEMENT,
+            'shipped_at' => now(),
+        ])->save();
+
+        $this->actingAs($admin, 'admin')
+            ->get('/admin/pesanan/'.$order->id)
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('pesanan.timeline.shipped_at', $order->fresh()->shipped_at->toIso8601String())
+            );
     }
 }

@@ -531,3 +531,73 @@ Kegagalan ongkir **bukan** kode pos/parameter: saldo akun Biteship habis. Yang h
 
 Tanpa saldo, pembeli melihat `Ongkir tidak bisa dihitung karena saldo Biteship penjual habis.
 Hubungi penjual.` — bukan lagi pesan umum, jadi penyebabnya terlihat dari UI.
+
+## Migrasi kolom resi otomatis (kartu B3)
+
+Jalankan `php artisan migrate` agar `orders.biteship_order_id`, `orders.shipping_status`, dan
+`orders.shipping_payload` ada. Tanpa migrasi, tombol resi otomatis akan gagal menyimpan kolom.
+Isi `BITESHIP_API_KEY` di `.env` untuk mode nyata; bila kosong, resi memakai mode uji
+(`FAKE-<kode pesanan>`) tanpa panggilan jaringan.
+
+## Test PHPUnit butuh ekstensi `pdo_sqlite` (kartu t_66e507a3)
+
+`phpunit.xml` memakai SQLite `:memory:` (tidak menyentuh database pengembangan), tetapi PHP CLI
+di mesin ini belum memuat ekstensinya: `php artisan test` berhenti dengan
+`could not find driver (Connection: sqlite)`.
+
+Yang perlu pemilik lakukan (pilih salah satu):
+
+1. Buka `php.ini` PHP CLI (Laragon: `C:/laragon/bin/php/php-8.3.32-Win32-vs16-x64/php.ini`),
+   hapus `;` pada `extension=pdo_sqlite` dan `extension=sqlite3`, simpan, lalu cek
+   `php -m | grep sqlite`. Setelah itu `php artisan test` berjalan normal.
+2. Biarkan `php.ini` apa adanya dan jalankan test dengan flag (tanpa mengubah konfigurasi):
+   `php -d extension=pdo_sqlite -d extension=sqlite3 vendor/bin/phpunit`
+
+Tidak wajib untuk aplikasi berjalan — hanya untuk menjalankan test.
+
+## v1.3 — webhook Biteship lewat tunnel
+
+1. Isi `BITESHIP_WEBHOOK_TOKEN` di `.env` dengan teks acak panjang (contoh perintah pembuat:
+   `openssl rand -hex 24`). Jangan menempel nilainya di kartu, chat, atau dokumen.
+2. Jalankan `php artisan migrate` (dua kolom baru `orders.shipping_updated_at` dan
+   `orders.shipping_webhook_payload`).
+3. Pastikan tunnel hidup dan halaman toko tampil dari perangkat lain (bukan kosong); build aset
+   dilakukan DevOps (`npm run build`, tanpa `npm run dev`, `public/hot` dihapus).
+4. Dashboard Biteship → Integrasi → Webhook → Tambah Webhook:
+   URL `https://<tunnel>/biteship/webhook?token=<BITESHIP_WEBHOOK_TOKEN>`,
+   event `order.status`, `order.price`, `order.waybill_id`.
+5. Uji: buat/ubah resi di dashboard Biteship, lalu cek `/admin/pesanan/{order}` — status
+   pengiriman, resi, dan waktu pembaruan harus berubah tanpa refresh manual.
+6. URL ngrok gratis berubah setiap tunnel dijalankan ulang; perbarui URL di dashboard Biteship
+   atau pakai domain tetap untuk produksi.
+
+Catatan 25 Okt 2026 (kartu `t_7584d46c`): bila form "Tambah Webhook" menolak dengan pesan
+*"Webhook URL doesn't respond with ok response"*, itu bug kode lama (probe body kosong dijawab
+422, GET dijawab 405) — perbaikan di kartu `t_f09907b0`, bukti `docs/bukti-webhook-install-t_7584d46c.txt`.
+Setelah perbaikan masuk, ulangi langkah 4 dengan URL yang sama; `?token=` boleh disertakan
+sejak awal (probe tetap 200 karena body kosong), dan token tetap wajib untuk payload asli.
+
+## v1.4 — F13 timeline pembeli (26 Okt 2026, kartu `t_f51f8c36`)
+
+1. Jalankan `php artisan migrate` — menambah `orders.shipping_events` (json, null). Tanpa kolom ini
+   webhook Biteship gagal menyimpan (galat 500) karena kolom baru ikut ditulis. (Migrasi
+   `2026_10_24_000005` juga masih `Pending` di DB pengembangan; `php artisan migrate` menjalankan
+   keduanya.)
+2. Tidak ada nilai `.env` baru. `BITESHIP_WEBHOOK_TOKEN` tetap seperti langkah v1.3 di atas.
+
+## v1.5 — token webhook & layanan ekspedisi (26 Okt 2026, kartu `t_51b30cf7`)
+
+1. **Header webhook Biteship.** Di dashboard Biteship, buka webhook lalu isi *Custom Header*:
+   nama bebas (mis. `X-Webhook-Token` atau `X-Api-Key`), nilainya **sama persis** dengan
+   `BITESHIP_WEBHOOK_TOKEN` di `.env`. Kode v1.5 menerima nilai token di header mana pun, jadi
+   yang menentukan hanya nilainya. Setelah disimpan, ubah status satu pesanan uji di Biteship;
+   `storage/logs/laravel.log` tidak boleh lagi memuat
+   `Webhook Biteship ditolak: token tidak valid` dari IP Biteship. Bila masih ditolak, baris log
+   itu memuat `header` berisi **nama** header yang dikirim Biteship (tanpa nilainya) — pakai nama
+   itu di *Custom Header*, atau biarkan kosong bila Biteship malah mengirim `?token=`.
+2. **Layanan ekspedisi di checkout.** Di `/admin/ekspedisi`, tambah layanan dari dropdown
+   katalog, centang **Aktif**, lalu **Simpan ekspedisi**. Checkout hanya menampilkan layanan
+   aktif yang punya tarif untuk kode pos pembeli. Layanan di luar katalog Biteship tidak punya
+   tarif dan tidak akan muncul.
+3. Tidak ada migrasi dan tidak ada nilai `.env` baru di v1.5.
+

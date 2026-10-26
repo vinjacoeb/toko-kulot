@@ -161,3 +161,10 @@ pertimbangkan rotasi kunci produksi di dashboard Midtrans.
 |---|---|---|---|
 | P16 | Ongkir 400 dari Biteship | Kode pos asal (pengaturan `/admin/ekspedisi`) dan kode pos tujuan yang dipakai saat "Cek Ongkir" gagal. Sebutkan keduanya, lalu setelah kartu perbaikan selesai klik ulang dan tempel satu baris log `Biteship rates ...` terbaru. | Tanpa kode pos + kode error, penyebab (kode pos tak dikenal vs akun/key `biteship_test.*`) tidak bisa dipastikan. |
 | P17 | Kunci `biteship_test.*` | Biteship sandbox: tarif contoh memakai kode pos Jakarta (12440 → 12240). Bila akun uji dibatasi, uji dengan pasangan itu dulu untuk memisahkan masalah akun dari masalah kode pos toko. | Salah simpul: memperbaiki kode padahal batasan ada di akun sandbox. |
+
+## 10. Pendaftaran webhook Biteship ditolak dashboard — 25 Okt 2026 (kartu `t_7584d46c`)
+
+| # | Hal | Yang perlu diputuskan / dilakukan pemilik | Dampak bila tidak |
+|---|---|---|---|
+| P18 | Pesan *"Webhook URL doesn't respond with ok response"* | Bukan salah isian form dan bukan tunnel mati: probe instalasi Biteship (body kosong, kadang GET) dijawab 422/405 oleh kode. Perbaikan kode di kartu `t_f09907b0` (`docs/bukti-webhook-install-t_7584d46c.txt`). Setelah kartu itu selesai: ulangi "Tambah Webhook" dengan URL yang sama. | Webhook tidak terdaftar; status kirim/resi tidak pernah masuk sendiri. |
+| P19 | `.env` belum bisa diisi | Yang wajib ada sebelum webhook dipakai: `BITESHIP_WEBHOOK_TOKEN` (teks acak panjang, jangan ditempel di kartu/chat), `APP_DEBUG=false`, dan `php artisan migrate` (kolom `orders.shipping_updated_at`/`shipping_webhook_payload`, migrasi `000005`). Tanpa migrasi, event asli pertama dibalas 500. | Webhook terbuka tanpa token (siapa pun bisa mengubah status pesanan) atau 500 saat event nyata masuk. |

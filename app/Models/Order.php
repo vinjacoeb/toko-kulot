@@ -99,6 +99,14 @@ class Order extends Model
             'bank_transfer' => 'Transfer Bank',
             'echannel' => 'Transfer Bank',
             'qris' => 'QRIS',
+            // 8 kanal PRD-v1.2 §2.2 (id kanal disimpan di `payment_type`).
+            'bca_va' => 'Transfer Bank',
+            'bni_va' => 'Transfer Bank',
+            'bri_va' => 'Transfer Bank',
+            'permata_va' => 'Transfer Bank',
+            'mandiri_bill' => 'Mandiri Bill',
+            'alfamart' => 'Gerai Retail',
+            'indomaret' => 'Gerai Retail',
             'gopay' => 'E-Wallet',
             'shopeepay' => 'E-Wallet',
             'dana' => 'E-Wallet',
@@ -108,34 +116,6 @@ class Order extends Model
         ];
 
         return $labels[strtolower(trim((string) $method))] ?? 'Midtrans';
-    }
-
-    /**
-     * Status yang boleh dipilih dari status sekarang (panel admin, kontrak props §12.17).
-     *
-     * @return list<string>
-     */
-    public function nextStatuses(): array
-    {
-        if ($this->isFinal()) {
-            return [];
-        }
-
-        $index = array_search($this->status, self::STATUS_FLOW, true);
-
-        if ($index === false) {
-            return [];
-        }
-
-        $next = [];
-
-        if (isset(self::STATUS_FLOW[$index + 1])) {
-            $next[] = self::STATUS_FLOW[$index + 1];
-        }
-
-        $next[] = self::STATUS_CANCELLED;
-
-        return $next;
     }
 
     /**
@@ -169,7 +149,14 @@ class Order extends Model
         'shipping_is_free',
         'notes',
         'paid_at',
+        'shipped_at',
         'tracking_number',
+        'biteship_order_id',
+        'shipping_status',
+        'shipping_payload',
+        'shipping_updated_at',
+        'shipping_webhook_payload',
+        'shipping_events',
     ];
 
     protected function casts(): array
@@ -183,6 +170,11 @@ class Order extends Model
             'shipping_weight_gram' => 'integer',
             'shipping_is_free' => 'boolean',
             'paid_at' => 'datetime',
+            'shipped_at' => 'datetime',
+            'shipping_payload' => 'array',
+            'shipping_updated_at' => 'datetime',
+            'shipping_webhook_payload' => 'array',
+            'shipping_events' => 'array',
         ];
     }
 

@@ -141,7 +141,7 @@ class CheckoutShippingTest extends TestCase
         $response->assertJson([
             'mode' => 'fake',
             'kode_pos' => '51111',
-            'berat_gram' => 1000,
+            'berat_gram' => 600,
             'subtotal' => 170000,
             'gratis' => ['aktif' => true, 'min' => 100000, 'terpenuhi' => true],
             'galat' => null,
@@ -167,7 +167,8 @@ class CheckoutShippingTest extends TestCase
         $this->assertFalse((bool) $order->shipping_is_free);
         $this->assertNull($order->shipping_courier);
         $this->assertSame(190000, (int) $order->total);
-        $this->assertSame(1000, (int) $order->shipping_weight_gram);
+        // Produk tanpa berat: fallback 300 g/unit × 2 (PRD-v1.4 §2.2), tanpa minimum 500 g.
+        $this->assertSame(600, (int) $order->shipping_weight_gram);
     }
 
     public function test_gratis_ongkir_hanya_untuk_layanan_reguler(): void

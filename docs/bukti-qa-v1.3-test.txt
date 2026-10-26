@@ -1,0 +1,20 @@
+PHPUnit 11.5.57 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.3.32
+Configuration: C:\Users\LENOVO\Downloads\toko-kulot\phpunit.xml
+
+..........                                                        10 / 10 (100%)
+
+Time: 00:00.747, Memory: 50.00 MB
+
+OK (10 tests, 62 assertions)
+PHPUnit 11.5.57 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.3.32
+Configuration: C:\Users\LENOVO\Downloads\toko-kulot\phpunit.xml
+
+........                                                            8 / 8 (100%)
+
+Time: 00:00.756, Memory: 50.00 MB
+
+OK (8 tests, 168 assertions)

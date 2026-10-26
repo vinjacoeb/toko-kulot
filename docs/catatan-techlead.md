@@ -398,3 +398,63 @@ kode.** Rincian bukti per butir: `docs/keputusan-f4-stok.md`. Ringkasan pemilik-
   P16 disesuaikan; status dicatat di `docs/review-4.md` §7.
 - **Gate diblok sampai pemilik membalas bukti**: jam kejadian, kode pesanan, teks QR/notice apa adanya.
   Bila QR muncul → lanjut G1. Bila masih gagal → eskalasi, **bukan** kartu perbaikan ketiga.
+
+## v1.3 — webhook Biteship & halaman kosong lewat ngrok (kartu `t_c04dd4c7`, 24 Okt 2026)
+
+Temuan baca-saja (tanpa mengubah kode):
+
+- Pola webhook lama: route `routes/web.php:145` (`POST /midtrans/notification`), CSRF
+  dikecualikan di `bootstrap/app.php:31-32`. Webhook Biteship mengikuti pola yang sama, bukan
+  membuat berkas route baru. Rute API tidak dipakai — proyek ini menaruh webhook di `web.php`.
+- `BiteshipService` sudah punya label status (`app/Services/BiteshipService.php:464,478,486`)
+  dan `shippingInfo():515` yang dipakai admin + riwayat → data webhook cukup mengisi kolom
+  `shipping_status`/`tracking_number`/`shipped_at` yang sudah dibaca fungsi itu; tidak perlu
+  jalur tampilan baru di backend.
+- **Penyebab halaman kosong terverifikasi**: `public/hot` ada (17 byte, `http://[::1]:5173`,
+  dibuat 24 Okt 23.51) sehingga blade memuat `@vite` dari Vite dev di localhost mesin pengunjung.
+  Perbaikan operasional (DevOps) + trust proxy (Backend), lihat PRD v1.3 §3.
+- Dugaan kuat kedua: HTML lewat ngrok memakai `http://<tunnel>/...` untuk favicon/aset karena
+  proxy tidak dipercaya → mixed content. Kartu `t_8498103a` menutup ini dengan `trustProxies`
+  loopback saja, bukan `'*'`.
+- Biteship tidak menyediakan tanda tangan HMAC di dashboard webhook; verifikasi resmi hanya URL.
+  Karena itu dipakai token bersama di query/header (PRD §2.1), bukan klaim "signature verified".
+- PHP CLI mesin ini belum memuat `pdo_sqlite` (tercatat di `docs/langkah-pemilik.md`), jadi
+  perintah test di brief memakai fallback `php -d extension=pdo_sqlite -d extension=sqlite3
+  vendor/bin/phpunit`. Ini keterbatasan lingkungan, bukan bug aplikasi.
+- `php artisan migrate`, pengisian `BITESHIP_WEBHOOK_TOKEN`, dan pendaftaran URL di dashboard
+  Biteship adalah tindakan pemilik (`docs/pertanyaan-pemilik-v1.3.md` P1–P5). Techlead tidak
+  menjalankannya.
+
+## v1.3 — review akhir `t_b20fca2d` (25 Okt 2026)
+
+- Laporan lengkap: `docs/review-v1.3.md`. Ringkas: **F10 GO**, **F9 NO-GO sekarang / GO BERSYARAT**
+  setelah pemilik menjalankan migrasi `000005`, mengisi token webhook, dan mematikan `APP_DEBUG`.
+- Bukti yang saya jalankan ulang sendiri: 18 test terfokus (230 asersi, 1,2 s) dan suite penuh
+  **339 test / 2.815 asersi OK** (38,4 s) via `PHP_INI_SCAN_DIR=<scratch phpsqlite>` (sqlite
+  `:memory:`, `.env` tidak disentuh); `POST /biteship/webhook` body rusak → 422 JSON, order tak
+  dikenal + token salah → 200 JSON; browser menampilkan toko (judul `Liiora.id | …`, `#app` 64 KB,
+  satu-satunya script `/build/assets/app-C0fClxZc.js`).
+- Keputusan dokumen: F-13-04 (urutan baris panel) → implementasi diterima, `docs/design-v1.3.md` §1
+  diberi catatan urutan nyata; F-13-05 (path aset "relatif") → `docs/PRD-v1.3.md` §3 butir 2
+  diperbaiki. F-13-01/02/03 tetap tindakan pemilik.
+- Satu kartu perbaikan kode: `t_8c48f38d` (backenddeveloper, berparent kartu ini) — webhook harus
+  membalas JSON generik saat exception, bukan halaman HTML (PRD §2.1).
+- Di luar lingkup (dicatat, tidak dikerjakan): header `X-Inertia-Devtools-Id` ikut di setiap respons
+  publik (bawaan inertia-laravel v2, isi ULID) dan interstitial ngrok muncul untuk pengunjung
+  browser — keduanya bukan bug v1.3, tapi perlu diingat sebelum produksi.
+
+## Pendaftaran webhook Biteship ditolak dashboard (kartu `t_7584d46c`, 25 Okt 2026)
+
+- Gejala pemilik: form "Tambah Webhook" Biteship menolak `https://<tunnel>/biteship/webhook`
+  dengan *"Webhook URL doesn't respond with ok response"*.
+- Saya uji sendiri lewat tunnel (curl, read-only): `POST` body kosong `Content-Type: application/json`
+  → **422**; `GET` → **405**. Tunnel & aplikasi hidup, jadi ini bug kode, bukan tunnel/`.env`.
+- Akar: `BiteshipWebhookController.php:30-38` menganggap body kosong sebagai JSON rusak; cek token
+  (`:20-28`) mendahului sehingga probe tanpa token akan 403 begitu token terisi; route hanya POST.
+- Keputusan: `docs/PRD-v1.3.md` §2.1 diperbarui — probe body kosong/GET dijawab
+  `200 {"status":"ok","success":true}` sebelum cek token, tanpa memproses data. Keamanan tidak
+  longgar: body kosong tidak bisa mengubah apa pun, payload asli tetap wajib token.
+- Kartu perbaikan: `t_f09907b0` (backenddeveloper, berparent kartu ini). Bukti:
+  `docs/bukti-webhook-install-t_7584d46c.txt`. Langkah pemilik: `docs/pertanyaan-pemilik.md` P18-P19.
+- Belum dicek (butuh pemilik): pendaftaran ulang di dashboard Biteship dan satu event nyata
+  `order.status` setelah `php artisan migrate`.
