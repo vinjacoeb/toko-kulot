@@ -8,9 +8,8 @@ import Field from '../../Components/Field';
 import InlineNotice from '../../Components/InlineNotice';
 import Input from '../../Components/Input';
 import OrderSummary from '../../Components/OrderSummary';
-import Select from '../../Components/Select';
 import Textarea from '../../Components/Textarea';
-import { formatNumber, rupiah } from '../../lib/format';
+import { cn, formatNumber, rupiah } from '../../lib/format';
 
 const PHONE_PATTERN = /^(\+62|62|0)8[0-9]{7,12}$/;
 const POSTAL_PATTERN = /^\d{5}$/;
@@ -104,20 +103,18 @@ function gulirKe(id, { fokus = true } = {}) {
     if (fokus && typeof elemen.focus === 'function') elemen.focus({ preventScroll: true });
 }
 
-/** Skeleton dua baris opsi + teks `Memuat tarif…` (design-v1.2 §5.3 S1). */
+/** Empat skeleton kartu layanan (design-v1.6 §1.3 `memuat`). */
 function SkeletonOpsi() {
     return (
-        <div aria-busy="true" aria-live="polite" className="mt-4 flex flex-col gap-3">
-            <span className="text-meta text-slate-500">Memuat tarif…</span>
-            {[0, 1].map((baris) => (
-                <div key={baris} className="flex items-start gap-3 rounded-md border border-line p-4 motion-safe:animate-pulse">
-                    <span className="mt-1 h-4 w-4 shrink-0 rounded-full bg-line" aria-hidden="true" />
-                    <span className="flex min-w-0 flex-1 flex-col gap-2">
-                        <span className="h-3 w-2/5 rounded bg-line" aria-hidden="true" />
-                        <span className="h-3 w-3/5 rounded bg-line" aria-hidden="true" />
-                    </span>
-                </div>
-            ))}
+        <div className="mt-4">
+            <p className="sr-only" role="status" aria-live="polite">
+                Memuat tarif pengiriman…
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2" aria-hidden="true">
+                {[0, 1, 2, 3].map((baris) => (
+                    <div key={baris} className="h-[84px] rounded-md bg-slate-200 motion-safe:animate-pulse" />
+                ))}
+            </div>
         </div>
     );
 }
@@ -130,7 +127,7 @@ function SkeletonOpsi() {
  * → total final; submit mengirim `shipping_courier`/`shipping_service`/`shipping_cost` (§7.6).
  * Mode fake: tarif uji datar boleh tanpa memilih layanan; mode api wajib memilih.
  */
-export default function Checkout({ keranjang = null, prefill = null, pengiriman = null, flash = null }) {
+export default function Checkout({ keranjang = null, prefill = null, pengiriman = null, ringkasan = null, flash = null }) {
     const [clientErrors, setClientErrors] = useState({});
     const [throttle, setThrottle] = useState(null);
 
@@ -150,11 +147,11 @@ export default function Checkout({ keranjang = null, prefill = null, pengiriman 
     const [opsi, setOpsi] = useState([]);
     const [gratis, setGratis] = useState(pengiriman?.gratis ?? null);
     const [pilihan, setPilihan] = useState(null);
+    /** Galat submit karena layanan belum dipilih / berubah (design-v1.6 §1.2). */
+    const [galatEkspedisi, setGalatEkspedisi] = useState(null);
     /** S0 menunggu · S1 memuat · S2 siap · S3 kosong · S4 galat · S7 timeout (design-v1.2 §5.3). */
     const [statusTarif, setStatusTarif] = useState('menunggu');
     const [galatTarif, setGalatTarif] = useState(null);
-    /** Kode pos yang dipakai daftar opsi saat ini; null = belum ada hasil. */
-    const [kodePosOpsi, setKodePosOpsi] = useState(null);
     /** Naikkan untuk meminta ulang tarif (tombol Coba lagi). */
     const [versiTarif, setVersiTarif] = useState(0);
 
@@ -190,7 +187,25 @@ export default function Checkout({ keranjang = null, prefill = null, pengiriman 
           ? tarifUji
           : null;
     const ongkirFinal = biayaOngkir !== null;
-    const total = subtotal + (biayaOngkir ?? 0);
+    /** Diskon dari server ikut mengurangi total (design-v1.6 §4). */
+    const diskonNilai = Number(ringkasan?.diskon ?? 0) || 0;
+    const totalServer = ringkasan?.total == null ? NaN : Number(ringkasan.total);
+    const total = ongkirFinal
+        ? subtotal - diskonNilai + biayaOngkir
+        : Number.isFinite(totalServer)
+          ? totalServer
+          : subtotal - diskonNilai;
+    /** Harga asli untuk tampilan GRATIS: tarif opsi terpilih, atau `ringkasan` awal. */
+    const ongkirAsli = pilihan
+        ? Number(pilihan.cost) > 0
+            ? Number(pilihan.cost)
+            : null
+        : (ringkasan?.ongkir_asli ?? null);
+    const ongkirDitanggung = pilihan
+        ? pilihan.gratis === true
+            ? (ongkirAsli ?? 0)
+            : 0
+        : (ringkasan?.ongkir_ditanggung_toko ?? null);
 
     /** S1/S3/S4/S5/S7 memblokir submit (design-v1.2 §5.4). */
     const tarifMemblokir = ['memuat', 'kosong', 'galat', 'timeout'].includes(statusTarif);
@@ -262,8 +277,8 @@ export default function Checkout({ keranjang = null, prefill = null, pengiriman 
         if (value !== postal) {
             setOpsi([]);
             setPilihan(null);
-            setKodePosOpsi(null);
             setGalatTarif(null);
+            setGalatEkspedisi(null);
             setStatusTarif('menunggu');
             kosongkanKurir();
         }
@@ -290,7 +305,6 @@ export default function Checkout({ keranjang = null, prefill = null, pengiriman 
         if (!tarifSiap) {
             setOpsi([]);
             setPilihan(null);
-            setKodePosOpsi(null);
             setGalatTarif(null);
             setStatusTarif('menunggu');
             kosongkanKurir();
@@ -301,7 +315,6 @@ export default function Checkout({ keranjang = null, prefill = null, pengiriman 
         if (tersimpan) {
             setOpsi(tersimpan.opsi);
             setGratis(tersimpan.gratis ?? null);
-            setKodePosOpsi(postal);
             setGalatTarif(null);
             setStatusTarif(tersimpan.opsi.length > 0 ? 'siap' : 'kosong');
             return undefined;
@@ -310,6 +323,10 @@ export default function Checkout({ keranjang = null, prefill = null, pengiriman 
         const mulai = () => {
             controller = new AbortController();
             abortRef.current = controller;
+            // Tarif lama tidak boleh tampil sebagai tarif sah saat memuat/ timeout (design-v1.6 §1.3).
+            setOpsi([]);
+            setPilihan(null);
+            kosongkanKurir();
             setStatusTarif('memuat');
             setGalatTarif(null);
 
@@ -338,7 +355,6 @@ export default function Checkout({ keranjang = null, prefill = null, pengiriman 
                     if (!data || typeof data !== 'object') {
                         setOpsi([]);
                         setPilihan(null);
-                        setKodePosOpsi(null);
                         setGalatTarif(null);
                         setStatusTarif('galat');
                         kosongkanKurir();
@@ -353,7 +369,6 @@ export default function Checkout({ keranjang = null, prefill = null, pengiriman 
                             null;
                         setOpsi([]);
                         setPilihan(null);
-                        setKodePosOpsi(null);
                         setGalatTarif(pesan);
                         setStatusTarif('galat');
                         kosongkanKurir();
@@ -361,10 +376,10 @@ export default function Checkout({ keranjang = null, prefill = null, pengiriman 
                     }
 
                     const daftar = Array.isArray(data?.opsi) ? data.opsi : [];
+                    const daftarSemua = Array.isArray(data?.semua) ? data.semua : [];
                     const pesanGalat = typeof data?.galat === 'string' && data.galat.trim() !== '' ? data.galat : null;
 
                     setOpsi(daftar);
-                    setKodePosOpsi(postal);
                     setPilihan(null);
                     setGratis(data?.gratis ?? null);
 
@@ -375,7 +390,7 @@ export default function Checkout({ keranjang = null, prefill = null, pengiriman 
                         return;
                     }
 
-                    cacheRef.current.set(postal, { opsi: daftar, gratis: data?.gratis ?? null });
+                    cacheRef.current.set(postal, { opsi: daftar, semua: daftarSemua, gratis: data?.gratis ?? null });
                     setGalatTarif(null);
                     setStatusTarif(daftar.length > 0 ? 'siap' : 'kosong');
                     kosongkanKurir();
@@ -393,7 +408,6 @@ export default function Checkout({ keranjang = null, prefill = null, pengiriman 
 
                     setOpsi([]);
                     setPilihan(null);
-                    setKodePosOpsi(null);
                     setGalatTarif(null);
                     setStatusTarif('galat');
                     kosongkanKurir();
@@ -418,43 +432,51 @@ export default function Checkout({ keranjang = null, prefill = null, pengiriman 
     const cobaLagiTarif = () => setVersiTarif((nilai) => nilai + 1);
 
     /** Pilih satu layanan; `shipping_cost` 0 untuk layanan gratis (§7.12). */
-    const pilihOpsi = (opsiDipilih) => {
-        setPilihan(opsiDipilih);
+    const pilihOpsi = (baris) => {
+        if (!baris || baris.tersedia !== true) return;
+        // Tarif resmi diambil dari `opsi[]` (hanya layanan bertarif).
+        const terpilih = cariOpsi(`${baris.courier_code}|${baris.service_code}`) ?? baris;
+        setPilihan(terpilih);
+        setGalatEkspedisi(null);
         form.setData((nilai) => ({
             ...nilai,
-            shipping_courier: opsiDipilih?.courier_code ?? null,
-            shipping_service: opsiDipilih?.service_code ?? null,
-            shipping_cost: opsiDipilih ? (opsiDipilih.gratis === true ? 0 : Number(opsiDipilih.cost ?? 0) || 0) : null,
+            shipping_courier: terpilih?.courier_code ?? null,
+            shipping_service: terpilih?.service_code ?? null,
+            shipping_cost: terpilih ? (terpilih.gratis === true ? 0 : Number(terpilih.cost ?? 0) || 0) : null,
         }));
     };
 
-    /** Nilai opsi `courier_code|service_code` (design-v1.5 §1; pemisah `|`, bukan `:`). */
-    const nilaiOpsi = pilihan ? `${pilihan.courier_code}|${pilihan.service_code}` : '';
-
-    /** Cari opsi dari nilai Select dengan mencocokkan kedua kode, bukan teksnya. */
+    /** Cari opsi dari nilai `courier|service` dengan mencocokkan kedua kode, bukan teksnya. */
     const cariOpsi = (nilai) => {
         const [kodeKurir, kodeLayanan] = String(nilai ?? '').split('|');
         return opsi.find((item) => item?.courier_code === kodeKurir && item?.service_code === kodeLayanan) ?? null;
     };
 
-    /** Satu baris per layanan; nama kurir tidak diulang karena sudah jadi label `optgroup`. */
-    const teksOpsi = (item) => {
-        const layanan = item?.service_name || item?.service_code || '-';
-        const harga = item?.gratis === true ? 'GRATIS' : (rupiah(item?.cost) ?? '-');
-        return `${layanan} · ${item?.etd || '—'} · ${harga}`;
-    };
+    /**
+     * Daftar ceklis: hanya `opsi[]` (layanan bertarif) selama `statusTarif === 'siap'` (design-v1.7 §1).
+     * `semua[]` tetap disimpan di cache tetapi tidak lagi dirender.
+     */
+    const daftarEkspedisi =
+        statusTarif === 'siap' ? opsi.filter((item) => item?.tersedia === true) : [];
 
-    /** Kelompokkan opsi per `courier_code` dengan urutan kemunculan pertama (urutan server). */
-    const grup = [];
-    opsi.forEach((item) => {
+    /** Kelompokkan per `courier_code` dengan urutan kemunculan pertama (urutan server). */
+    const grupEkspedisi = [];
+    daftarEkspedisi.forEach((item) => {
         const kode = item?.courier_code ?? '-';
-        let kelompok = grup.find((pasangan) => pasangan[0] === kode);
+        let kelompok = grupEkspedisi.find((pasangan) => pasangan[0] === kode);
         if (!kelompok) {
             kelompok = [kode, { courier_name: item?.courier_name || kode, opsi: [] }];
-            grup.push(kelompok);
+            grupEkspedisi.push(kelompok);
         }
         kelompok[1].opsi.push(item);
     });
+
+    const galatPilihan =
+        galatEkspedisi ??
+        form.errors?.shipping_service ??
+        form.errors?.shipping_courier ??
+        form.errors?.shipping_cost ??
+        null;
 
     const submit = (event) => {
         event.preventDefault();
@@ -469,8 +491,13 @@ export default function Checkout({ keranjang = null, prefill = null, pengiriman 
 
         if (!siapKirim) {
             gulirKe('judul-pengiriman', { fokus: false });
-            // design-v1.5 §1: setelah menggulir ke judul, fokuskan kontrol layanan bila ada.
-            if (!pilihan) document.getElementById('pilih-layanan')?.focus?.({ preventScroll: true });
+            // design-v1.6 §1.2: fokus ke kartu layanan pertama yang tersedia.
+            if (!pilihan) {
+                if (statusTarif === 'siap') setGalatEkspedisi('Pilih layanan pengiriman dulu.');
+                const radio = document.querySelector('input[name="shipping_service"]:not(:disabled)');
+                const aksi = document.querySelector('#cobaLagiTarif, a[href="/kontak-kami"]');
+                (radio ?? aksi)?.focus?.({ preventScroll: true });
+            }
             return;
         }
 
@@ -522,17 +549,27 @@ export default function Checkout({ keranjang = null, prefill = null, pengiriman 
                 : null
         : null;
 
+    /** Baris kecil di bawah ceklis (design-v1.6 §1.1). */
+    const helperGratis =
+        gratisAktif && gratisTerpenuhi
+            ? 'Gratis ongkir reguler aktif.'
+            : sisaGratis > 0 && pilihan
+              ? `Tambah ${rupiah(sisaGratis) ?? '-'} lagi untuk gratis ongkir reguler.`
+              : null;
+
     /** Alasan tombol nonaktif, tampil di bawah tombol (design-v1.2 §5.4). */
     const alasanTolak =
         !isEmpty && !modeFake && statusTarif === 'siap' && !pilihan ? 'Pilih layanan pengiriman dulu.' : null;
 
-    const ringkasan = (className, { tanpaCta = false } = {}) => (
+    const panelRingkasan = (className, { tanpaCta = false } = {}) => (
         <OrderSummary
             className={className}
             items={items}
             subtotal={keranjang?.subtotal ?? null}
+            discount={diskonNilai || null}
             shipping={biayaOngkir}
-            shippingText={pilihan?.gratis === true ? 'GRATIS' : ongkirFinal ? null : '—'}
+            shippingOriginal={ongkirAsli}
+            shippingCovered={ongkirDitanggung}
             shippingBadge={ongkirFinal && modeFake ? <Badge tone="warning">Tarif uji</Badge> : null}
             total={total}
             helper={helperRingkasan}
@@ -748,7 +785,7 @@ export default function Checkout({ keranjang = null, prefill = null, pengiriman 
                             {!galatKonfig && statusTarif === 'galat' && (
                                 <InlineNotice tone="error" className="mt-4" title="Tarif gagal dimuat.">
                                     {galatTarif ? <p>{galatTarif}</p> : null}
-                                    <Button variant="secondary" className="mt-3" onClick={cobaLagiTarif}>
+                                    <Button id="cobaLagiTarif" variant="secondary" className="mt-3" onClick={cobaLagiTarif}>
                                         Coba lagi
                                     </Button>
                                 </InlineNotice>
@@ -756,90 +793,114 @@ export default function Checkout({ keranjang = null, prefill = null, pengiriman 
 
                             {!galatKonfig && statusTarif === 'timeout' && (
                                 <InlineNotice tone="warning" className="mt-4" title="Tarif lama dimuat. Coba lagi.">
-                                    <Button variant="secondary" className="mt-3" onClick={cobaLagiTarif}>
+                                    <Button id="cobaLagiTarif" variant="secondary" className="mt-3" onClick={cobaLagiTarif}>
                                         Coba lagi
                                     </Button>
                                 </InlineNotice>
                             )}
 
-                            {!galatKonfig && statusTarif === 'kosong' && (
-                                <p className="mt-4 text-body text-ink-soft">
-                                    Belum ada layanan aktif untuk kode pos ini.{' '}
+                            {!galatKonfig &&
+                                (statusTarif === 'kosong' || (statusTarif === 'siap' && daftarEkspedisi.length === 0)) && (
+                                <InlineNotice tone="warning" className="mt-4" title="Tidak ada layanan untuk kode pos ini.">
                                     <Link href="/kontak-kami" className="underline underline-offset-4">
-                                        Hubungi penjual.
+                                        Hubungi penjual
                                     </Link>
-                                </p>
+                                </InlineNotice>
                             )}
 
-                            {!galatKonfig && statusTarif === 'siap' && opsi.length > 0 && (
-                                <div className="mt-4">
-                                    <Field
-                                        label="Pilih layanan pengiriman"
-                                        htmlFor="pilih-layanan"
-                                        hint={`Tarif untuk kode pos ${kodePosOpsi ?? '-'}`}
-                                    >
-                                        <Select
-                                            id="pilih-layanan"
-                                            aria-describedby="pilih-layanan-hint"
-                                            value={nilaiOpsi}
-                                            onChange={(event) => pilihOpsi(cariOpsi(event.target.value))}
-                                        >
-                                            <option value="" disabled>
-                                                Pilih layanan pengiriman
-                                            </option>
-                                            {grup.map(([kode, kelompok]) => (
-                                                <optgroup key={kode} label={kelompok.courier_name}>
+                            {!galatKonfig && statusTarif === 'siap' && daftarEkspedisi.length > 0 && (
+                                <fieldset
+                                    className="mt-4"
+                                    aria-labelledby="judul-pengiriman"
+                                    aria-describedby={galatPilihan ? 'galat-ekspedisi' : undefined}
+                                >
+                                    <legend className="sr-only">Pilih layanan pengiriman</legend>
+                                    <div className="flex flex-col gap-4">
+                                        {grupEkspedisi.map(([kode, kelompok]) => (
+                                            <div key={kode}>
+                                                <p className="mb-2 text-label text-slate-600">{kelompok.courier_name}</p>
+                                                <div className="grid gap-2 sm:grid-cols-2">
                                                     {kelompok.opsi.map((item) => {
-                                                        const nilai = `${item?.courier_code}|${item?.service_code}`;
+                                                        const aktif =
+                                                            pilihan?.courier_code === item?.courier_code &&
+                                                            pilihan?.service_code === item?.service_code;
+                                                        const harga = Number(item?.cost);
+                                                        const id = `pilih-layanan-${item?.courier_code ?? '-'}-${item?.service_code ?? '-'}`;
 
                                                         return (
-                                                            <option key={nilai} value={nilai}>
-                                                                {teksOpsi(item)}
-                                                            </option>
+                                                            <label
+                                                                key={`${item?.courier_code ?? '-'}|${item?.service_code ?? '-'}`}
+                                                                htmlFor={id}
+                                                                className={cn(
+                                                                    'relative flex min-h-[84px] cursor-pointer items-start gap-3 rounded-md border-2 bg-white p-3.5 transition-colors',
+                                                                    aktif ? 'border-brand bg-brand-100/40' : 'border-line hover:border-brand',
+                                                                    'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand has-[:focus-visible]:ring-offset-2 peer-focus-visible:ring-2 peer-focus-visible:ring-brand peer-focus-visible:ring-offset-2',
+                                                                )}
+                                                            >
+                                                                <input
+                                                                    type="radio"
+                                                                    id={id}
+                                                                    name="shipping_service"
+                                                                    value={`${item?.courier_code ?? '-'}|${item?.service_code ?? '-'}`}
+                                                                    checked={aktif}
+                                                                    aria-invalid={galatPilihan ? true : undefined}
+                                                                    onChange={() => pilihOpsi(item)}
+                                                                    className="peer sr-only"
+                                                                />
+                                                                <span
+                                                                    aria-hidden="true"
+                                                                    className={cn(
+                                                                        'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2',
+                                                                        aktif ? 'border-brand bg-brand' : 'border-slate-400 bg-white',
+                                                                    )}
+                                                                >
+                                                                    {aktif && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+                                                                </span>
+                                                                <span className="min-w-0 flex-1">
+                                                                    <span className="block truncate text-body font-semibold text-ink">
+                                                                        {item?.service_name || item?.service_code || '-'}
+                                                                    </span>
+                                                                    <span className="mt-0.5 block text-meta text-slate-600">
+                                                                        {item?.etd || 'Estimasi belum tersedia'}
+                                                                    </span>
+                                                                </span>
+                                                                <span className="shrink-0 text-right">
+                                                                    {item?.gratis === true ? (
+                                                                        <>
+                                                                            <span className="block text-label font-semibold text-success-strong">
+                                                                                GRATIS
+                                                                            </span>
+                                                                            {harga > 0 && (
+                                                                                <span className="block text-meta text-slate-600 line-through tabular-nums">
+                                                                                    {rupiah(harga)}
+                                                                                </span>
+                                                                            )}
+                                                                        </>
+                                                                    ) : (
+                                                                        <span className="block text-body font-semibold tabular-nums text-ink">
+                                                                            {rupiah(harga) ?? '—'}
+                                                                        </span>
+                                                                    )}
+                                                                </span>
+                                                            </label>
                                                         );
                                                     })}
-                                                </optgroup>
-                                            ))}
-                                        </Select>
-                                    </Field>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
 
-                                    {pilihan && (
-                                        <div className="mt-3" role="status" aria-live="polite">
-                                            <p className="text-body font-semibold text-ink">
-                                                {`${pilihan.courier_name ?? pilihan.courier_code ?? '-'} ${
-                                                    pilihan.service_name ?? pilihan.service_code ?? '-'
-                                                } · ${pilihan.etd ?? '—'}`}
-                                            </p>
-                                            <p className="mt-1 flex flex-wrap items-center gap-2 text-body">
-                                                <span
-                                                    className={
-                                                        pilihan.gratis ? 'font-semibold tabular-nums text-success-strong' : 'font-semibold tabular-nums text-ink'
-                                                    }
-                                                >
-                                                    {pilihan.gratis ? 'GRATIS' : (rupiah(pilihan.cost) ?? '-')}
-                                                </span>
-                                                {pilihan.is_regular === true && <Badge tone="brand">Reguler</Badge>}
-                                                {pilihan.gratis === true && <Badge tone="success">Gratis Ongkir</Badge>}
-                                            </p>
-                                            {gratisTerpenuhi && pilihan.is_regular !== true && (
-                                                <p className="mt-1 text-meta text-slate-500">Layanan ini tidak termasuk gratis ongkir.</p>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {gratisAktif && gratisTerpenuhi && (
-                                        <p className="mt-3 text-meta text-success-strong">Gratis ongkir reguler aktif.</p>
-                                    )}
-                                    {sisaGratis > 0 && pilihan && (
-                                        <p className="mt-3 text-meta tabular-nums text-slate-500">
-                                            Tambah {rupiah(sisaGratis) ?? '-'} lagi untuk gratis ongkir reguler.
+                                    {helperGratis && <p className="mt-3 text-meta text-slate-500">{helperGratis}</p>}
+                                    {galatPilihan && (
+                                        <p id="galat-ekspedisi" role="alert" className="mt-2 text-meta text-danger-strong">
+                                            {galatPilihan}
                                         </p>
                                     )}
-                                </div>
+                                </fieldset>
                             )}
                         </section>
 
-                        <div className="mt-6 lg:hidden">{ringkasan(null, { tanpaCta: true })}</div>
+                        <div className="mt-6 lg:hidden">{panelRingkasan(null, { tanpaCta: true })}</div>
 
                         <section className="card mt-6 p-6" aria-labelledby="judul-catatan">
                             <h2 id="judul-catatan" className="text-h3 text-ink">
@@ -884,7 +945,7 @@ export default function Checkout({ keranjang = null, prefill = null, pengiriman 
                         </div>
                     </form>
 
-                    <div className="hidden lg:col-span-5 lg:block">{ringkasan('lg:sticky lg:top-[88px]')}</div>
+                    <div className="hidden lg:col-span-5 lg:block">{panelRingkasan('lg:sticky lg:top-[88px]')}</div>
                 </div>
 
                 <p className="mt-4 text-meta text-slate-500">

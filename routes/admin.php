@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\FaqController;
 use App\Http\Controllers\Admin\MessageController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProductController;
+use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\ReviewController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\ShippingController;
@@ -41,6 +42,12 @@ Route::middleware('guest:admin')->group(function () {
 // Terlindungi: middleware `admin` (guard admin + akun aktif).
 Route::middleware('admin')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Laporan penjualan + unduhan Excel (kontrak props §14).
+    Route::get('/laporan', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/laporan/unduh', [ReportController::class, 'export'])
+        ->middleware('throttle:admin-write')
+        ->name('reports.export');
 
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 

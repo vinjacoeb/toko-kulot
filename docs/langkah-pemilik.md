@@ -601,3 +601,11 @@ sejak awal (probe tetap 200 karena body kosong), dan token tetap wajib untuk pay
    tarif dan tidak akan muncul.
 3. Tidak ada migrasi dan tidak ada nilai `.env` baru di v1.5.
 
+
+## v1.6 — ekstensi PHP untuk Excel & test (2 Nov 2026)
+
+1. Buka `C:\laragon\bin\php\php-8.3.32-Win32-vs16-x64\php.ini`, aktifkan (DLL sudah ada di folder `ext`):
+   - `extension=zip` — wajib untuk menulis `.xlsx`; tanpa ini `GET /admin/laporan/unduh` gagal 500.
+   - `extension=pdo_sqlite` dan `extension=sqlite3` — wajib agar feature test (SQLite memori) bisa jalan.
+2. Simpan, lalu restart Laragon (Apache + PHP CLI) dan cek `php -m`.
+3. `maatwebsite/excel:^3.1` sudah ada di `composer.json`/`composer.lock` tetapi dipasang dengan `--ignore-platform-req=ext-zip`. Setelah zip aktif, jalankan `composer install` biasa (tanpa flag) agar lock tervalidasi.

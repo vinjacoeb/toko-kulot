@@ -1,0 +1,17 @@
+Bukti techlead v1.7 — kartu t_f3049422 — 2026-11-02 16:04
+Skrip: probe-laporan2.php (memanggil ReportService::resolve + ringkasan langsung, tanpa HTTP)
+Perintah: php probe-laporan2.php
+
+DB: mysql / toko-kulot
+Tanggal server: 2026-11-02 16:04:24
+----------------------------------------------------------------------------
+periode=hari-ini       => filter=hari-ini   2026-11-02 s/d 2026-11-02 | pesanan=2 omzet=469600
+periode=7-hari         => filter=7-hari     2026-10-27 s/d 2026-11-02 | pesanan=2 omzet=469600
+periode=bulan-ini      => filter=bulan-ini  2026-11-01 s/d 2026-11-30 | pesanan=2 omzet=469600
+periode=kustom         => filter=kustom     2026-01-01 s/d 2026-12-31 | pesanan=9 omzet=3150100
+periode=periode-ngawur => filter=bulan-ini  2026-11-01 s/d 2026-11-30 | pesanan=2 omzet=469600
+periode=(kosong)       => filter=bulan-ini  2026-11-01 s/d 2026-11-30 | pesanan=2 omzet=469600
+
+Baca: filter.dari/sampai BERBEDA tiap periode -> pemetaan periode di server benar.
+omzet hari-ini = 7-hari = bulan-ini karena SEMUA pesanan berstatus omzet bertanggal 2026-11-02.
+kustom 2026-01-01..2026-12-31 = 9 pesanan -> ada 7 pesanan lama di luar 27 Okt-2 Nov.

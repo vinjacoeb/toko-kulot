@@ -1,0 +1,33 @@
+== semuaTanpaTarif
+    public function semuaTanpaTarif(array $services, ?string $alasan): array
+    {
+        return array_map(fn (array $service): array => [
+            'courier_code' => $service['courier_code'],
+            'courier_name' => $service['courier_name'],
+            'service_code' => $service['service_code'],
+            'service_name' => $service['service_name'],
+            'label' => $service['label'],
+            'etd' => null,
+            'cost' => null,
+            'is_regular' => $service['is_regular'],
+            'gratis' => false,
+            'tersedia' => $alasan === null ? null : false,
+            'alasan' => $alasan,
+        ], $services);
+    }
+== product show
+app/Http/Controllers/Admin/ProductController.php:30:    private const STOK_AKTIF = '(select coalesce(sum(product_variants.stock), 0) from product_variants'
+app/Http/Controllers/Admin/ProductController.php:31:        .' where product_variants.product_id = products.id and product_variants.is_active = 1)';
+app/Http/Controllers/Admin/ProductController.php:53:            ->withCount('variants as variant_count')
+app/Http/Controllers/Admin/ProductController.php:54:            ->withSum(['variants as stock' => fn ($variants) => $variants->where('is_active', true)], 'stock');
+app/Http/Controllers/Admin/ProductController.php:134:                'varian_total' => count($detail['variants']),
+app/Http/Controllers/Admin/ProductController.php:137:                    $detail['variants'],
+app/Http/Controllers/Admin/ProductController.php:236:            'variants',
+app/Http/Controllers/Admin/ProductController.php:239:        $variants = $product->variants
+app/Http/Controllers/Admin/ProductController.php:263:            'stock' => (int) $variants->where('is_active', true)->sum('stock'),
+app/Http/Controllers/Admin/ProductController.php:264:            'variant_count' => $variants->count(),
+app/Http/Controllers/Admin/ProductController.php:275:            'variants' => $variants->map(fn ($variant) => [
+app/Http/Controllers/Admin/StockController.php:64:                ->orderBy(Product::query()->select('name')->whereColumn('products.id', 'product_variants.product_id'))
+app/Http/Controllers/Admin/StockController.php:276:            ->join('products', 'products.id', '=', 'product_variants.product_id')
+app/Http/Controllers/Admin/StockController.php:278:            ->orderBy('product_variants.size')
+app/Http/Controllers/Admin/StockController.php:279:            ->orderBy('product_variants.id')

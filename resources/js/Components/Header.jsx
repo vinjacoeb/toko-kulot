@@ -232,13 +232,7 @@ export default function Header({
                                 <UserIcon size={20} />
                             </Link>
 
-                            {/* Pintu Daftar untuk tamu >= md — deviasi D14 (design.md §3.1/§11.3, kartu UIUX t_46901364; kartu t_e3f68f7f). */}
-                            <Link
-                                href="/register"
-                                className="hidden text-meta text-brand underline underline-offset-4 md:inline-flex"
-                            >
-                                Daftar
-                            </Link>
+                            
                         </>
                     )}
                 </div>

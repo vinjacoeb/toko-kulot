@@ -1,0 +1,39 @@
+271:    const updateKodePos = (value) => {
+272-        update('customer_postal_code', value);
+273-
+274-        if (value !== postal) {
+275-            setOpsi([]);
+276-            setSemua([]);
+277-            setPilihan(null);
+278-            setGalatTarif(null);
+279-            setGalatEkspedisi(null);
+280-            setStatusTarif('menunggu');
+281-            kosongkanKurir();
+282-        }
+283-    };
+284-
+285-    /**
+286-     * Tarif otomatis (design-v1.2 §5.3): jeda 600 ms setelah kode pos 5 angka + alamat ≥10 karakter,
+287-     * cache per kode pos, respons lama dibatalkan, batas tunggu 10 detik (S7).
+288-     */
+289-    useEffect(() => {
+--
+746:                                            onChange={(event) => updateKodePos(event.target.value.replace(/[^0-9]/g, ''))}
+747-                                        />
+748-                                    </Field>
+749-                                </div>
+750-                            </div>
+751-                        </section>
+752-
+753-                        <section className="card mt-6 p-6" aria-labelledby="judul-pengiriman">
+754-                            <div className="flex flex-wrap items-center justify-between gap-2">
+755-                                <h2 id="judul-pengiriman" className="text-h3 text-ink">
+756-                                    Pengiriman
+757-                                </h2>
+758-                                {modeFake ? <Badge tone="warning">Tarif uji</Badge> : <Badge tone="success">Tarif Biteship</Badge>}
+759-                            </div>
+760-
+761-                            <p className="mt-2 text-meta text-slate-500">
+762-                                {asal?.nama
+763-                                    ? `Dikirim dari ${asal.nama}${asal.kode_pos ? ` (${asal.kode_pos})` : ''}.`
+764-                                    : 'Asal pengiriman belum diatur penjual.'}

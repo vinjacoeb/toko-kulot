@@ -1,0 +1,13 @@
+108:        $ringkasan = ['total' => Order::query()->count()];
+111:            $ringkasan[$status] = (int) $perStatus->get($status, 0);
+132:            'ringkasan' => $ringkasan,
+268:        $ongkir = (int) $order->shipping_cost;
+269:        $ongkirAsli = $order->shipping_cost_original !== null
+270:            ? (int) $order->shipping_cost_original
+282:            'shipping_cost' => $ongkir,
+283:            'shipping_cost_original' => $ongkirAsli,
+284:            'discount' => (int) $order->discount,
+286:            'ringkasan' => [
+288:                'diskon' => (int) $order->discount,
+289:                'ongkir_asli' => $ongkirAsli,
+290:                'ongkir_ditanggung_toko' => $ongkirAsli === null ? 0 : max(0, $ongkirAsli - $ongkir),

@@ -1,0 +1,8 @@
+132:    const [throttle, setThrottle] = useState(null);
+153:    const [galatEkspedisi, setGalatEkspedisi] = useState(null);
+485:        galatEkspedisi ??
+571:    const alasanTolak =
+591:            note={tanpaCta ? null : alasanTolak ?? 'Pembayaran dipilih di langkah berikutnya.'}
+629:                {throttle && (
+631:                        <p>{throttle}</p>
+962:                                {alasanTolak ?? 'Pembayaran dipilih di langkah berikutnya.'}

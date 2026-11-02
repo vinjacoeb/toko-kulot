@@ -263,6 +263,13 @@ class OrderController extends Controller
     private function detail(Order $order, array $labels): array
     {
         $payment = $order->payment;
+        $shipping = $this->biteship->shippingInfoAdmin($order, $labels);
+        $metode = $this->midtrans->channelOf($payment);
+        $ongkir = (int) $order->shipping_cost;
+        $ongkirAsli = $order->shipping_cost_original !== null
+            ? (int) $order->shipping_cost_original
+            : ((bool) $order->shipping_is_free ? null : $ongkir);
+        $labelEkspedisi = trim((string) ($shipping['courier_name'] ?? '').' '.(string) ($shipping['service_name'] ?? ''));
 
         return [
             'id' => $order->id,
@@ -272,9 +279,33 @@ class OrderController extends Controller
             'payment_status' => $order->payment_status,
             'payment_label' => $this->paymentLabel($order->payment_status),
             'subtotal' => (int) $order->subtotal,
-            'shipping_cost' => (int) $order->shipping_cost,
+            'shipping_cost' => $ongkir,
+            'shipping_cost_original' => $ongkirAsli,
             'discount' => (int) $order->discount,
             'total' => (int) $order->total,
+            'ringkasan' => [
+                'subtotal' => (int) $order->subtotal,
+                'diskon' => (int) $order->discount,
+                'ongkir_asli' => $ongkirAsli,
+                'ongkir_ditanggung_toko' => $ongkirAsli === null ? 0 : max(0, $ongkirAsli - $ongkir),
+                'ongkir' => $ongkir,
+                'total' => (int) $order->total,
+                'metode_bayar' => [
+                    'id' => $metode['id'] ?? $order->payment_method,
+                    'label' => $metode['label'] ?? Order::paymentMethodLabel($order->payment_method),
+                    'grup' => $metode['grup'] ?? null,
+                ],
+                'ekspedisi' => [
+                    'courier_code' => $order->shipping_courier,
+                    'courier_name' => $shipping['courier_name'],
+                    'service_code' => $order->shipping_service,
+                    'service_name' => $shipping['service_name'],
+                    'label' => $labelEkspedisi !== '' ? $labelEkspedisi : null,
+                    'etd' => $shipping['etd'] ?? $order->shipping_etd,
+                    'tracking_number' => $order->tracking_number,
+                    'is_free' => (bool) $order->shipping_is_free,
+                ],
+            ],
             'payment_method' => $order->payment_method,
             'payment_method_label' => Order::paymentMethodLabel($order->payment_method),
             'notes' => $order->notes,
@@ -300,7 +331,7 @@ class OrderController extends Controller
                 ])
                 ->values()
                 ->all(),
-            'shipping' => $this->biteship->shippingInfoAdmin($order, $labels),
+            'shipping' => $shipping,
             'payment' => $payment === null ? null : $this->paymentRow($payment),
             'timeline' => [
                 'created_at' => $order->created_at?->toIso8601String(),

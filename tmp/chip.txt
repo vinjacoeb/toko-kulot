@@ -1,0 +1,2 @@
+resources/js/Components/ColorSwatch.jsx:11:export default function ColorSwatch({ name = 'Warna', hex = null, active = false, disabled = false, onClick = null, className = '' }) {
+resources/js/Components/VariantChip.jsx:8:export default function VariantChip({ label, active = false, disabled = false, onClick = null, className = '' }) {

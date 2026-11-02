@@ -16,7 +16,7 @@ import ReviewCard from '../../../Components/ReviewCard';
 import Skeleton from '../../../Components/Skeleton';
 import StarRating from '../../../Components/StarRating';
 import VariantChip from '../../../Components/VariantChip';
-import { formatNumber, rupiah } from '../../../lib/format';
+import { cn, formatNumber, rupiah } from '../../../lib/format';
 
 function uniqueBy(list, key) {
     const seen = new Set();
@@ -44,6 +44,45 @@ function varianTersedia(variant) {
     if (!variant || variant.is_active === false) return false;
     const stok = Number(variant.stock);
     return !Number.isFinite(stok) || stok > 0;
+}
+
+/** Stok angka: `null`/kosong/tidak sah → `null` (tersedia tanpa angka) — design-v1.6 §2.2. */
+function stokAngka(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const angka = Number(value);
+    return Number.isFinite(angka) ? angka : null;
+}
+
+/** Label ringkas tabel ketersediaan — design-v1.6 §2.3. */
+function labelStok(value) {
+    const angka = stokAngka(value);
+    if (angka === null) return 'Tersedia';
+    if (angka <= 0) return 'Habis';
+    if (angka <= 5) return `Sisa ${formatNumber(angka)}`;
+    return `Tersedia (${formatNumber(angka)})`;
+}
+
+function kelasStok(value) {
+    const angka = stokAngka(value);
+    if (angka === null) return 'text-slate-600';
+    if (angka <= 0) return 'text-danger-strong';
+    if (angka <= 5) return 'text-warning-strong';
+    return 'text-success-strong';
+}
+
+/** Teks lengkap baris tabel untuk pembaca layar — design-v1.6 §2.1/§2.3. */
+function teksLengkap(variant) {
+    const bagian = [
+        variant?.size ? `Ukuran ${variant.size}` : null,
+        variant?.color ? `warna ${variant.color}` : null,
+    ]
+        .filter(Boolean)
+        .join(' ');
+    const angka = stokAngka(variant?.stock);
+    const status =
+        angka === null ? 'stok tersedia' : angka <= 0 ? 'stok habis' : `stok ${formatNumber(angka)}`;
+
+    return `${bagian || 'Varian'}, ${status}.`;
 }
 
 /**
@@ -123,10 +162,15 @@ export default function ProductsShow({
     const [openSection, setOpenSection] = useState(null);
 
     useEffect(() => {
-        const ukuranTunggal = sizes.filter((variant) => varianTersedia(variant));
-        const warnaTunggal = colors.filter((variant) => varianTersedia(variant));
-        setSize(ukuranTunggal.length === 1 ? ukuranTunggal[0].size : null);
-        setColor(warnaTunggal.length === 1 ? warnaTunggal[0].color : null);
+        const ukuranTunggal = sizes.filter((variant) => ukuranAdaStok.has(variant.size));
+        const warnaTunggal = colors.filter((opsi) => warnaAdaStok.has(opsi.color));
+        const satuUkuran = ukuranTunggal.length === 1 ? ukuranTunggal[0].size : null;
+        const satuWarna = warnaTunggal.length === 1 ? warnaTunggal[0].color : null;
+        /** Penjaga design-v1.6 §2.1: jangan auto-pilih pasangan yang tidak punya varian. */
+        const pasanganMustahil =
+            satuUkuran !== null && satuWarna !== null && !kombinasiAda(satuUkuran, satuWarna);
+        setSize(pasanganMustahil ? null : satuUkuran);
+        setColor(pasanganMustahil ? null : satuWarna);
         setQty(1);
         setFormError(null);
         setOpenSection(null);
@@ -158,9 +202,32 @@ export default function ProductsShow({
     }, [variants, size, color, hasSize, hasColor]);
 
     const needsVariant = variants.length > 0 && !selectedVariant;
-    const stockValue = selectedVariant ? Number(selectedVariant.stock ?? 0) : Number(product?.stock ?? 0);
-    const soldOut = Number.isFinite(stockValue) && stockValue <= 0;
-    const maxQty = soldOut ? 1 : Math.min(stockValue > 0 ? stockValue : 99, 99);
+    const semuaVarianHabis = variants.length > 0 && !variants.some(varianTersedia);
+    const stockValue = stokAngka(selectedVariant ? selectedVariant.stock : product?.stock);
+    const soldOut = semuaVarianHabis || (stockValue !== null && stockValue <= 0);
+    const maxQty = soldOut ? 1 : Math.min(stockValue !== null && stockValue > 0 ? stockValue : 99, 99);
+
+    /** Saat varian berganti, qty lama tidak boleh melebihi stok varian baru. */
+    useEffect(() => {
+        setQty((nilai) => Math.min(nilai, maxQty));
+    }, [maxQty, selectedVariant?.id]);
+
+    /** Baris status stok terpilih — design-v1.6 §2.2. */
+    const statusStok = (() => {
+        if (semuaVarianHabis) return { teks: 'Semua varian habis stok.', kelas: 'text-danger-strong' };
+        if (variants.length > 0 && !selectedVariant) {
+            return {
+                teks: hasColor ? 'Pilih ukuran dan warna untuk melihat stok.' : 'Pilih ukuran untuk melihat stok.',
+                kelas: 'text-slate-600',
+            };
+        }
+        if (stockValue === null) return { teks: 'Stok: tersedia', kelas: 'text-success-strong' };
+        if (stockValue <= 0) return { teks: 'Stok habis', kelas: 'text-danger-strong' };
+        if (stockValue <= 5) {
+            return { teks: `Stok: sisa ${formatNumber(stockValue)}`, kelas: 'text-warning-strong' };
+        }
+        return { teks: `Stok: tersedia (${formatNumber(stockValue)})`, kelas: 'text-success-strong' };
+    })();
 
     const basePrice = Number(product?.base_price ?? 0) || 0;
     const priceDelta = Number(selectedVariant?.price_delta ?? 0) || 0;
@@ -377,11 +444,36 @@ export default function ProductsShow({
                             </div>
                         )}
 
-                        <p className={soldOut ? 'mt-4 text-meta text-danger-strong' : 'mt-4 text-meta text-success-strong'}>
-                            {soldOut
-                                ? 'Stok habis'
-                                : 'Stok: Tersedia' + (stockValue > 0 && stockValue < 100 ? ' (' + formatNumber(stockValue) + ')' : '')}
+                        <p className={cn('mt-4 text-meta', statusStok.kelas)} role="status" aria-live="polite">
+                            {statusStok.teks}
                         </p>
+
+                        {variants.length > 1 && (
+                            <div className="mt-4 rounded-md border border-line bg-surface p-3">
+                                <p className="text-label text-slate-600">Ketersediaan stok</p>
+                                <ul className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-2">
+                                    {variants.map((variant) => (
+                                        <li
+                                            key={variant.id}
+                                            className="flex items-baseline justify-between gap-2 text-meta"
+                                        >
+                                            <span className="min-w-0 truncate text-slate-600">
+                                                {[variant.size, variant.color].filter(Boolean).join(' · ')}
+                                                <span className="sr-only">{teksLengkap(variant)}</span>
+                                            </span>
+                                            <span
+                                                className={cn(
+                                                    'shrink-0 font-semibold tabular-nums',
+                                                    kelasStok(variant.stock)
+                                                )}
+                                            >
+                                                {labelStok(variant.stock)}
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
 
                         <div className="mt-5 flex flex-wrap items-center gap-3">
                             <span className="text-meta font-semibold text-ink">Jumlah</span>

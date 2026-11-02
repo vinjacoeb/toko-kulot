@@ -1,0 +1,25 @@
+401:    "gratis_aktif": true,
+402:    "gratis_min": 300000,
+421:- `shipping.gratis_aktif`/`gratis_min` = `settings.free_shipping_enabled`/`free_shipping_min`.
+473:    "ongkir_asli": null,
+483:        "label": "JNE REG", "is_regular": true, "tersedia": null, "cost": null, "etd": null, "gratis": false }
+491:    "gratis": { "aktif": true, "min": 300000, "subtotal": 340000, "terpenuhi": true },
+538:| `ongkir_asli`, `ongkir` | mode `api`: `null` sampai kurir dipilih (§7.12 `opsi`) — sebelum itu UI menampilkan `Dihitung saat checkout`; mode `fake`: tarif uji `settings.shipping_cost_default`. `ongkir` = biaya setelah gratis ongkir |
+539:| `ongkir_ditanggung_toko` | `max(0, ongkir_asli - ongkir)`; `0` selama ongkir belum diketahui |
+551:| `gratis` | `{aktif, min, subtotal, terpenuhi}` dari `settings.free_shipping_*` |
+858:  "gratis": { "aktif": true, "min": 300000, "terpenuhi": true },
+864:      "is_regular": true, "gratis": true, "tersedia": true
+872:      "is_regular": true, "gratis": true, "tersedia": true, "alasan": null
+878:      "is_regular": true, "gratis": false, "tersedia": false, "alasan": "Tidak tersedia di area anda."
+889:| `gratis.terpenuhi` | `gratis.aktif && subtotal >= gratis.min` (dipakai hanya untuk `is_regular` di §7.6) |
+892:| `opsi[].gratis` | `true` bila `gratis.terpenuhi && is_regular` — `cost` tetap tarif asli; frontend menampilkan `GRATIS` dan mengirim `shipping_cost: 0` |
+922:(`shipping_cost` dari frontend hanya pembanding; layanan gratis dihitung 0). Bila layanan tidak
+923:ada atau `shipping_cost` kiriman ≠ tarif server (setelah gratis) → `flash.error` =
+1479:| `kurir.daftar[]` | gabungan layanan Biteship dengan `settings.shipping_couriers` (aktif/reguler per layanan). `is_regular` = layanan reguler (boleh gratis ongkir), `is_active` = ditampilkan di checkout. `etd` = estimasi dari Biteship (`null` bila kosong); dropdown layanan memakai kode + nama + `etd` |
+1495:| `free_shipping_enabled` | wajib, boolean | `Nilai gratis ongkir tidak valid.` |
+1496:| `free_shipping_min` | wajib, integer, min 0, maks 100000000 | `Minimal belanja gratis ongkir tidak valid.` |
+1874:    "subtotal": 170000, "shipping_cost": 5000, "shipping_cost_original": 5000, "discount": 0, "total": 175000,
+1876:      "subtotal": 170000, "diskon": 0, "ongkir_asli": 5000, "ongkir_ditanggung_toko": 0,
+1925:| `shipping_cost_original` | tarif kurir **sebelum** gratis ongkir (`orders.shipping_cost_original`); `null` untuk pesanan lama, atau bila gratis ongkir tanpa tarif asli tersimpan. `shipping_cost` tetap biaya yang ditagih |
+1926:| `ringkasan` | bentuk sama §7.5: `ongkir_asli` = `shipping_cost_original` (fallback `shipping_cost` bila bukan gratis; `null` bila gratis tanpa nilai asli), `ongkir_ditanggung_toko` = `max(0, ongkir_asli - shipping_cost)`, `diskon` = `orders.discount`, `metode_bayar` = `payment.metode` (fallback `payment_method` + label), `ekspedisi` = ringkasan `shipping` + `tracking_number` |
+2256:- `Ongkir Asli` = `orders.shipping_cost_original` (snapshot tarif kurir sebelum gratis ongkir, diisi `OrderService` saat order dibuat). Order lama yang kolomnya kosong memakai `orders.shipping_payload.price` (angka), lalu `orders.shipping_cost`. `Ongkir Ditanggung Toko` = `max(0, ongkir_asli - shipping_cost)`. Lihat `docs/asumsi.md` v1.6: tarif asli pesanan gratis-ongkir lama tidak tersimpan.

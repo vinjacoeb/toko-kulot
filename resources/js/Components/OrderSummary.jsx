@@ -13,12 +13,16 @@ import Button from './Button';
  * `shippingBadge` = badge di samping nominal; `helper` = penjelas di bawah total;
  * `ctaLabel` null = ringkasan tanpa tombol (varian mobile di atas Catatan).
  * `items` = `keranjang.items` (§7.0), hanya dirender bila diberikan.
+ * `discount`/`shippingOriginal`/`shippingCovered` = rincian biaya design-v1.6 §4.
  */
 export default function OrderSummary({
     items = null,
     subtotal = null,
     shipping = null,
     total = null,
+    discount = null,
+    shippingOriginal = null,
+    shippingCovered = null,
     shippingText = null,
     shippingBadge = null,
     totalLabel = 'Total',
@@ -36,6 +40,17 @@ export default function OrderSummary({
     const row = 'flex items-baseline justify-between gap-4';
     const teksOngkir = typeof shippingText === 'string' && shippingText.trim() !== '' ? shippingText : null;
     const daftarItem = Array.isArray(items) ? items : [];
+    const angka = (nilai) => {
+        if (nilai === null || nilai === undefined || nilai === '') return null;
+        const hasil = Number(nilai);
+        return Number.isFinite(hasil) ? hasil : null;
+    };
+    const ongkir = angka(shipping);
+    const asli = angka(shippingOriginal);
+    const potongan = angka(discount) ?? 0;
+    const gratis = ongkir === 0 && ((asli ?? 0) > 0 || (angka(shippingCovered) ?? 0) > 0);
+    const ditanggung = gratis ? (angka(shippingCovered) ?? Math.max(0, (asli ?? 0) - ongkir)) : 0;
+
 
     return (
         <section className={cn('card p-6', className)} aria-label="Ringkasan pesanan">
@@ -73,12 +88,43 @@ export default function OrderSummary({
                     <dt className="text-body text-ink-soft">Subtotal</dt>
                     <dd className="text-body text-ink tabular-nums">{rupiah(subtotal) ?? '-'}</dd>
                 </div>
+                {potongan > 0 && (
+                    <div className={row}>
+                        <dt className="text-body text-ink-soft">Diskon</dt>
+                        <dd className="text-body font-semibold text-success-strong tabular-nums">
+                            {`−${rupiah(potongan) ?? '-'}`}
+                        </dd>
+                    </div>
+                )}
                 <div className={row}>
                     <dt className="text-body text-ink-soft">Ongkir</dt>
-                    <dd className="flex items-baseline justify-end gap-2 text-body text-ink">
-                        <span className="whitespace-nowrap tabular-nums" aria-live="polite">
-                            {teksOngkir ?? rupiah(shipping) ?? '-'}
-                        </span>
+                    <dd className="flex items-baseline justify-end gap-2 text-body text-ink" aria-live="polite">
+                        {teksOngkir ? (
+                            <span className="whitespace-nowrap tabular-nums">{teksOngkir}</span>
+                        ) : gratis ? (
+                            <>
+                                <span aria-hidden="true" className="flex flex-col items-end gap-0.5">
+                                    <span className="flex items-baseline gap-2">
+                                        <span className="font-semibold text-success-strong">GRATIS</span>
+                                        {(asli ?? 0) > 0 && (
+                                            <span className="text-meta text-slate-600 line-through tabular-nums">
+                                                {rupiah(asli)}
+                                            </span>
+                                        )}
+                                    </span>
+                                    {ditanggung > 0 && (
+                                        <span className="text-meta font-normal text-success-strong">
+                                            {`Ditanggung toko: ${rupiah(ditanggung)}`}
+                                        </span>
+                                    )}
+                                </span>
+                                <span className="sr-only">{`Ongkir ${rupiah(asli ?? ditanggung) ?? '-'} ditanggung toko.`}</span>
+                            </>
+                        ) : ongkir === null ? (
+                            <span className="text-meta font-normal text-slate-600">Dihitung saat checkout</span>
+                        ) : (
+                            <span className="whitespace-nowrap tabular-nums">{rupiah(ongkir) ?? '-'}</span>
+                        )}
                         {shippingBadge}
                     </dd>
                 </div>

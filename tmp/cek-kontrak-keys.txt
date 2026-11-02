@@ -1,0 +1,17 @@
+== CheckoutController keys
+117:            'semua' => $this->biteship->semuaTanpaTarif($this->biteship->services(true), null),
+123:            $payload['semua'] = $this->biteship->semuaTanpaTarif($this->biteship->services(true), $payload['galat']);
+135:        $payload['semua'] = $result['semua'];
+468:            'diskon' => 0,
+469:            'ongkir_asli' => $asli,
+470:            'ongkir_ditanggung_toko' => $asli === null ? 0 : max(0, $asli - (int) $ongkir),
+474:            'ekspedisi' => $this->biteship->semuaTanpaTarif($this->biteship->services(true), null),
+== HistoryController
+18: * Halaman hanya membaca pesanan milik user login (tanpa filter dari klien) dan
+49:        // ikut filter `?status=` (kontrak §13).
+56:        $ringkasan = ['total' => (int) $perStatus->sum()];
+59:            $ringkasan[$namaStatus] = (int) $perStatus->get($namaStatus, 0);
+77:            'ringkasan' => $ringkasan,
+78:            'filter' => ['status' => $status],
+170:            ->filter(fn ($id) => $id !== null)
+== Product show variants

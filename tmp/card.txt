@@ -1,0 +1,8 @@
+Implementasi UI sesuai spec UIUX dan props backend. Jangan ubah backend, jangan pakai data karangan, jangan panggil endpoint tak terdokumentasi.
+
+1. /produk/nama-produk: tampilkan ketersediaan stok per varian. XL tersedia -> 'masih ada stok'; L warna merah tersedia; L warna hijau habis -> tandai habis dan blokir pemilihan/tambah keranjang.
+2. /checkout dan /admin/pesanan/detail: ringkasan pesanan tampilkan semua info (subtotal, diskon, ongkir asli, ongkir ditanggung toko, total). Saat gratis ongkir aktif, ongkir asli tetap tampil dicoret (strikethrough) plus label ditanggung toko. Jangan hanya menampilkan 'Gratis'.
+3. /checkout pilih ekspedisi: ganti dropdown jadi pilihan bercentang (radio card) sesuai desain UIUX. Semua ekspedisi aktif tampil; yang tidak tersedia untuk area user tampil disabled dengan label 'Tidak tersedia di area anda' dan tidak bisa dipilih.
+4. Riwayat status pesanan: ganti filter dropdown jadi TABS.
+
+Acceptance: semua state (loading, kosong, error, disabled) tertangani, aksesibilitas tab dan disabled state benar, responsif mobile, tidak ada regresi form checkout.

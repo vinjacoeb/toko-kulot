@@ -1,0 +1,47 @@
+Bukti perbaikan QA-1 (t_5d26759a) — nilai 0 hilang jadi sel kosong di xlsx Laporan
+Tanggal: 2026-11-02 16:33 (dev lokal)
+
+Perubahan: `Maatwebsite\Excel\Concerns\WithStrictNullComparison` ditambahkan pada
+- app/Exports/PesananSheet.php
+- app/Exports/DetailItemSheet.php
+- app/Exports/StokSheet.php
+- app/Exports/RingkasanSheet.php
+
+1. php -l (4 berkas)
+   No syntax errors detected in app/Exports/PesananSheet.php
+   No syntax errors detected in app/Exports/DetailItemSheet.php
+   No syntax errors detected in app/Exports/StokSheet.php
+   No syntax errors detected in app/Exports/RingkasanSheet.php
+
+2. PHPUnit
+   PHP_INI_SCAN_DIR=".../profiles/qatesting/cache/scratch/phpini" php vendor/phpunit/phpunit/phpunit --filter='Report|Laporan'
+   PHPUnit 11.5.57, Runtime PHP 8.3.32, config phpunit.xml (DB sqlite :memory:)
+   OK (5 tests, 63 assertions)
+
+3. xlsx nyata (data dev, periode=bulan-ini, 2026-11-01 sd 2026-11-30, 13324 byte)
+   Dibuat lewat jalur kode yang sama dengan ReportController::export
+   (App\Exports\LaporanExport + ReportService::resolve('bulan-ini'), Excel::raw XLSX)
+   karena unduhan HTTP butuh kredensial admin dan server pemilik tidak disentuh.
+   Isi xlsx dibaca langsung dari xl/worksheets/sheetN.xml:
+
+   Sheet "Stok" (sheet4) baris 3:
+     A3 BJU-TDR-KCG-XL-HJU
+     B3 baju tidur pola kucing
+     C3 XL / Hijau
+     D3 0                <-- sebelumnya <kosong>
+     E3 Habis
+
+   Sheet "Pesanan" (sheet2) baris 2:
+     G2 0                <-- Diskon, sebelumnya <kosong>
+     I2 48000            <-- Ongkir Ditanggung Toko
+     K2 <kosong>         <-- Resi null: tetap kosong (null tidak ikut ditulis)
+
+   Sheet "Ringkasan" (sheet1) baris 8 (label "Total diskon"):
+     ['9', '0']          <-- label sharedString #9, nilai 0 (sebelumnya <kosong>)
+     (baris 4-7: omzet 469600, jumlah pesanan 2, rata-rata 234800, ongkir 15500)
+
+   Catatan: nomor baris Ringkasan mengikuti perbaikan QA-2 (baris kosong tidak lagi
+   dipakai), jadi "Total diskon" = B8 pada data dev ini dan nilainya 0.
+
+Kesimpulan: 0 tertulis sebagai angka; null tetap sel kosong. Regresi tidak ditemukan
+pada 5 test laporan.

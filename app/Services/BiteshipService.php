@@ -330,7 +330,7 @@ class BiteshipService
      * Daftar opsi ongkir untuk checkout (kontrak §7.12).
      *
      * @param  list<array{name: string, value: int, quantity: int, weight: int}>  $items
-     * @return array{mode: string, opsi: list<array<string, mixed>>, galat: ?string}
+     * @return array{mode: string, opsi: list<array<string, mixed>>, semua: list<array<string, mixed>>, galat: ?string}
      */
     public function rates(string $postalCode, array $items, int $subtotal): array
     {
@@ -338,10 +338,12 @@ class BiteshipService
 
         if ($this->isFake()) {
             $rate = $this->fakeRate();
+            $opsi = array_map(fn (array $s): array => $this->option($s, $rate, '1-2 hari', $subtotal), $services);
 
             return [
                 'mode' => 'fake',
-                'opsi' => array_map(fn (array $s): array => $this->option($s, $rate, '1-2 hari', $subtotal), $services),
+                'opsi' => $opsi,
+                'semua' => $opsi,
                 'galat' => null,
             ];
         }
@@ -349,17 +351,27 @@ class BiteshipService
         $origin = trim((string) $this->settings->get('shipping_origin_postal_code', ''));
 
         if (! preg_match('/^\d{5}$/', $origin)) {
+            $galat = 'Kode pos asal toko belum diatur. Lengkapi di halaman Ekspedisi.';
+
             return [
                 'mode' => 'api',
                 'opsi' => [],
-                'galat' => 'Kode pos asal toko belum diatur. Lengkapi di halaman Ekspedisi.',
+                'semua' => $this->semuaTanpaTarif($services, $galat),
+                'galat' => $galat,
             ];
         }
 
         $kurang = $this->originMasalah();
 
         if ($kurang !== []) {
-            return ['mode' => 'api', 'opsi' => [], 'galat' => $this->pesanAsalBelumLengkap($kurang)];
+            $galat = $this->pesanAsalBelumLengkap($kurang);
+
+            return [
+                'mode' => 'api',
+                'opsi' => [],
+                'semua' => $this->semuaTanpaTarif($services, $galat),
+                'galat' => $galat,
+            ];
         }
 
         $body = [
@@ -381,7 +393,7 @@ class BiteshipService
                 'destination_postal_code' => (int) $postalCode,
             ]);
 
-            return ['mode' => 'api', 'opsi' => [], 'galat' => self::GALAT_API];
+            return ['mode' => 'api', 'opsi' => [], 'semua' => $this->semuaTanpaTarif($services, self::GALAT_API), 'galat' => self::GALAT_API];
         }
 
         $pricing = $response->successful() ? $response->json('pricing') : null;
@@ -391,11 +403,13 @@ class BiteshipService
                 'origin_postal_code' => (int) $origin,
                 'destination_postal_code' => (int) $postalCode,
             ]);
+            $galat = $this->pesanGalat((int) $response->json('code'), $response->json('error'));
 
             return [
                 'mode' => 'api',
                 'opsi' => [],
-                'galat' => $this->pesanGalat((int) $response->json('code'), $response->json('error')),
+                'semua' => $this->semuaTanpaTarif($services, $galat),
+                'galat' => $galat,
             ];
         }
 
@@ -415,6 +429,7 @@ class BiteshipService
         }
 
         $options = [];
+        $semua = [];
         $tanpaTarif = [];
 
         foreach ($services as $service) {
@@ -422,11 +437,14 @@ class BiteshipService
 
             if ($quote === null) {
                 $tanpaTarif[] = $service['courier_code'].':'.$service['service_code'];
+                array_push($semua, ...$this->semuaTanpaTarif([$service], 'Tidak tersedia di area anda.'));
 
                 continue;
             }
 
-            $options[] = $this->option($service, $quote['cost'], $quote['etd'], $subtotal);
+            $option = $this->option($service, $quote['cost'], $quote['etd'], $subtotal);
+            $options[] = $option;
+            $semua[] = $option;
         }
 
         if ($tanpaTarif !== []) {
@@ -436,6 +454,7 @@ class BiteshipService
         return [
             'mode' => 'api',
             'opsi' => $options,
+            'semua' => $semua,
             'galat' => $options === [] ? self::GALAT_TANPA_KURIR : null,
         ];
     }
@@ -1121,7 +1140,32 @@ class BiteshipService
             'cost' => $cost,
             'is_regular' => $service['is_regular'],
             'gratis' => $service['is_regular'] && $gratis['aktif'] && $subtotal >= $gratis['min'],
+            'tersedia' => true,
         ];
+    }
+
+    /**
+     * Baris `semua` untuk layanan tanpa tarif (kontrak §7.12): bentuk sama, tanpa biaya.
+     * `$alasan` null = tarif belum dicek (`tersedia` null).
+     *
+     * @param  list<array{courier_code: string, courier_name: string, service_code: string, service_name: string, label: string, is_regular: bool, is_active: bool}>  $services
+     * @return list<array<string, mixed>>
+     */
+    public function semuaTanpaTarif(array $services, ?string $alasan): array
+    {
+        return array_map(fn (array $service): array => [
+            'courier_code' => $service['courier_code'],
+            'courier_name' => $service['courier_name'],
+            'service_code' => $service['service_code'],
+            'service_name' => $service['service_name'],
+            'label' => $service['label'],
+            'etd' => null,
+            'cost' => null,
+            'is_regular' => $service['is_regular'],
+            'gratis' => false,
+            'tersedia' => $alasan === null ? null : false,
+            'alasan' => $alasan,
+        ], $services);
     }
 
     /**

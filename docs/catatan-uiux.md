@@ -193,3 +193,59 @@ Sumber: `docs/brief-v1.3-uiux.md` + `docs/PRD-v1.3.md` §2.6. Keluaran: **`docs/
   menunggu, tapi jangan mengarang key.
 - **QA** memakai §5 sebagai matriks uji: 6 keadaan (belum ada webhook, `picked`, `delivered`,
   retur/gagal, selisih ongkir, payload kosong) × 4 tempat.
+
+---
+
+## U8 — Revisi 1.6: ceklis ekspedisi, stok per varian, tab status (kartu `t_e191f163`, 2 Nov 2026)
+
+### Keputusan
+
+1. **Dropdown v1.5 dibatalkan untuk dua kontrol.** Pemilik meminta semua pilihan terlihat sekaligus:
+   ekspedisi menjadi kartu radio (fieldset/legend, satu `name`) dan riwayat menjadi tab. Dokumen
+   `docs/design-v1.5.md` §1/§4 diberi banner superseded; §2–§3 tetap.
+2. **Layanan tidak tersedia tetap tampil.** `ringkasan.ekspedisi` adalah daftar semua layanan aktif;
+   `opsi` hanya yang punya tarif. Kartu tanpa tarif dirender `disabled` + "Tidak tersedia di area
+   anda", bukan dihilangkan — supaya pembeli tahu layanan itu ada tetapi tidak menjangkau alamatnya.
+3. **Stok tetap dinilai per nilai (perilaku existing dipertahankan), stok per kombinasi hanya
+   dilaporkan.** Chip ukuran/warna `disabled` bila tidak ada varian aktif berstok untuk nilai itu
+   (warna/ukuran apa pun) — jangan diubah, itu perbaikan bug "ukuran & warna tak bisa dipilih"
+   (`Show.jsx:94-123`). Bila nilai terpilih tidak punya kombinasi dengan facet lain, efek existing
+   `setColor(null)`/`setSize(null)` (`Show.jsx:139`, `Show.jsx:146`) **dipertahankan**, bukan
+   dihapus; satu penjaga baru hanya untuk kasus auto-pilih ganda yang mustahil (§2.1). Stok per
+   kombinasi dibaca pembeli lewat baris `role="status"` + tabel ketersediaan (§2.2–§2.3).
+4. **Hitungan tab dari `ringkasan` global**, bukan hasil filter. Status berjumlah 0 tetap tampil,
+   sehingga tab menjadi peta lengkap riwayat; tab kosong menjelaskan status itu memang tidak ada.
+5. **Ringkasan biaya** menampilkan `GRATIS` + harga asli tercoret + "Ditanggung toko" bila
+   `ongkir_ditanggung_toko > 0`; tanpa perubahan bentuk data checkout.
+
+### Verifikasi yang dijalankan
+
+- `wc -l -c docs/design-v1.6.md` — jumlah baris/bait dicatat di bawah.
+- `grep -n "Tidak tersedia di area anda" docs/design-v1.6.md` — copy beku muncul di keadaan tarif dan
+  alasan kartu.
+- `grep -n "role=\"tablist\"\|role=\"tab\"\|aria-selected\|aria-controls" docs/design-v1.6.md` —
+  semantik tab lengkap.
+- `git diff --stat` — hanya dokumen yang berubah; **tidak ada** kode aplikasi, token, atau dependency.
+- Tidak menjalankan `npm run build`: nol kode diubah (sama seperti U6/U7).
+
+### Koreksi (2 Nov 2026, run 269)
+
+- Keputusan 3 sebelumnya salah menulis efek `setColor(null)`/`setSize(null)` "dihapus". Kode aktual
+  `resources/js/Pages/Public/Products/Show.jsx:139` dan `:146` justru melepas facet lain; §2.1
+  design-v1.6 sejak awal menyuruh **mempertahankan**. Catatan diselaraskan dengan kode, bukan kode
+  diubah.
+- Kontras §6 dihitung ulang dari nilai hex aktual: slate-600 `#475569` 7,00:1 di surface `#F6F6F4`
+  (6,26:1 di brand-100); success-strong `#166534` 6,59:1; warning-strong `#92400E` 6,55:1;
+  danger-strong `#991B1B` 7,68:1. Semua ≥ 4,5:1.
+- Status kontrak §7.5/§7.12 dicek di `docs/kontrak-props.md:845`: masih **DRAFT** (`t_36a48cac`),
+  bukan sudah mendarat. §7 handoff diperbaiki + jalur fallback (jangan menyusun ceklis dari `opsi[]`).
+
+### Serah terima
+
+- **Frontend `t_0fb421af`** mengerjakan §1–§4; jangan menunggu backend bila kontrak §7.5/§7.12 sudah
+  ada. Bila belum, tampilkan keadaan "menunggu" — jangan mengarang layanan/tarif.
+- **Backend `t_36a48cac`** wajib mempertahankan semua layanan aktif di `ringkasan.ekspedisi` dan
+  mengirim `opsi` hanya untuk yang punya tarif; `diskon`/`ongkir_ditanggung_toko` konsisten.
+- **QA `t_2aea6b13`** memakai §5 matriks keadaan + §6 butir verifikasi (360 px, keyboard tab/radio,
+  `aria-busy`, gratis ongkir, kombinasi habis).
+

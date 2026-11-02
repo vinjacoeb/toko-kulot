@@ -120,7 +120,7 @@ export default function Register({ settings = null, flash = null }) {
           htmlFor="register-address"
           required
           error={errors.address}
-          hint="Tulis jalan, nomor rumah, RT/RW, dan kelurahan."
+          hint="Tulis alamat lengkap."
         >
           <Textarea
             id="register-address"
@@ -135,11 +135,10 @@ export default function Register({ settings = null, flash = null }) {
         </Field>
 
         <Field
-          label="Kota"
+          label="Kota/Kabupaten"
           htmlFor="register-city"
           required
           error={errors.city}
-          hint="Kota/kabupaten pengiriman."
         >
           <Input
             id="register-city"
@@ -158,7 +157,6 @@ export default function Register({ settings = null, flash = null }) {
           htmlFor="register-postal-code"
           required
           error={errors.postal_code}
-          hint="5 angka, dipakai untuk menghitung ongkir."
         >
           <Input
             id="register-postal-code"

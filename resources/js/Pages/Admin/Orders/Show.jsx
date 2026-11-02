@@ -52,6 +52,9 @@ export default function Show({ pesanan = null, flash = null }) {
     const data = pesanan ?? {};
     const customer = data.customer ?? {};
     const items = Array.isArray(data.items) ? data.items : [];
+    /** Ringkasan gratis ongkir (design-v1.6 §4): asli dicoret, tanggungan hanya bila > 0. */
+    const ongkirAsli = data.ringkasan?.ongkir_asli ?? null;
+    const ongkirDitanggung = Number(data.ringkasan?.ongkir_ditanggung_toko ?? 0) || 0;
 
     const [toast, setToast] = useState(null);
     const [flashAksi, setFlashAksi] = useState(null);
@@ -185,10 +188,28 @@ export default function Show({ pesanan = null, flash = null }) {
                             />
 
                             <dl className="flex flex-col gap-2 border-t border-line pt-4 sm:ml-auto sm:w-72">
-                                {barisTotal('Subtotal', uang(data.subtotal), 'subtotal')}
-                                {barisTotal('Ongkos kirim', uang(data.shipping_cost), 'ongkir')}
-                                {barisTotal('Diskon', uang(data.discount), 'diskon')}
-                                {barisTotal('Total', uang(data.total), 'total', true)}
+                                {barisTotal('Subtotal', uang(data.ringkasan?.subtotal ?? data.subtotal), 'subtotal')}
+                                {(Number(data.ringkasan?.diskon ?? data.discount) || 0) > 0 &&
+                                    barisTotal(
+                                        'Diskon',
+                                        '−' + uang(data.ringkasan?.diskon ?? data.discount),
+                                        'diskon'
+                                    )}
+                                {barisTotal(
+                                    'Ongkir asli',
+                                    ongkirAsli === null ? (
+                                        '—'
+                                    ) : (
+                                        <span className={cn(ongkirDitanggung > 0 && 'text-slate-600 line-through')}>
+                                            {uang(ongkirAsli)}
+                                        </span>
+                                    ),
+                                    'ongkir-asli'
+                                )}
+                                {ongkirDitanggung > 0 &&
+                                    barisTotal('Ditanggung toko', uang(ongkirDitanggung), 'ongkir-ditanggung')}
+                                {barisTotal('Ongkir ditagih', uang(data.ringkasan?.ongkir ?? data.shipping_cost), 'ongkir')}
+                                {barisTotal('Total', uang(data.ringkasan?.total ?? data.total), 'total', true)}
                             </dl>
                         </KartuBagian>
 

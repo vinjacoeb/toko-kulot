@@ -385,7 +385,8 @@ ringkasan keranjang di props halaman memakai key **`keranjang`**, bukan `cart`.
       "line_total": 340000,
       "stock": 12,
       "image": "/images/seed/produk/daster-batik-pekalongan-1.png",
-      "is_active": true
+      "is_active": true,
+      "tersedia": true
     }
   ],
   "count": 4,
@@ -410,6 +411,8 @@ ringkasan keranjang di props halaman memakai key **`keranjang`**, bukan `cart`.
 - `image` = gambar utama (`product_images.is_primary`), bentuk path absolut (§3), `null` bila tidak ada.
 - `stock` = stok varian saat ini (0 bila tanpa varian).
 - `is_active` = `products.is_active` dan `product_variants.is_active`.
+- `tersedia` = `is_active` **dan** `stock >= qty` (stok varian saat ini). `false` = item tidak dapat
+  dibayar sampai qty diperbarui/dihapus; `POST /checkout` menolak dengan `Stok {nama varian} tersisa {n}. Perbarui keranjang.`
 - `shipping.mode` = `"api"` bila `BITESHIP_API_KEY` terisi, `"fake"` bila kosong (§7.12).
 - `shipping_cost`: angka `settings.shipping_cost_default` saat `mode = "fake"`; **`null`** saat `mode = "api"`,
   karena ongkir baru diketahui setelah kode pos diisi (§7.12). `total` = `subtotal` + (`shipping_cost` ?? 0).
@@ -464,6 +467,22 @@ Akses: `auth:web` (guest → redirect `login` + `intended`). Keranjang kosong �
 ```json
 {
   "keranjang": { "...": "bentuk §7.0" },
+  "ringkasan": {
+    "subtotal": 340000,
+    "diskon": 0,
+    "ongkir_asli": null,
+    "ongkir_ditanggung_toko": 0,
+    "ongkir": null,
+    "total": 340000,
+    "metode_bayar": [
+      { "id": "qris", "label": "QRIS (GoPay, OVO, DANA, m-banking)", "grup": "qris" },
+      { "id": "bca_va", "label": "Transfer BCA Virtual Account", "grup": "va" }
+    ],
+    "ekspedisi": [
+      { "courier_code": "jne", "courier_name": "JNE", "service_code": "reg", "service_name": "REG",
+        "label": "JNE REG", "is_regular": true, "tersedia": null, "cost": null, "etd": null, "gratis": false }
+    ]
+  },
   "pengiriman": {
     "mode": "api",
     "key_terisi": true,
@@ -510,6 +529,16 @@ Akses: `auth:web` (guest → redirect `login` + `intended`). Keranjang kosong �
 `customer_phone` = `users.phone`, `customer_address` = `users.address`, `customer_city` = `users.city`,
 `customer_postal_code` = `users.postal_code`, `note` selalu `null`. Kolom profil yang kosong (user
 lama yang mendaftar sebelum v1.2) dikirim `null` dan diisi pembeli di form.
+
+`ringkasan` = ringkasan biaya siap tampil (dipakai juga §12.17):
+
+| Key | Isi |
+|---|---|
+| `subtotal`, `total`, `diskon` | integer dari `keranjang`; `diskon` = `0` (belum ada fitur diskon) |
+| `ongkir_asli`, `ongkir` | mode `api`: `null` sampai kurir dipilih (§7.12 `opsi`) — sebelum itu UI menampilkan `Dihitung saat checkout`; mode `fake`: tarif uji `settings.shipping_cost_default`. `ongkir` = biaya setelah gratis ongkir |
+| `ongkir_ditanggung_toko` | `max(0, ongkir_asli - ongkir)`; `0` selama ongkir belum diketahui |
+| `metode_bayar` | daftar sama dengan `pembayaran.kanal` (`id`, `label`, `grup`) untuk blok ringkasan |
+| `ekspedisi` | semua layanan aktif `settings.shipping_couriers`; `tersedia`/`cost`/`etd` `null` sebelum cek kode pos, lalu diganti bentuk `semua` §7.12 |
 
 `pengiriman` menjelaskan ongkir sebelum pembeli menekan **Cek Ongkir** (§7.12):
 
@@ -812,6 +841,8 @@ Akses: publik, **di luar CSRF**, tanpa sesi. Body = payload Midtrans (JSON/form)
 | §7.0 + §7.12 — **aturan** `berat_gram`/`shipping.berat_gram`: tanpa minimum 500 g, fallback 300 g/unit; galat baru "asal kirim belum lengkap" sebelum API tarif | **DRAFT** (26 Okt 2026, kartu `t_3a264fac`, PRD-v1.4 §2) | FE checkout, QA |
 | §7.5–§7.7a, §7.8, §7.8a, §7.10, §7.11, §7.13 — Midtrans **Core API 8 kanal** (ganti Snap): `pembayaran.metode`/`instruksi`/`kanal`, rute `POST …/bayar/metode`, `order_id_midtrans` berakhiran `-2`/`-3`, kanal id di `payments.payment_type`, `GET /midtrans/selesai` | **LOCKED** ditulis 24 Okt 2026 (kartu `t_66e507a3`, PRD-v1.2 §2) | FE halaman bayar, QA |
 | §6.2 + field `address`/`city`/`postal_code` di register, dan §7.5 — **sumber nilai** `prefill` (bukan bentuk respons): kini dari `users.address/city/postal_code`, bukan `null` | **DRAFT** (24 Okt 2026, kartu `t_09738dd5`, PRD-v1.2 §3) | FE register + checkout, QA |
+| §7.0 — key **baru** `items[].tersedia` (`is_active && stock >= qty`) agar keranjang dapat menandai item yang tidak bisa dibayar | **DRAFT** (2 Nov 2026, kartu `t_36a48cac`, PRD-v1.5 F4) | FE `Public/Cart`, QA |
+| §7.5 + §7.12 — blok **baru** `ringkasan` (subtotal, diskon, ongkir asli/ditanggung, total, metode bayar, ekspedisi), `opsi[].tersedia`, dan daftar **baru** `semua[]` (semua layanan aktif + `tersedia`/`alasan`) | **DRAFT** (2 Nov 2026, kartu `t_36a48cac`, PRD-v1.5 F4) | FE checkout, QA |
 
 ### 7.12 `GET /checkout/ongkir` — name `checkout.shipping` (JSON)
 
@@ -830,7 +861,21 @@ Query: `postal_code` (wajib, digits 5) — kode pos tujuan.
       "courier_code": "jne", "courier_name": "JNE",
       "service_code": "reg", "service_name": "REG",
       "label": "JNE REG", "etd": "2-3 hari", "cost": 18000,
-      "is_regular": true, "gratis": true
+      "is_regular": true, "gratis": true, "tersedia": true
+    }
+  ],
+  "semua": [
+    {
+      "courier_code": "jne", "courier_name": "JNE",
+      "service_code": "reg", "service_name": "REG",
+      "label": "JNE REG", "etd": "2-3 hari", "cost": 18000,
+      "is_regular": true, "gratis": true, "tersedia": true, "alasan": null
+    },
+    {
+      "courier_code": "sicepat", "courier_name": "SiCepat",
+      "service_code": "reg", "service_name": "REG",
+      "label": "SiCepat REG", "etd": null, "cost": null,
+      "is_regular": true, "gratis": false, "tersedia": false, "alasan": "Tidak tersedia di area anda."
     }
   ],
   "galat": null
@@ -846,6 +891,11 @@ Query: `postal_code` (wajib, digits 5) — kode pos tujuan.
 | `opsi[].cost` | tarif server (Biteship). Mode `fake`: `settings.shipping_cost_default` untuk semua opsi |
 | `opsi[].gratis` | `true` bila `gratis.terpenuhi && is_regular` — `cost` tetap tarif asli; frontend menampilkan `GRATIS` dan mengirim `shipping_cost: 0` |
 | `opsi[].etd` | rentang hari dari Biteship, `null` bila tidak ada |
+| `opsi[].tersedia` | selalu `true` — `opsi` hanya memuat layanan yang punya tarif |
+| `semua[]` | **semua** layanan aktif `settings.shipping_couriers` (bukan hanya yang bertarif), urutan sama `opsi`; bentuk sama `opsi[]` + `alasan`. Dipakai checklist ekspedisi agar layanan tanpa tarif tetap tampil |
+| `semua[].tersedia` | `true` bila punya tarif; `false` bila tidak ada tarif untuk kode pos itu (`cost`/`etd` `null`) atau cek tarif gagal — UI menonaktifkan baris dan menampilkan `alasan` |
+| `semua[].alasan` | `Tidak tersedia di area anda.` untuk layanan tanpa tarif; pesan `galat` saat cek tarif gagal seluruhnya; `null` bila tersedia |
+| `semua` saat keranjang kosong | tetap berisi layanan aktif dengan `tersedia: false` dan `alasan` = `Keranjang masih kosong.` |
 | `galat` | kalimat siap tampil bila Biteship gagal; `opsi: []` dan order tidak bisa dibuat dengan tarif tebakan. Nilainya mengikuti kode error rates Biteship (tabel di bawah) |
 
 Galat: keranjang kosong → 422 `Keranjang masih kosong.`; `postal_code` tidak valid → 422
@@ -1821,7 +1871,15 @@ Urut `created_at` turun.
   "pesanan": {
     "id": 5, "code": "TK-20261020-0001", "status": "dibayar", "status_label": "Dibayar",
     "payment_status": "settlement", "payment_label": "Lunas",
-    "subtotal": 170000, "shipping_cost": 5000, "discount": 0, "total": 175000,
+    "subtotal": 170000, "shipping_cost": 5000, "shipping_cost_original": 5000, "discount": 0, "total": 175000,
+    "ringkasan": {
+      "subtotal": 170000, "diskon": 0, "ongkir_asli": 5000, "ongkir_ditanggung_toko": 0,
+      "ongkir": 5000, "total": 175000,
+      "metode_bayar": {"id": "qris", "label": "QRIS", "grup": "qris"},
+      "ekspedisi": {"courier_code": "jne", "courier_name": "JNE", "service_code": "reg",
+                    "service_name": "REG", "label": "JNE REG", "etd": "2-3 hari",
+                    "tracking_number": "JX1234567890", "is_free": false}
+    },
     "payment_method": "qris", "payment_method_label": "QRIS", "notes": null,
     "tracking_number": "JX1234567890", "mode_uji": false,
     "customer": {"name": "…", "phone": "…", "email": "…", "address": "…", "city": "…", "postal_code": "…"},
@@ -1864,6 +1922,8 @@ Status pesanan **tidak bisa diubah manual**: hanya Midtrans (settlement → `dib
 | `payment.instruksi` | bentuk §7.7 — semua key selalu ada, yang tidak relevan `null`; `null` bila kanal belum dipilih |
 | `payment.payment_type` | id kanal mentah (mis. `bca_va`) untuk keperluan debug; **bukan** label tampilan |
 | `payment.fake` | `true` bila tagihan uji (`MidtransService::isFakeCharge()`), dipakai badge `Mode uji` panel pembayaran |
+| `shipping_cost_original` | tarif kurir **sebelum** gratis ongkir (`orders.shipping_cost_original`); `null` untuk pesanan lama, atau bila gratis ongkir tanpa tarif asli tersimpan. `shipping_cost` tetap biaya yang ditagih |
+| `ringkasan` | bentuk sama §7.5: `ongkir_asli` = `shipping_cost_original` (fallback `shipping_cost` bila bukan gratis; `null` bila gratis tanpa nilai asli), `ongkir_ditanggung_toko` = `max(0, ongkir_asli - shipping_cost)`, `diskon` = `orders.discount`, `metode_bayar` = `payment.metode` (fallback `payment_method` + label), `ekspedisi` = ringkasan `shipping` + `tracking_number` |
 | `shipping` | selalu ada (bukan `null`); field tanpa data = `null` — sumber `orders.shipping_*`, `tracking_number`, `biteship_order_id`, `shipping_status` |
 | `shipping.courier_name`, `shipping.service_name` | nama layanan tersimpan; fallback kode mentah huruf besar; `null` bila kosong (pesanan lama tanpa kurir) |
 | `shipping.status_label` | label Indonesia `BiteshipService::shippingLabel()`; `null` bila `status` null |
@@ -2138,3 +2198,63 @@ Galat: tidak ada input tulis; kesalahan validasi tidak ada. Tamu → 302 `/login
 | §12.17 + §13 — **revisi aditif v1.4** `shipping.events` (`{status,label,at}`, terbaru dulu, maks 50) dan `timeline.completed_at` di §13 (PRD-v1.4 §4.1–§4.2) | **DRAFT** (26 Okt 2026, kartu `t_f51f8c36`) | FE `Public/History`, `Public/CheckoutSuccess`, QA |
 | §12.17 — **klarifikasi** `shipping.tindakan`: pesan status kurir tanpa `Periksa pesanan dan ubah status bila perlu.` (QA-14-03, F12 v1.4). Teks berubah, bentuk key tetap | **DRAFT** (26 Okt 2026, kartu `t_4eb06cea`) | FE `Admin/Orders/Show`, QA |
 | §13 + §7.9 — **revisi aditif v1.5**: query `?status=` (nilai sah `Order::STATUS_FLOW` + `batal`, asing diabaikan), prop `filter {status}`, `orders.links` `withQueryString()`, dan `timeline` 4 kunci di `pesanan` halaman selesai. `ringkasan` tetap global; key lama tidak berubah | **DRAFT** (26 Okt 2026, kartu `t_8216e843`) | FE `Public/History`, `Public/CheckoutSuccess`, QA v1.5 |
+
+---
+
+# 14. Admin — Laporan (v1.6)
+
+Kartu `t_113b1793`. Gaya: props halaman Inertia + unduhan langsung. Halaman `Admin/Laporan`.
+
+## 14.1 Halaman Laporan
+
+- **Rute**: `GET /admin/laporan`, name `admin.reports.index`.
+- **Akses**: admin (middleware grup admin, sama seperti `/admin/dashboard`).
+- **Query**: `periode` (`hari-ini` | `7-hari` | `bulan-ini` | `kustom`, bawaan `bulan-ini`), `dari`, `sampai` (`YYYY-MM-DD`, hanya dipakai saat `periode=kustom`). Nilai asing / tanggal tidak sah / `dari > sampai` **diabaikan** lalu jatuh ke `bulan-ini` (tidak 422) supaya perpindahan tab tidak memutus halaman.
+- **Props**:
+
+```json
+{
+  "filter": { "periode": "bulan-ini", "dari": "2026-11-01", "sampai": "2026-11-30" },
+  "ringkasan": {
+    "omzet": 1500000,
+    "jumlah_pesanan": 12,
+    "rata_rata": 125000,
+    "total_ongkir": 180000,
+    "total_diskon": 50000,
+    "produk_terlaris": [
+      { "nama": "Daster Kulot Lengan Panjang", "qty": 9, "omzet": 1125000 }
+    ]
+  }
+}
+```
+
+- `filter.dari` / `filter.sampai` adalah rentang yang **sudah diselesaikan server** (inklusif, zona `Asia/Jakarta`), juga untuk `hari-ini`/`7-hari`/`bulan-ini`.
+- `ringkasan` hanya menghitung pesanan berstatus `Order::REVENUE_STATUSES` (`dibayar`, `diproses`, `dikirim`, `selesai`) — pesanan `pending`/`batal` tidak menambah omzet. *Klarifikasi 2 Nov 2026 (techlead `t_5251c307`): nilai konstanta nyata berbahasa Indonesia; perilaku & test sudah sesuai, hanya penulisan kontrak yang diperbaiki.*
+- `rata_rata` = pembulatan `omzet / jumlah_pesanan` (0 bila tidak ada pesanan).
+- `produk_terlaris` maks 5 baris, urut qty desc, hanya dari pesanan berstatus omzet. `nama` memakai snapshot `order_items.product_name`.
+- Semua uang integer rupiah; tidak ada string angka.
+
+## 14.2 Unduh Excel
+
+- **Rute**: `GET /admin/laporan/unduh`, name `admin.reports.export`. Query sama dengan §14.1.
+- **Akses**: admin. Respons `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, `Content-Disposition: attachment; filename="laporan-YYYY-MM-DD_sd_YYYY-MM-DD.xlsx"`.
+- **Validasi** (`ReportFilterRequest`, hanya di rute ini): `periode` wajib & salah satu nilai sah; `dari`/`sampai` wajib saat `periode=kustom`, format `Y-m-d`, `sampai >= dari`. Gagal → redirect balik + `errors` (tidak mengunduh berkas kosong). Pesan:
+  - `periode.required` — "Pilih periode laporan."
+  - `periode.in` — "Periode laporan tidak dikenal."
+  - `dari.required_if` — "Tanggal awal wajib diisi untuk periode kustom."
+  - `sampai.required_if` — "Tanggal akhir wajib diisi untuk periode kustom."
+  - `sampai.after_or_equal` — "Tanggal akhir tidak boleh sebelum tanggal awal."
+- **Isi workbook** (4 sheet, urutan tetap):
+
+| Sheet | Kolom | Cakupan |
+|---|---|---|
+| `Ringkasan` | judul, periode, omzet, jumlah pesanan, rata-rata, total ongkir, total diskon, lalu blok produk terlaris (nama, qty, omzet) | hanya status omzet |
+| `Pesanan` | No Order, Tanggal, Pembeli, Status, Metode Bayar, Subtotal, Diskon, Ongkir Asli, Ongkir Ditanggung Toko, Total, Resi | **semua** status pada periode |
+| `Detail Item` | No Order, Tanggal, Produk, Varian, Qty, Harga, Subtotal | semua status pada periode |
+| `Stok` | SKU, Produk, Varian, Stok Akhir, Status | seluruh varian saat ini |
+
+- `Ongkir Asli` = `orders.shipping_cost_original` (snapshot tarif kurir sebelum gratis ongkir, diisi `OrderService` saat order dibuat). Order lama yang kolomnya kosong memakai `orders.shipping_payload.price` (angka), lalu `orders.shipping_cost`. `Ongkir Ditanggung Toko` = `max(0, ongkir_asli - shipping_cost)`. Lihat `docs/asumsi.md` v1.6: tarif asli pesanan gratis-ongkir lama tidak tersimpan.
+- `Status` pesanan memakai label `Order::statusLabel()`; `Metode Bayar` memakai label `payment_type` dari relasi `payment`, fallback `orders.payment_method`.
+- Angka uang diformat `"Rp" #,##0`, qty `#,##0`, lebar kolom eksplisit. Query diekspor lewat `FromQuery` (chunk bawaan paket), bukan `get()` sekaligus.
+
+**Status §14: LOCKED** (2 Nov 2026, kartu `t_113b1793`) — dipakai FE halaman `Admin/Laporan` + tombol unduh Dashboard. Perubahan berikutnya wajib lewat komentar kartu FE dan kartu perbaikan.

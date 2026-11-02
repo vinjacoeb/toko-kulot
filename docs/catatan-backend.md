@@ -2160,3 +2160,80 @@ Hasil verifikasi (dijalankan):
 
 Catatan: `timeline` di halaman selesai hanya diuji lewat HTTP + Inertia; tampilan (ikon/urutan node)
 milik kartu frontend F2.
+
+## v1.6 — /admin/laporan + export Excel (kartu t_113b1793, 2 Nov 2026)
+
+Rencana (maks 10 baris):
+1. `maatwebsite/excel` 3.1 sudah terpasang (via `--ignore-platform-req=ext-zip`; ext-zip belum aktif).
+2. Tulis kontrak `docs/kontrak-props.md` §14 (DRAFT) lebih dulu.
+3. Berkas: `ReportService`, `LaporanExport` + 4 sheet, `ReportController`, `ReportFilterRequest`, rute `admin.reports.*`, halaman `Admin/Laporan.jsx`, pintasan sidebar + Dashboard.
+4. Omzet = `Order::REVENUE_STATUSES`; sheet Pesanan & Detail Item memuat semua status pada periode.
+5. Ongkir asli: `shipping_cost_original` (bila kelak ada) → `shipping_payload.price` → `shipping_cost`.
+6. Verifikasi: feature test SQLite memori, generate workbook sungguhan (cek 4 sheet), `npm run build`.
+
+### Hasil verifikasi (2 Nov 2026)
+
+- `php -l` bersih untuk seluruh berkas baru (`ReportService`, 5 kelas export, `ReportController`, `ReportFilterRequest`, test).
+- `vendor/bin/phpunit --filter=AdminReportTest` → **OK (5 tests, 63 assertions)**. Perintah dijalankan dengan `php -d extension=zip -d extension=pdo_sqlite -d extension=sqlite3` karena `zip` dan `pdo_sqlite` belum aktif di php.ini (lihat `docs/langkah-pemilik.md` v1.6). Test memakai SQLite memori (`phpunit.xml`).
+- Workbook sungguhan diperiksa test: nama 4 sheet `Ringkasan, Pesanan, Detail Item, Stok`, judul A1, isi baris pesanan (termasuk pesanan `pending` di sheet Pesanan), dan unduhan menolak `periode=kustom` tanpa tanggal.
+- `php artisan route:list --name=reports` → `admin.reports.index`, `admin.reports.export` terdaftar; limiter `admin-write` ada di `AppServiceProvider`.
+- `npm run build` sukses (halaman `Admin/Laporan.jsx`, sidebar, tombol Dashboard).
+- Catatan teknis: `WithColumnFormatting` dengan rentang `F2:J100000` membuat PhpSpreadsheet mengalokasikan 500 ribu sel dan OOM 512 MB. Diganti `WithEvents` + `AfterSheet` yang memformat hanya `2..getHighestRow()`; perbaikan yang sama untuk Detail Item dan Stok.
+- `LaporanExport::sheets()` tidak memakai key array sebagai nama sheet; judul dipasang lewat `WithTitle` di tiap kelas sheet.
+- Belum dijalankan: uji beban dataset besar (hanya chunk bawaan `FromQuery`), dan uji manual di browser — server dijalankan pemilik.
+
+## v1.6 — anti-overselling keranjang + ringkasan checkout lengkap (kartu t_36a48cac, 2 Nov 2026)
+
+Rencana (maks 10 baris):
+1. Kontrak dulu: §7.0 `items[].tersedia`, §7.5 blok `ringkasan` + `opsi[].tersedia`/`semua[]`, §12.17 `ringkasan` + `shipping_cost_original`.
+2. Anti-overselling: varian dikunci `lockForUpdate()` di dalam `DB::transaction` (`OrderService::lockLines`), stok dipotong `StockService::decreaseForSale` (menolak stok negatif) sebelum order dikembalikan.
+3. Keranjang: `CartService::summary` mengirim `stock` terkini + `tersedia = is_active && stock >= qty`.
+4. Ringkasan: `CheckoutController::ringkasanPayload` (subtotal, diskon, ongkir asli, ongkir ditanggung toko, total, kanal bayar, semua ekspedisi) dan `Admin\OrderController::detail` bentuk sama.
+5. Migrasi baru `2026_11_02_000001_add_shipping_cost_original_to_orders_table` (nullable) + `Order::$fillable`/casts.
+6. Berkas: `CheckoutController`, `CartService`, `OrderService`, `Admin/OrderController`, `Order`, migrasi, `docs/db.md`, `docs/kontrak-props.md`, `tests/Feature/Checkout/OversellingTest.php`.
+
+Hasil:
+- `shipping_cost_original` diisi `resolveShipping()` dari tarif quote Biteship sebelum gratis ongkir (`original`), termasuk mode fake. `OrderService` mencatatnya ke log tarif sebagai `cost_original`.
+- `POST /checkout` untuk stok terakhir: pesanan pertama memotong stok ke 0, pesanan kedua ditolak `CheckoutException` dengan pesan `Stok L / Merah tersisa 0. Perbarui keranjang.` (flash `error`, redirect `checkout.index`). Tidak ada stok minus; hanya satu `stock_movements` tipe `sale`.
+- `GET /checkout` kini mengirim `ringkasan` (bentuk kontrak §7.5); `ongkir` dipotong gratis ongkir walau `ongkir_asli` tetap tarif penuh. Mode API: `ongkir_asli`/`ongkir` `null` sampai kurir dipilih.
+- `GET /admin/pesanan/{order}` mengirim `shipping_cost_original` + `ringkasan` (subtotal, diskon, ongkir asli, ditanggung toko, ongkir, total, `metode_bayar` dari `MidtransService::channelOf`, `ekspedisi` dari `shippingInfoAdmin` + resi).
+- `GET /keranjang` (dan props keranjang lain) memuat `items[].tersedia` untuk menandai item yang tidak bisa dibayar.
+
+Verifikasi:
+- `php -d extension=pdo_sqlite vendor/bin/phpunit --filter OversellingTest` → OK (4 tests, 80 assertions).
+- `php -d extension=pdo_sqlite vendor/bin/phpunit tests/Feature/Checkout tests/Feature/Admin/AdminSalesTest.php tests/Feature/Admin/AdminAutoResiTest.php tests/Feature/Admin/AdminSyncPaymentTest.php` → OK (149 tests, 1466 assertions).
+- `php artisan migrate:status` → `2026_11_02_000001_add_shipping_cost_original_to_orders_table` **[5] Ran** di DB lokal pemilik.
+- Catatan lingkungan: `pdo_sqlite`/`zip` masih nonaktif di `php.ini` Laragon; test dijalankan dengan flag `-d extension=pdo_sqlite` (tanpa mengubah `php.ini`/`.env`). `artisan test` tidak meneruskan flag itu, jadi pakai `vendor/bin/phpunit` langsung.
+- Belum dicek: uji paralel dua request sungguhan di MySQL (test SQLite mengabaikan `FOR UPDATE`); perilaku lock mengandalkan transaksi InnoDB. Frontend `Public/Cart`/`Public/Checkout`/`Admin/Orders/Show` perlu memakai key baru (kartu FE).
+
+## v1.7 — perbaikan QA-2 gaya/format/freeze sheet Ringkasan (kartu t_bd735037, 2 Nov 2026)
+
+Rencana (maks 10 baris):
+1. Pilih opsi 1 di kartu: samakan konstanta dengan baris nyata (bukan hitung dinamis dari label).
+2. Hapus dua baris pemisah `[]` di `RingkasanSheet::array()` — writer `Sheet::toArray` memakai `flatMap` sehingga baris kosong hilang; setelah dihapus indeks array = nomor baris.
+3. Konstanta: `HEADER_RINGKASAN=3`, data ringkasan `4..8`, `HEADER_PRODUK=9`, data produk mulai `10`, `freezePane('A4')`.
+4. Format: `B4` rupiah, `B5` qty, `B6:B8` rupiah, `B10..` qty, `C10..` rupiah (batas bawah dari `getHighestRow()`).
+5. Tidak menyentuh `SheetStyle`, sheet Pesanan/Detail Item/Stok, `.env`, migrasi/seed.
+6. Berkas: `app/Exports/RingkasanSheet.php`, `tests/Feature/Admin/AdminReportTest.php`, `docs/bukti-ringkasan-t_bd735037.txt`.
+
+Hasil:
+- xlsx dirender ulang dari DB dev (bulan ini, omzet 469600, 2 pesanan) via `Excel::raw(LaporanExport)`; XML dibedah: `A3/B3`, `A9/B9/C9` navy `FF1F2A5E` tebal tanpa number format; `B4` `"Rp" #,##0` + zebra, `B5` `#,##0`, `B6:B8` rupiah; `B9` General (tidak rupiah); `A10/B10/C10` zebra `FFF6F6F4`, `B10` qty, `C10` rupiah; pane `ySplit=3 topLeftCell=A4`. Sheet lain tetap `ySplit=1 topLeftCell=A2`. Rincian: `docs/bukti-ringkasan-t_bd735037.txt`.
+- Periode tanpa penjualan (kustom 2020-01) juga dicek: header baris 3 & 9 tetap ber-style, nilai `0` tampil (efek `WithStrictNullComparison`), pane `A4`; baris notice `Belum ada penjualan...` tetap kena border/zebra kosong (kosmetik, sama seperti perilaku sebelumnya).
+- Test regresi ditambahkan di `AdminReportTest::test_unduh_menghasilkan_empat_sheet`: posisi label, `getFreezePane()='A4'`, tinggi header 22, warna header, format `B4/B5/B6/B8/B9/B10/C10`, zebra baris 10.
+- Verifikasi: `php -l app/Exports/RingkasanSheet.php` bersih; `php vendor/phpunit/phpunit/phpunit --filter='Report|Laporan'` → OK (5 tests, 81 assertions) dengan `PHP_INI_SCAN_DIR` profil qatesting.
+- Catatan kolisi: saat patch pertama, `RingkasanSheet.php` sudah memuat perbaikan QA-1 (`WithStrictNullComparison`, kartu t_5d26759a). Patch saya sempat menghapus interface itu dari deklarasi class; sudah dipulihkan dan diverifikasi (import baris 10, class baris 19). Dua kartu menulis berkas yang sama — periksa ulang isi berkas sebelum patch berikutnya.
+- Belum dijalankan: unduh lewat HTTP server (server milik pemilik); bukti memakai kernel artisan yang sama dengan `Excel::download`.
+
+## t_5d26759a — QA-1 nilai 0 jadi sel kosong di xlsx Laporan
+
+Rencana: pasang `WithStrictNullComparison` pada 4 sheet export; tanpa ubah mapping/nilai.
+Berkas disentuh: `app/Exports/{PesananSheet,DetailItemSheet,StokSheet,RingkasanSheet}.php`.
+
+Hasil:
+- `Sheet::append()` memakai perbandingan longgar (`0 != null` = false) sehingga 0 dilewati; marker `WithStrictNullComparison` membuat `hasStrictNullComparison()` true dan 0 ikut ditulis. Null tetap sel kosong (dibuktikan `Pesanan!K2`).
+- Kontrak props tidak berubah (bentuk data export sama, hanya isi sel). `docs/kontrak-props.md` tidak diubah.
+- Bukti: `docs/bukti-backend-qa1-t_5d26759a.txt` — `Stok!D3=0`, `Pesanan!G2=0`, `Ringkasan!B8=0`, `Pesanan!K2` kosong (null).
+- `php -l` 4 berkas bersih; `phpunit --filter='Report|Laporan'` → OK (5 tests, 63 assertions), DB sqlite `:memory:`.
+- Unduhan HTTP tidak dijalankan (butuh kredensial admin + server pemilik); xlsx dibuat lewat jalur kode `ReportController::export` (`LaporanExport` + `Excel::raw`) dengan data dev, jadi isi sel setara.
+- Belum dicek: render visual Excel/LibreOffice; test otomatis yang mengunci sel 0 belum ada (kandidat test regresi bila kartu QA berikutnya menyentuh export lagi).
+- Catatan kerja: `RingkasanSheet.php` juga sedang diubah pekerja QA-2 (nomor baris), edit QA-1 digabung ke versi terbarunya — konstanta baris di berkas itu bukan hasil kartu ini.

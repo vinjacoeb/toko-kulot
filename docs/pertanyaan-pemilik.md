@@ -168,3 +168,10 @@ pertimbangkan rotasi kunci produksi di dashboard Midtrans.
 |---|---|---|---|
 | P18 | Pesan *"Webhook URL doesn't respond with ok response"* | Bukan salah isian form dan bukan tunnel mati: probe instalasi Biteship (body kosong, kadang GET) dijawab 422/405 oleh kode. Perbaikan kode di kartu `t_f09907b0` (`docs/bukti-webhook-install-t_7584d46c.txt`). Setelah kartu itu selesai: ulangi "Tambah Webhook" dengan URL yang sama. | Webhook tidak terdaftar; status kirim/resi tidak pernah masuk sendiri. |
 | P19 | `.env` belum bisa diisi | Yang wajib ada sebelum webhook dipakai: `BITESHIP_WEBHOOK_TOKEN` (teks acak panjang, jangan ditempel di kartu/chat), `APP_DEBUG=false`, dan `php artisan migrate` (kolom `orders.shipping_updated_at`/`shipping_webhook_payload`, migrasi `000005`). Tanpa migrasi, event asli pertama dibalas 500. | Webhook terbuka tanpa token (siapa pun bisa mengubah status pesanan) atau 500 saat event nyata masuk. |
+
+## 11. Revisi v1.7 — filter Laporan & tampilan Excel (kartu `t_f3049422`, 2 Nov 2026)
+
+| # | Hal | Yang perlu diputuskan / dilakukan pemilik | Dampak bila tidak |
+|---|---|---|---|
+| P20 | Angka filter periode tidak berubah | Bukan bukti filter rusak: seluruh pesanan berstatus omzet di DB ber-tanggal 2 Nov 2026 (`docs/bukti-techlead-v1.7-t_f3049422.txt`). Setelah kartu `t_c085eb76` selesai, uji dengan rentang yang memuat pesanan lama (mis. Kustom 1 Okt – 31 Okt) — angkanya harus berbeda dari "Hari ini". | Filter dianggap rusak padahal data uji hanya hari ini. |
+| P21 | Urutan/isi sheet Excel | Gaya baru tidak mengubah kolom; bila pemilik ingin kolom lain ditambah/diurutkan, itu permintaan terpisah (bukan v1.7). | Perubahan lingkup di tengah revisi. |

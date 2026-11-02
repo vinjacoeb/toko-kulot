@@ -1,0 +1,58 @@
+Bukti QA-2 v1.7 (kartu t_bd735037) — 2026-11-02 16:34 SEAST
+Sumber: app/Exports/RingkasanSheet.php (dipulihkan ke baris nyata; WithStrictNullComparison QA-1 tetap).
+xlsx dirender via Excel::raw(LaporanExport, bulan-ini) dari DB dev, bukan server.
+
+sheets: ['Ringkasan', 'Pesanan', 'Detail Item', 'Stok']
+ringkasan part: worksheets/sheet1.xml
+pane: {'xSplit': None, 'ySplit': '3', 'topLeftCell': 'A4', 'state': 'frozen'}
+--- isi A/B/C baris 1..12 ---
+A1='Laporan Penjualan Toko Daster Kulot' | B1=None | C1=None
+A2='Periode' | B2='1 November 2026 – 30 November 2026' | C2=None
+A3='Ringkasan' | B3='Nilai' | C3=None
+A4='Omzet (pesanan dibayar selesai)' | B4='469600' | C4=None
+A5='Jumlah pesanan' | B5='2' | C5=None
+A6='Rata-rata nilai pesanan' | B6='234800' | C6=None
+A7='Total ongkir' | B7='15500' | C7=None
+A8='Total diskon' | B8='0' | C8=None
+A9='Produk terlaris' | B9='Qty' | C9='Omzet'
+A10='baju tidur pola kucing' | B10='6' | C10='454000'
+A11='Setelan Kulot Linen Lengan Panjang' | B11='1' | C11='100'
+A12=None | B12=None | C12=None
+PASS A3 header navy tebal, tanpa number format khusus :: {'code': 'General', 'fill': 'FF1F2A5E', 'bold': True, 'font_rgb': 'FFFFFFFF'}
+PASS B3 header navy tebal, tanpa number format khusus :: {'code': 'General', 'fill': 'FF1F2A5E', 'bold': True, 'font_rgb': 'FFFFFFFF'}
+PASS A9 header navy tebal, tanpa number format khusus :: {'code': 'General', 'fill': 'FF1F2A5E', 'bold': True, 'font_rgb': 'FFFFFFFF'}
+PASS B9 header navy tebal, tanpa number format khusus :: {'code': 'General', 'fill': 'FF1F2A5E', 'bold': True, 'font_rgb': 'FFFFFFFF'}
+PASS C9 header navy tebal, tanpa number format khusus :: {'code': 'General', 'fill': 'FF1F2A5E', 'bold': True, 'font_rgb': 'FFFFFFFF'}
+PASS B4 omzet rupiah :: {'code': '"Rp" #,##0', 'fill': 'FFF6F6F4', 'bold': False, 'font_rgb': 'FF000000'}
+PASS B5 jumlah pesanan qty :: {'code': '#,##0', 'fill': None, 'bold': False, 'font_rgb': 'FF000000'}
+PASS B6 rupiah :: {'code': '"Rp" #,##0', 'fill': 'FFF6F6F4', 'bold': False, 'font_rgb': 'FF000000'}
+PASS B7 rupiah :: {'code': '"Rp" #,##0', 'fill': None, 'bold': False, 'font_rgb': 'FF000000'}
+PASS B8 rupiah :: {'code': '"Rp" #,##0', 'fill': 'FFF6F6F4', 'bold': False, 'font_rgb': 'FF000000'}
+PASS B9 Qty tidak rupiah :: {'code': 'General', 'fill': 'FF1F2A5E', 'bold': True, 'font_rgb': 'FFFFFFFF'}
+PASS A10 zebra :: {'code': 'General', 'fill': 'FFF6F6F4', 'bold': False, 'font_rgb': 'FF000000'}
+PASS B10 zebra :: {'code': '#,##0', 'fill': 'FFF6F6F4', 'bold': False, 'font_rgb': 'FF000000'}
+PASS C10 zebra :: {'code': '"Rp" #,##0', 'fill': 'FFF6F6F4', 'bold': False, 'font_rgb': 'FF000000'}
+PASS B10 qty :: {'code': '#,##0', 'fill': 'FFF6F6F4', 'bold': False, 'font_rgb': 'FF000000'}
+PASS C10 rupiah :: {'code': '"Rp" #,##0', 'fill': 'FFF6F6F4', 'bold': False, 'font_rgb': 'FF000000'}
+PASS A11 (produk ke-2) bukan style header :: {'code': 'General', 'fill': None, 'bold': False, 'font_rgb': 'FF000000'}
+PASS pane ySplit=3 topLeftCell=A4 :: {'ySplit': '3', 'topLeftCell': 'A4'}
+PASS Pesanan pane tetap ySplit=1 topLeftCell=A2 :: {'ySplit': '1', 'topLeftCell': 'A2'}
+PASS Detail Item pane tetap ySplit=1 topLeftCell=A2 :: {'ySplit': '1', 'topLeftCell': 'A2'}
+PASS Stok pane tetap ySplit=1 topLeftCell=A2 :: {'ySplit': '1', 'topLeftCell': 'A2'}
+FAILS: tidak ada
+
+php -l app/Exports/RingkasanSheet.php -> No syntax errors detected
+phpunit --filter='Report|Laporan' -> OK (5 tests, 81 assertions)
+
+Cek edge: periode tanpa penjualan (kustom 2020-01-01..2020-01-31), xlsx dirender terpisah:
+1 [Laporan Penjualan Toko Daster Kulot] 
+2 [Periode, 1 Januari 2020 – 31 Januari 2020]
+3 [Ringkasan (s=2 header), Nilai (s=3 header)]
+4 [Omzet (pesanan dibayar selesai), 0 (s=6 rupiah)]
+5 [Jumlah pesanan, 0 (s=7 qty)]
+6 [Rata-rata nilai pesanan, 0 (s=6)]
+7 [Total ongkir, 0 (s=8)]
+8 [Total diskon, 0 (s=6)]
+9 [Produk terlaris (s=2), Qty (s=3), Omzet (s=3)]
+10 [Belum ada penjualan pada periode ini]
+pane {'ySplit': '3', 'topLeftCell': 'A4'} — nilai 0 tidak hilang (efek WithStrictNullComparison QA-1).

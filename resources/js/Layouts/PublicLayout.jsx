@@ -126,10 +126,6 @@ export default function PublicLayout({ settings: settingsProp = null, cartCount 
                         </div>
                     ) : (
                         <div className="flex flex-col gap-2">
-                            {/* Dua pintu untuk tamu: Daftar (primary) + Masuk (secondary) — deviasi D15 (design.md §3.1/§11.3, kartu UIUX t_46901364; kartu t_e3f68f7f). */}
-                            <Link href="/register" className="btn-primary w-full justify-center">
-                                Daftar
-                            </Link>
                             <Link href="/login" className="btn-secondary w-full justify-center">
                                 Masuk
                             </Link>

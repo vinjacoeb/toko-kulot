@@ -1,0 +1,13 @@
+10:import OrderSummary from '../../Components/OrderSummary';
+124: * Props: `{ keranjang, prefill, pengiriman, pembayaran, flash }`. Formulir 7/12 + `OrderSummary`
+166:    const subtotal = Number(keranjang?.subtotal ?? 0) || 0;
+184:    const biayaOngkir = pilihan
+191:    const ongkirFinal = biayaOngkir !== null;
+193:    const diskonNilai = Number(ringkasan?.diskon ?? 0) || 0;
+194:    const total = ongkirFinal ? subtotal - diskonNilai + biayaOngkir : Number(ringkasan?.total ?? subtotal - diskonNilai);
+530:     * Dipakai dua kali — di atas formulir dan tepat di atas CTA di dalam `OrderSummary`.
+575:        <OrderSummary
+579:            discount={diskonNilai || null}
+581:            shippingOriginal={ongkirAsli}
+582:            shippingCovered={ongkirDitanggung}
+594:        </OrderSummary>

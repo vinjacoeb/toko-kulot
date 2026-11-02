@@ -202,6 +202,8 @@ class CartService
                 $lineTotal = $unitPrice * $qty;
                 $subtotal += $lineTotal;
                 $weight += $this->unitWeight($product) * $qty;
+                $stock = $variant ? (int) $variant->stock : 0;
+                $aktif = (bool) $product->is_active && ($variant ? (bool) $variant->is_active : true);
 
                 $items[] = [
                     'id' => (int) $row->id,
@@ -213,9 +215,10 @@ class CartService
                     'qty' => $qty,
                     'unit_price' => $unitPrice,
                     'line_total' => $lineTotal,
-                    'stock' => $variant ? (int) $variant->stock : 0,
+                    'stock' => $stock,
                     'image' => $this->primaryImage($product),
-                    'is_active' => (bool) $product->is_active && ($variant ? (bool) $variant->is_active : true),
+                    'is_active' => $aktif,
+                    'tersedia' => $aktif && $stock >= $qty,
                 ];
             }
         }

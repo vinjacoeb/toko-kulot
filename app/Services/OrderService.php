@@ -66,6 +66,7 @@ class OrderService
                 'status' => Order::STATUS_PENDING,
                 'subtotal' => $subtotal,
                 'shipping_cost' => $shipping['cost'],
+                'shipping_cost_original' => $shipping['original'],
                 'discount' => 0,
                 'total' => $subtotal + $shipping['cost'],
                 'payment_method' => 'midtrans',
@@ -94,6 +95,7 @@ class OrderService
                 'courier' => $shipping['courier'],
                 'service' => $shipping['service'],
                 'cost' => (int) $shipping['cost'],
+                'cost_original' => (int) $shipping['original'],
                 'mode' => $this->biteship->mode(),
             ]);
 
@@ -134,7 +136,7 @@ class OrderService
      *
      * @param  array<string, mixed>  $data
      * @param  list<array{name: string, value: int, quantity: int, weight: int}>  $items
-     * @return array{cost: int, is_free: bool, courier: ?string, service: ?string, etd: ?string}
+     * @return array{cost: int, original: int, is_free: bool, courier: ?string, service: ?string, etd: ?string}
      */
     private function resolveShipping(array $data, array $items, int $subtotal): array
     {
@@ -143,8 +145,11 @@ class OrderService
 
         // Mode uji tanpa pilihan kurir (form lama): tarif datar, tanpa gratis.
         if ($this->biteship->isFake() && ($courier === '' || $service === '')) {
+            $rate = $this->biteship->fakeRate();
+
             return [
-                'cost' => $this->biteship->fakeRate(),
+                'cost' => $rate,
+                'original' => $rate,
                 'is_free' => false,
                 'courier' => null,
                 'service' => null,
@@ -178,6 +183,7 @@ class OrderService
 
         return [
             'cost' => $expected,
+            'original' => (int) $quote['cost'],
             'is_free' => (bool) $quote['gratis'],
             'courier' => $courier,
             'service' => $service,

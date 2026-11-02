@@ -47,9 +47,11 @@ class CheckoutController extends Controller
         }
 
         $user = $request->user('web');
+        $pembayaran = $this->paymentMethodPayload();
 
         return Inertia::render('Public/Checkout', [
             'keranjang' => $summary,
+            'ringkasan' => $this->ringkasanPayload($summary, $pembayaran['kanal']),
             'prefill' => [
                 'customer_name' => $user?->name,
                 'customer_phone' => $user?->phone,
@@ -59,7 +61,7 @@ class CheckoutController extends Controller
                 'customer_postal_code' => $user?->postal_code,
                 'note' => null,
             ],
-            'pembayaran' => $this->paymentMethodPayload(),
+            'pembayaran' => $pembayaran,
             'midtrans' => $this->midtrans->modeInfo(),
             'pengiriman' => $this->shippingPayload($summary),
         ]);
@@ -112,11 +114,13 @@ class CheckoutController extends Controller
                 'terpenuhi' => $free['aktif'] && $summary['subtotal'] >= $free['min'],
             ],
             'opsi' => [],
+            'semua' => $this->biteship->semuaTanpaTarif($this->biteship->services(true), null),
             'galat' => null,
         ];
 
         if ($summary['is_empty']) {
             $payload['galat'] = 'Keranjang masih kosong.';
+            $payload['semua'] = $this->biteship->semuaTanpaTarif($this->biteship->services(true), $payload['galat']);
 
             return response()->json($payload, 422);
         }
@@ -128,6 +132,7 @@ class CheckoutController extends Controller
         );
 
         $payload['opsi'] = $result['opsi'];
+        $payload['semua'] = $result['semua'];
         $payload['galat'] = $result['galat'];
 
         return response()->json($payload);
@@ -444,6 +449,29 @@ class CheckoutController extends Controller
             ],
             'asal' => $origin,
             'galat' => $galat,
+        ];
+    }
+
+    /**
+     * Ringkasan biaya halaman checkout (kontrak §7.5): mode API belum tahu ongkir
+     * sampai kurir dipilih; mode fake memakai tarif uji, dipotong gratis ongkir.
+     */
+    private function ringkasanPayload(array $summary, array $kanal): array
+    {
+        $asli = $summary['shipping_cost'] !== null ? (int) $summary['shipping_cost'] : null;
+        $free = $this->biteship->freeShipping();
+        $gratis = $asli !== null && $free['aktif'] && (int) $summary['subtotal'] >= (int) $free['min'];
+        $ongkir = $asli === null ? null : ($gratis ? 0 : $asli);
+
+        return [
+            'subtotal' => (int) $summary['subtotal'],
+            'diskon' => 0,
+            'ongkir_asli' => $asli,
+            'ongkir_ditanggung_toko' => $asli === null ? 0 : max(0, $asli - (int) $ongkir),
+            'ongkir' => $ongkir,
+            'total' => (int) $summary['subtotal'] + (int) ($ongkir ?? 0),
+            'metode_bayar' => $kanal,
+            'ekspedisi' => $this->biteship->semuaTanpaTarif($this->biteship->services(true), null),
         ];
     }
 

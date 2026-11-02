@@ -1,0 +1,14 @@
+473:    "ongkir_asli": null,
+474:    "ongkir_ditanggung_toko": 0,
+538:| `ongkir_asli`, `ongkir` | mode `api`: `null` sampai kurir dipilih (§7.12 `opsi`) — sebelum itu UI menampilkan `Dihitung saat checkout`; mode `fake`: tarif uji `settings.shipping_cost_default`. `ongkir` = biaya setelah gratis ongkir |
+539:| `ongkir_ditanggung_toko` | `max(0, ongkir_asli - ongkir)`; `0` selama ongkir belum diketahui |
+1823:### 12.16 GET `/admin/pesanan` — `admin.orders.index` — `Admin/Orders/Index`
+1842:    "paid_at": "…", "created_at": "…", "url": "/admin/pesanan/5"
+1867:### 12.17 GET `/admin/pesanan/{order}` — `admin.orders.show` — `Admin/Orders/Show`
+1876:      "subtotal": 170000, "diskon": 0, "ongkir_asli": 5000, "ongkir_ditanggung_toko": 0,
+1926:| `ringkasan` | bentuk sama §7.5: `ongkir_asli` = `shipping_cost_original` (fallback `shipping_cost` bila bukan gratis; `null` bila gratis tanpa nilai asli), `ongkir_ditanggung_toko` = `max(0, ongkir_asli - shipping_cost)`, `diskon` = `orders.discount`, `metode_bayar` = `payment.metode` (fallback `payment_method` + label), `ekspedisi` = ringkasan `shipping` + `tracking_number` |
+1943:### 12.18 (dihapus v1.4) ~~PATCH `/admin/pesanan/{order}/status`~~
+1949:### 12.18a PATCH `/admin/pesanan/{order}/resi` — `admin.orders.resi`
+1961:### 12.24 PATCH `/admin/pesanan/{order}/sinkron-pembayaran` — `admin.orders.sinkron-pembayaran`
+2041:### 12.25 POST `/admin/pesanan/{order}/resi` — `admin.orders.resi-otomatis`
+2256:- `Ongkir Asli` = `orders.shipping_cost_original` (snapshot tarif kurir sebelum gratis ongkir, diisi `OrderService` saat order dibuat). Order lama yang kolomnya kosong memakai `orders.shipping_payload.price` (angka), lalu `orders.shipping_cost`. `Ongkir Ditanggung Toko` = `max(0, ongkir_asli - shipping_cost)`. Lihat `docs/asumsi.md` v1.6: tarif asli pesanan gratis-ongkir lama tidak tersimpan.

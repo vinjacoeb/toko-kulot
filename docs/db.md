@@ -96,6 +96,8 @@ Index: (`category_id`,`is_active`), (`is_active`,`is_featured`).
 (diisi manual admin — PRD A15; migrasi `2026_10_21_000019`), `shipping_courier` (40, null),
 `shipping_service` (60, null), `shipping_etd` (30, null), `shipping_weight_gram` uint null,
 `shipping_is_free` bool default false (migrasi `2026_10_24_000002`, kartu `t_f22c8d46`),
+`shipping_cost_original` ubigint null — tarif kurir sebelum gratis ongkir, diisi saat order dibuat
+(migrasi `2026_11_02_000001`, kartu `t_36a48cac`); `null` untuk pesanan lama dan order tanpa tarif asli,
 `biteship_order_id` string(60) null, `shipping_status` string(30) null,
 `shipping_payload` json null (migrasi `2026_10_24_000003`, Biteship),
 `shipped_at` timestamp null (diisi otomatis saat status menjadi `dikirim`; migrasi `2026_10_24_000004`),

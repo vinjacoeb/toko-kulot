@@ -148,3 +148,68 @@ Dasar per butir + jalur perubahan bila pemilik ingin: `docs/keputusan-f4-stok.md
 Untuk QA `t_3a240a11`: acuan uji halaman stok = kontrak §12.12–§12.15 (`docs/kontrak-props.md:1282-1334`),
 PRD baris 255 (`docs/PRD.md:255`), dan pola tabel design §5.12 (`docs/design.md:680-690`). Keempat hal di
 atas **bukan cacat** — jangan dijadikan temuan.
+
+---
+
+# Review techlead — tambahan dan revisi 1.6 (kartu `t_5251c307`, 2 Nov 2026)
+
+Metode: baca-saja diff + kode v1.6 (tanpa server, tanpa `.env`, tanpa migrate). Saya menjalankan sendiri
+dua suite terarah yang paling berisiko (bukan menyalin klaim worker):
+`php -d extension=zip -d extension=pdo_sqlite -d extension=sqlite3 vendor/phpunit/phpunit/phpunit --filter 'OversellingTest|AdminReportTest'`
+→ **OK (9 tests, 143 assertions)**. Suite penuh 382 test/3315 assertion adalah hasil QA (`docs/qa-v1.6.md`
+§8.6, bukti `docs/bukti-qa-v1.6-t_2aea6b13.txt`); **saya tidak menjalankannya ulang**.
+
+## 1. Hasil per permintaan pemilik
+
+| # | Permintaan | Status | Bukti yang saya periksa |
+|---|---|---|---|
+| 1 | `/produk/{slug}` beri tahu stok per varian (XL ada, L merah ada, L hijau habis) | Lulus (kode) | `resources/js/Pages/Public/Products/Show.jsx:57-84` (`labelStok`: `Habis`/`Sisa n`/`Tersedia (n)`), tabel ketersediaan `:447-471`, status `role="status" aria-live` `:447`; opsi ukuran/warna tanpa stok `disabled` `:420,439` lewat `varianTersedia` `:43` |
+| 2 | Ringkasan `/checkout` semua info + ongkir asli dicoret saat gratis; juga `/admin/pesanan/detail` | Lulus (kode) | `CheckoutController.php:459-476` kirim `ringkasan` (subtotal, diskon, ongkir_asli, ditanggung, ongkir, total, metode_bayar, ekspedisi); `OrderSummary.jsx:48-127` coret `ongkir_asli` `:110` + `Ditanggung toko` `:115-121` + sr-only; `Admin/OrderController.php:285-295` dan `Admin/Orders/Show.jsx:199-211` baris `Ongkir asli`, `Ditanggung toko`, `Ongkir ditagih`. Snapshot kolom baru `orders.shipping_cost_original` (`OrderService.php:69`, migrasi `2026_11_02_000001`) |
+| 3 | Keranjang user 2 tidak boleh bisa membayar stok yang sudah habis (overselling) | Lulus (kode + test) | `OrderService.php:36-130` satu `DB::transaction`; `lockLines()` `:200-278` kunci baris varian `lockForUpdate()` `:214` urut id (cegah deadlock) lalu tolak `Stok {varian} tersisa n. Perbarui keranjang.`; potong stok `StockService::decreaseForSale` (`StockService.php:23-46`) menolak negatif. Keranjang kini punya `items[].tersedia` (`CartService.php:221`). `CheckoutController.php:80-82` menampilkan pesan itu sebagai flash. `OversellingTest` lulus di run saya |
+| 4 | Riwayat pesanan: filter status pakai tab, bukan dropdown | Lulus (kode) | `History.jsx:47-52` `TAB_STATUS`; `:521-560` `role="tablist"`/`role="tab"`/`aria-selected`/roving `tabIndex`; `:485-500` panah/Home/End; panel `role="tabpanel"` `aria-busy` `:559-562`; `Select`+`Field` lama dihapus dari impor |
+| 5 | `/checkout` pilih ekspedisi pakai ceklis (bukan dropdown), semua ekspedisi aktif tampil, yang tak tersedia diberi status + diblokir | Lulus (kode) | `BiteshipService::rates()` kini mengembalikan `semua[]` (`:432-458`; `semuaTanpaTarif` `:1154` → `tersedia:false` + `alasan "Tidak tersedia di area anda."`); `CheckoutController::shipping` mengirim `semua` (`:117,135`); `Checkout.jsx:466` pakai `semua[]` (fallback `ringkasan.ekspedisi`), `:825-914` kartu radio per kurir, `disabled={!tersedia}` `:863`, alasan dirender `:884`, GRATIS + harga asli coret `:887-897` |
+| 6 | `/admin/laporan` + unduh `.xlsx` langsung, filter periode, pintasan di dashboard, 4 sheet, omzet hanya paid/selesai, `FromQuery` + chunk, format rupiah & lebar kolom | Lulus (kode + test) | Rute `routes/admin.php:47-49`; `ReportController::index/export`; `ReportService` (`REVENUE_STATUSES` di `:88,111`); `LaporanExport` 4 sheet; `PesananSheet`/`DetailItemSheet`/`StokSheet` `FromQuery` + `WithColumnWidths` + `WithEvents` (format `"Rp" #,##0`, hanya baris terpakai); `Laporan.jsx` filter + tombol unduh; `Dashboard.jsx:133-135` pintasan `?periode=bulan-ini`. `AdminReportTest` lulus di run saya (termasuk baca workbook) |
+
+## 2. Temuan
+
+Tidak ada bug kode Critical/High/Medium yang saya temukan. Dua catatan:
+
+- **T-1 (Low, dokumentasi) — sudah saya perbaiki.** `docs/kontrak-props.md` §14.1 menulis nama status
+  Inggris (`paid`, `processing`, `shipped`, `completed`) padahal `Order::REVENUE_STATUSES`
+  (`app/Models/Order.php:56-60`) berisi `dibayar`/`diproses`/`dikirim`/`selesai`. Perilaku dan test benar;
+  baris kontrak saya selaraskan + tanda klarifikasi 2 Nov 2026. Tidak perlu kartu perbaikan.
+- **T-2 (Info) — klaim anti-overselling bergantung MySQL.** `lockForUpdate()` diabaikan SQLite, jadi
+  `OversellingTest` membuktikan alur/logika, bukan penguncian baris nyata. Uji paralel dua request di MySQL
+  belum dilakukan siapa pun — dicatat sebagai risiko, bukan cacat.
+
+## 3. Lulus / belum dicek
+
+- **Lulus (saya periksa sendiri):** butir 1–6 di tabel §1 pada tingkat kode; `OversellingTest` +
+  `AdminReportTest` (9 test/143 assertion) dijalankan ulang oleh saya dan hijau.
+- **Belum dicek, butuh browser:** tampilan 360 px, keyboard radio ekspedisi (Tab/panah/Space), coretan
+  ongkir + `Ditanggung toko` di keranjang ≥ Rp300.000, dan drill dua pembeli sungguhan. QA menandai 5 test
+  case `Belum Diuji` untuk alasan yang sama (`docs/qa-v1.6.md` TC-08, TC-19–TC-22).
+- **Belum dicek, bukan wewenang saya:** `npm run build` — aturan kerja techlead melarang menjalankan npm.
+  Klaim build `EXIT=0` berasal dari worker frontend `t_0fb421af` dan belum saya ulang.
+- **Belum dicek, perlu pemilik:** ekstensi `zip`/`pdo_sqlite`/`sqlite3` masih mati di `php.ini`
+  (`php -m` saya: hanya `pdo_mysql`); unduhan `.xlsx` di mesin pemilik akan 500 sampai `zip` aktif
+  (`docs/langkah-pemilik.md` v1.6). Migrasi `2026_11_02_000001` sudah `Ran` di DB lokal menurut worker
+  backend; saya tidak menjalankan `migrate` untuk memastikan ulang.
+
+## 4. Risiko
+
+1. `ext-zip` mati → `/admin/laporan/unduh` 500 di mesin pemilik walau kode & test lulus. Langkah pemilik
+   sudah tertulis; ini syarat rilis pertama.
+2. Migrasi `shipping_cost_original` wajib jalan di DB produksi sebelum deploy; tanpa itu query order gagal.
+3. Penguncian stok hanya terbukti di SQLite (tanpa `FOR UPDATE`). Risiko overselling sisa sangat kecil di
+   MySQL (kunci baris + cek ulang di `StockService`), tetapi drill staging tetap disarankan.
+4. Repo kotor: 19 berkas `tmp/*` sisa alat agent ikut untracked (mis. `tmp/admin.txt`, `tmp/build.txt`).
+   Bukan cacat aplikasi; jangan ikut di-commit. Dicatat di `docs/catatan-techlead.md`.
+
+## 5. Rekomendasi
+
+**GO BERSYARAT** — sama dengan QA, dan saya setuju setelah pemeriksaan sendiri. Syarat sebelum rilis:
+(a) pemilik mengaktifkan `extension=zip` (+ `pdo_sqlite`/`sqlite3`) lalu `composer install` biasa;
+(b) `php artisan migrate` di DB target; (c) satu drill dua-pembeli stok 1 di staging dan cek visual
+360 px/keyboard; (d) `tmp/` dibersihkan dari commit. Keputusan rilis akhir di pemilik.
+

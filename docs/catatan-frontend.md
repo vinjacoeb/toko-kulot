@@ -839,3 +839,11 @@ Verifikasi:
   reset), submit tanpa memilih (halaman menggulir ke Pengiriman + fokus ke dropdown), 360 px
   (dropdown penuh, teks panjang terpotong native), keyboard (Tab/Space/panah, fokus terlihat),
   zoom 200%.
+
+## v1.6 — stok varian, ongkir asli, tab status (t_0fb421af)
+
+- Produk/Show: status stok ARIA, auto-pilih varian dijaga `kombinasiAda`, qty dijepit `maxQty`, tabel ketersediaan setelah baris status (design-v1.6 §2).
+- Checkout: diskon masuk total; `ongkirAsli`/`ongkirDitanggung` diteruskan ke `OrderSummary`; `alasanKartu` memprioritaskan `item.alasan`; tarif lama dibuang saat memuat ulang; fokus fallback ke `#cobaLagiTarif` (design-v1.6 §1).
+- History: tablist WAI-ARIA (roving tabindex, panah/Home/End), `panel-pesanan` tabpanel hanya saat filter tampil; kosong per status (design-v1.6 §3).
+- Admin/Orders/Show + OrderSummary: ongkir asli dicoret dan baris "Ditanggung toko" hanya bila > 0 (design-v1.6 §4).
+- Verifikasi: `npm run build` EXIT=0 (vite 7,59 s). Belum diuji di browser (server pemilik tidak dijalankan).

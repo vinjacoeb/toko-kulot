@@ -1,0 +1,32 @@
+149:    const [semua, setSemua] = useState([]);
+155:    const [statusTarif, setStatusTarif] = useState('menunggu');
+162:    const cacheRef = useRef(new Map());
+188:        : modeFake && statusTarif === 'siap'
+208:    const tarifMemblokir = ['memuat', 'kosong', 'galat', 'timeout'].includes(statusTarif);
+241:    /** design §6.6: `flash.error` "Ongkir berubah, pilih ulang kurir." → buang cache + minta tarif ulang. */
+247:        cacheRef.current.delete(String(form.data.customer_postal_code ?? ''));
+287:     * cache per kode pos, respons lama dibatalkan, batas tunggu 10 detik (S7).
+313:        const tersimpan = cacheRef.current.get(postal);
+316:            setSemua(Array.isArray(tersimpan.semua) ? tersimpan.semua : []);
+368:                        setSemua(Array.isArray(data?.semua) ? data.semua : []);
+377:                    const daftarSemua = Array.isArray(data?.semua) ? data.semua : [];
+392:                    cacheRef.current.set(postal, { opsi: daftar, semua: daftarSemua, gratis: data?.gratis ?? null });
+437:        // Tarif resmi diambil dari `opsi[]` (hanya layanan bertarif); baris `semua[]` jadi cadangan.
+455:    /** Daftar ceklis: `semua[]` bila sudah ada, selain itu `ringkasan.ekspedisi` (design-v1.6 §1). */
+456:    const daftarEkspedisi = semua.length > 0 ? semua : Array.isArray(ringkasan?.ekspedisi) ? ringkasan.ekspedisi : [];
+459:    const grupEkspedisi = [];
+460:    daftarEkspedisi.forEach((item) => {
+462:        let kelompok = grupEkspedisi.find((pasangan) => pasangan[0] === kode);
+465:            grupEkspedisi.push(kelompok);
+472:        if (tersedia || statusTarif === 'menunggu') return null;
+474:        if (statusTarif === 'galat' || statusTarif === 'timeout') return 'Tarif belum tersedia.';
+475:        if (statusTarif === 'kosong' || item?.tersedia === false) return 'Tidak tersedia di area anda.';
+501:                if (statusTarif === 'siap') setGalatEkspedisi('Pilih layanan pengiriman dulu.');
+565:        !isEmpty && !modeFake && statusTarif === 'siap' && !pilihan ? 'Pilih layanan pengiriman dulu.' : null;
+780:                            {!galatKonfig && statusTarif === 'menunggu' && (
+786:                            {!galatKonfig && statusTarif === 'memuat' && <SkeletonOpsi />}
+788:                            {!galatKonfig && statusTarif === 'galat' && (
+797:                            {!galatKonfig && statusTarif === 'timeout' && (
+805:                            {!galatKonfig && statusTarif === 'kosong' && (
+813:                            {!galatKonfig && statusTarif !== 'memuat' && daftarEkspedisi.length > 0 && (
+821:                                        {grupEkspedisi.map(([kode, kelompok]) => (

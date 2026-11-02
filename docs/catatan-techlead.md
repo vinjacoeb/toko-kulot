@@ -458,3 +458,18 @@ Temuan baca-saja (tanpa mengubah kode):
   `docs/bukti-webhook-install-t_7584d46c.txt`. Langkah pemilik: `docs/pertanyaan-pemilik.md` P18-P19.
 - Belum dicek (butuh pemilik): pendaftaran ulang di dashboard Biteship dan satu event nyata
   `order.status` setelah `php artisan migrate`.
+
+## v1.6 — catatan verifikasi (2 Nov 2026, `t_5251c307`)
+
+- Kontrak §14.1 menulis nama status omzet dalam bahasa Inggris; konstanta nyata berbahasa Indonesia
+  (`dibayar`/`diproses`/`dikirim`/`selesai`). Saya perbaiki baris kontrak + tanda klarifikasi (bukan
+  perubahan perilaku, tidak perlu kartu).
+- Repo kotor: 19 berkas `tmp/*` sisa alat agent untracked (`tmp/admin.txt`, `tmp/build.txt`, dst). Bukan
+  cacat aplikasi; jangan di-commit. Tidak saya hapus karena techlead hanya boleh menulis `docs/`.
+- `npm run build` tidak saya jalankan (aturan kerja techlead). Klaim `EXIT=0` berasal dari worker frontend
+  `t_0fb421af`; belum diverifikasi ulang oleh saya.
+- Verifikasi mandiri saya: `OversellingTest|AdminReportTest` → OK (9 tests, 143 assertions). Suite penuh
+  382/3315 adalah hasil QA, bukan run saya.
+- Risiko sisa: `lockForUpdate()` tidak berlaku di SQLite, jadi uji paralel nyata di MySQL belum ada.
+  Drill dua pembeli stok 1 sebaiknya dilakukan pemilik di staging sebelum rilis.
+

@@ -547,3 +547,19 @@ sehingga tidak ada jalur XSS dari isian admin.
   saat checkout (migrasi baru) dan pakai di `orderPayload()`.
 - Berat per baris tidak boleh 0 (Biteship menolak), jadi baris minimal 1 g/unit. Order lama dengan
   `shipping_weight_gram` null/0 tetap memakai berat produk hidup seperti sebelumnya.
+
+## v1.6 — Laporan & ekspor Excel (kartu t_113b1793, 2 Nov 2026)
+
+- **Omzet** dihitung dari `SUM(orders.total)` pesanan berstatus `Order::REVENUE_STATUSES`, jadi sudah termasuk ongkir dan sudah dikurangi diskon — sama dengan angka "Omzet" di Dashboard.
+- **Produk terlaris** memakai snapshot `order_items.product_name`, bukan nama produk saat ini; rename produk tidak mengubah laporan lama.
+- **Ongkir asli** untuk pesanan gratis ongkir lama tidak selalu tersimpan. Urutan tebakan: `shipping_cost_original` → `shipping_payload.price` → `shipping_cost`. Bila semua kosong, "Ongkir Ditanggung Toko" = 0.
+- **Filter tidak sah** (`periode` asing, tanggal salah, `dari > sampai`) jatuh ke `bulan-ini` tanpa 422 agar tab tidak memutus halaman; rute unduh tetap memvalidasi dan menolak dengan `errors`.
+- **Sheet Pesanan & Detail Item** memuat semua status pada periode, bukan hanya status omzet, supaya operasional bisa merekonsiliasi pesanan batal.
+
+## v1.7 — ekspedisi tersedia, filter periode, desain Excel (kartu `t_f3049422`, 2 Nov 2026)
+
+- **Checkout hanya menampilkan layanan yang punya tarif.** `opsi[]` dipakai sebagai sumber daftar; `semua[]` tetap ada di props untuk cache dan alasan, tetapi tidak dirender. Konsekuensi: layanan yang tidak tersedia tidak lagi terlihat sebagai kartu disabled — pemilik memilih ini supaya daftar di mobile pendek.
+- **Filter periode Laporan dianggap benar di server.** Probe `ReportService::resolve()` untuk `hari-ini`, `7-hari`, `bulan-ini`, `kustom`, periode asing, dan kosong menghasilkan rentang tanggal berbeda (`docs/bukti-techlead-v1.7-t_f3049422.txt`). Angka omzet sama karena seluruh pesanan berstatus omzet di DB ber-tanggal 2 Nov 2026. Tidak ada perubahan `ReportService`.
+- **Pilihan periode langsung diterapkan** saat dropdown berubah (kecuali `kustom`), supaya pemilik tidak perlu klik Terapkan untuk melihat respon.
+- **Gaya Excel adalah presentasi, bukan data.** Bila PhpSpreadsheet tidak mendukung suatu gaya di versi terpasang, worker boleh memakai gaya terdekat; isi sel, urutan kolom, dan nama sheet tidak boleh berubah.
+

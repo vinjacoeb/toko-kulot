@@ -129,9 +129,14 @@ export default function Dashboard({ stats = null, sales_14d = null, low_stock = 
                     breadcrumb={[{ label: 'Dashboard' }]}
                     description={updatedLabel}
                     actions={
-                        <Button variant="secondary" onClick={reload} loading={loading}>
-                            Muat ulang
-                        </Button>
+                        <>
+                            <Button as="a" href="/admin/laporan/unduh?periode=bulan-ini" variant="secondary">
+                                Unduh Excel
+                            </Button>
+                            <Button variant="secondary" onClick={reload} loading={loading}>
+                                Muat ulang
+                            </Button>
+                        </>
                     }
                 />
 

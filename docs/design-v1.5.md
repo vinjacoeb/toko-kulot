@@ -7,6 +7,10 @@ Sumber: `docs/brief-v1.5-uiux.md`, `docs/brief-v1.5-frontend.md` F1/F2, `docs/ko
 (S1–S6), `docs/design-v1.4.md` §1. Tidak ada token, warna, ikon, gambar, komponen UI, atau dependency
 baru.
 
+> **Sebagian superseded (2 Nov 2026):** §1 (dropdown ekspedisi) dan §4 (filter status dropdown)
+> digantikan `docs/design-v1.6.md` §1 dan §3 karena revisi pemilik kartu `t_e191f163`.
+> §2–§3 (ikon dan timeline selesai) tetap berlaku.
+
 ## 0. Aturan bersama
 
 - Komponen: `Select`, `Field`, `Badge`, `EmptyState`, `InlineNotice`, `Pagination`, `TimelinePesanan`

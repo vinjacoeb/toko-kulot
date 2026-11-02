@@ -1,0 +1,11 @@
+PHP 8.3.32 (cli) (built: Jul  1 2026 09:40:05) (ZTS Visual C++ 2019 x64)
+--- ekstensi aktif tanpa flag ---
+pdo_mysql
+--- phpunit: OversellingTest + AdminReportTest ---
+
+.........                                                           9 / 9 (100%)
+
+Time: 00:01.452, Memory: 68.00 MB
+
+OK (9 tests, 143 assertions)
+EXIT=0

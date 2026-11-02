@@ -1,14 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import PublicLayout from '../../Layouts/PublicLayout';
 import Breadcrumb from '../../Components/Breadcrumb';
 import Button from '../../Components/Button';
 import EmptyState from '../../Components/EmptyState';
-import Field from '../../Components/Field';
 import InlineNotice from '../../Components/InlineNotice';
 import Pagination from '../../Components/Pagination';
 import SalinButton from '../../Components/SalinButton';
-import Select from '../../Components/Select';
 import ShippingEvents from '../../Components/ShippingEvents';
 import Skeleton from '../../Components/Skeleton';
 import StatusBadge from '../../Components/StatusBadge';
@@ -44,6 +42,12 @@ const LABEL_FILTER = {
 };
 
 const URUTAN_STATUS = ['pending', 'dibayar', 'diproses', 'dikirim', 'selesai', 'batal'];
+
+/** Tab filter status — design-v1.6 §3.1; urutan dan label sama dengan `Order::statusLabel`. */
+const TAB_STATUS = [
+    { nilai: 'semua', label: 'Semua' },
+    ...URUTAN_STATUS.map((status) => ({ nilai: status, label: LABEL_FILTER[status] })),
+];
 
 /** Teks aman: `null`/kosong → `—`. */
 const teks = (value) => {
@@ -424,7 +428,10 @@ export default function History({ orders = null, ringkasan = null, filter = null
      */
     const adaFilter = filter !== null && filter !== undefined;
     const statusAktif = URUTAN_STATUS.includes(filter?.status) ? filter.status : null;
+    const nilaiAktif = filter?.status ?? 'semua';
     const tampilkanFilter = adaFilter && totalPesanan > 0;
+    const tabRefs = useRef([]);
+    const jumlahTab = (nilai) => toCount(nilai === 'semua' ? ringkasan?.total : ringkasan?.[nilai]);
     const teksHasil = !statusAktif
         ? `Menampilkan semua ${formatNumber(totalHasil)} pesanan.`
         : totalHasil === 0
@@ -478,6 +485,19 @@ export default function History({ orders = null, ringkasan = null, filter = null
 
     const kosong = daftar.length === 0;
 
+    /** Panah/Home/End hanya memindah fokus; Enter/Space mengaktifkan (design-v1.6 §3.2). */
+    const pindahTab = (event, index) => {
+        const terakhir = TAB_STATUS.length - 1;
+        let tujuan = null;
+        if (event.key === 'ArrowRight') tujuan = index === terakhir ? 0 : index + 1;
+        else if (event.key === 'ArrowLeft') tujuan = index === 0 ? terakhir : index - 1;
+        else if (event.key === 'Home') tujuan = 0;
+        else if (event.key === 'End') tujuan = terakhir;
+        if (tujuan === null) return;
+        event.preventDefault();
+        tabRefs.current[tujuan]?.focus();
+    };
+
     return (
         <PublicLayout settings={settings}>
             <Head title="Riwayat Pesanan" />
@@ -496,32 +516,56 @@ export default function History({ orders = null, ringkasan = null, filter = null
                     </header>
 
                     {tampilkanFilter && (
-                        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                            <Field
-                                label="Status pesanan"
-                                htmlFor="filter-status"
-                                className="w-full sm:max-w-[260px]"
+                        <div className="-mx-4 mt-5 overflow-x-auto scroll-px-4 px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0">
+                            <div
+                                role="tablist"
+                                aria-label="Filter status pesanan"
+                                className="flex min-w-max gap-1 border-b border-line"
                             >
-                                <Select
-                                    id="filter-status"
-                                    value={filter?.status ?? 'semua'}
-                                    onChange={(e) => ubahFilter(e.target.value)}
-                                >
-                                    <option value="semua">
-                                        {`Semua status (${formatNumber(ringkasan?.total ?? 0)})`}
-                                    </option>
-                                    {URUTAN_STATUS.map((s) => (
-                                        <option key={s} value={s}>
-                                            {`${LABEL_FILTER[s]} (${formatNumber(ringkasan?.[s] ?? 0)})`}
-                                        </option>
-                                    ))}
-                                </Select>
-                            </Field>
-                            <p className="text-meta text-slate-500" role="status" aria-live="polite">
-                                {teksHasil}
-                            </p>
+                                {TAB_STATUS.map((tab, index) => {
+                                    const aktif = nilaiAktif === tab.nilai;
+                                    return (
+                                        <button
+                                            key={tab.nilai}
+                                            type="button"
+                                            role="tab"
+                                            id={`tab-status-${tab.nilai}`}
+                                            aria-selected={aktif}
+                                            aria-controls="panel-pesanan"
+                                            tabIndex={aktif ? 0 : -1}
+                                            ref={(el) => (tabRefs.current[index] = el)}
+                                            onClick={() => ubahFilter(tab.nilai)}
+                                            onKeyDown={(event) => pindahTab(event, index)}
+                                            className={cn(
+                                                'flex h-11 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 text-label transition-colors',
+                                                aktif
+                                                    ? 'border-brand text-brand'
+                                                    : 'border-transparent text-slate-600 hover:text-ink'
+                                            )}
+                                        >
+                                            {tab.label}
+                                            <span className="text-meta font-normal tabular-nums">
+                                                ({formatNumber(jumlahTab(tab.nilai) ?? 0)})
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
                     )}
+
+                    <div
+                        id="panel-pesanan"
+                        role={tampilkanFilter ? 'tabpanel' : undefined}
+                        aria-labelledby={tampilkanFilter ? `tab-status-${nilaiAktif}` : undefined}
+                        tabIndex={tampilkanFilter ? 0 : undefined}
+                        aria-busy={memuat}
+                    >
+                        {tampilkanFilter && (
+                            <p className="sr-only" role="status" aria-live="polite">
+                                {teksHasil}
+                            </p>
+                        )}
 
                     {galat && (
                         <InlineNotice tone="error" title="Riwayat pesanan gagal dimuat" className="mt-4">
@@ -552,7 +596,7 @@ export default function History({ orders = null, ringkasan = null, filter = null
                         statusAktif ? (
                             <EmptyState
                                 className="mt-6"
-                                title="Tidak ada pesanan pada filter ini."
+                                title={`Tidak ada pesanan berstatus ${LABEL_FILTER[statusAktif]}.`}
                                 description="Coba status lain, atau tampilkan semua pesanan."
                                 actionLabel="Tampilkan semua pesanan"
                                 onAction={() => ubahFilter('semua')}
@@ -581,6 +625,7 @@ export default function History({ orders = null, ringkasan = null, filter = null
                         onPageChange={muat}
                         className="mt-8"
                     />
+                    </div>
                 </div>
             </div>
         </PublicLayout>

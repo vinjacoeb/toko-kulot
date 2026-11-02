@@ -1,0 +1,224 @@
+== QA v1.7 bukti mentah (t_1e97eae3) ==
+Mon, Nov  2, 2026  4:22:58 PM
+
+$ git status --short
+ M app/Http/Controllers/Admin/OrderController.php
+ M app/Http/Controllers/CheckoutController.php
+ M app/Models/Order.php
+ M app/Services/BiteshipService.php
+ M app/Services/CartService.php
+ M app/Services/OrderService.php
+ M composer.json
+ M composer.lock
+ M docs/asumsi.md
+ M docs/catatan-backend.md
+ M docs/catatan-frontend.md
+ M docs/catatan-techlead.md
+ M docs/catatan-uiux.md
+ M docs/db.md
+ M docs/design-v1.5.md
+ M docs/design.md
+ M docs/kontrak-props.md
+ M docs/langkah-pemilik.md
+ M docs/pertanyaan-pemilik.md
+ M docs/review.md
+ M resources/js/Components/Header.jsx
+ M resources/js/Components/OrderSummary.jsx
+ M resources/js/Layouts/AdminLayout.jsx
+ M resources/js/Layouts/PublicLayout.jsx
+ M resources/js/Pages/Admin/Dashboard.jsx
+ M resources/js/Pages/Admin/Orders/Show.jsx
+ M resources/js/Pages/Public/Auth/Register.jsx
+ M resources/js/Pages/Public/Checkout.jsx
+ M resources/js/Pages/Public/History.jsx
+ M resources/js/Pages/Public/Products/Show.jsx
+ M routes/admin.php
+?? app/Exports/
+?? app/Http/Controllers/Admin/ReportController.php
+?? app/Http/Requests/Admin/ReportFilterRequest.php
+?? app/Services/ReportService.php
+?? database/migrations/2026_11_02_000001_add_shipping_cost_original_to_orders_table.php
+?? docs/brief-v1.7-backend.md
+?? docs/brief-v1.7-frontend.md
+?? docs/brief-v1.7-qa.md
+?? docs/bukti-qa-v1.6-t_2aea6b13.txt
+?? docs/bukti-qa-v1.7-t_1e97eae3.txt
+?? docs/bukti-techlead-v1.6-t_5251c307.txt
+?? docs/bukti-techlead-v1.7-t_f3049422.txt
+?? docs/catatan-backend-v1.7-t_6863d44a.md
+?? docs/catatan-frontend-v1.7-t_c085eb76.md
+?? docs/catatan-frontend-v1.7-t_ca47e2e4.md
+?? docs/design-v1.6.md
+?? docs/design-v1.7.md
+?? docs/qa-v1.6.md
+?? docs/ringkasan-v1.7.md
+?? docs/traceability-v1.7.md
+?? resources/js/Pages/Admin/Laporan.jsx
+?? tests/Feature/Admin/AdminReportTest.php
+?? tests/Feature/Checkout/OversellingTest.php
+?? tmp/admin.txt
+?? tmp/btn.txt
+?? tmp/build.txt
+?? tmp/card.err
+?? tmp/card.txt
+?? tmp/cardc.txt
+?? tmp/carde.txt
+?? tmp/cek-kontrak-2.txt
+?? tmp/cek-kontrak-keys.txt
+?? tmp/chip.txt
+?? tmp/co.txt
+?? tmp/cs.txt
+?? tmp/ds.txt
+?? tmp/g.txt
+?? tmp/inspect_doc.py
+?? tmp/k.txt
+?? tmp/pages.py
+?? tmp/th.txt
+?? tmp/uk.txt
+
+$ php -l app/Exports/*.php app/Http/Controllers/Admin/ReportController.php
+No syntax errors detected in app/Exports/DetailItemSheet.php
+No syntax errors detected in app/Exports/LaporanExport.php
+No syntax errors detected in app/Exports/PesananSheet.php
+No syntax errors detected in app/Exports/RingkasanSheet.php
+No syntax errors detected in app/Exports/SheetStyle.php
+No syntax errors detected in app/Exports/StokSheet.php
+No syntax errors detected in app/Http/Controllers/Admin/ReportController.php
+
+$ npm run build (tail)
+[2mpublic/build/[22m[36massets/Show-ChmdFvIp.js               [39m[1m[2m 16.89 kB[22m[1m[22m[2m │ gzip:   5.71 kB[22m
+[2mpublic/build/[22m[36massets/Index-DVmdHoaJ.js              [39m[1m[2m 19.46 kB[22m[1m[22m[2m │ gzip:   5.70 kB[22m
+[2mpublic/build/[22m[36massets/Checkout-DAxNZvXL.js           [39m[1m[2m 20.23 kB[22m[1m[22m[2m │ gzip:   6.53 kB[22m
+[2mpublic/build/[22m[36massets/CheckoutPay-CUkoVOFi.js        [39m[1m[2m 20.78 kB[22m[1m[22m[2m │ gzip:   6.06 kB[22m
+[2mpublic/build/[22m[36massets/Home-jDw2O8CK.js               [39m[1m[2m 23.20 kB[22m[1m[22m[2m │ gzip:   6.85 kB[22m
+[2mpublic/build/[22m[36massets/Index-5XSpJpl4.js              [39m[1m[2m 59.92 kB[22m[1m[22m[2m │ gzip:  14.67 kB[22m
+[2mpublic/build/[22m[36massets/app--gzDwTCp.js                [39m[1m[2m365.07 kB[22m[1m[22m[2m │ gzip: 114.45 kB[22m
+[32m✓ built in 16.02s[39m
+
+
+$ php vendor/phpunit/phpunit/phpunit (suite penuh, tail)
+............................................................... 378 / 382 ( 98%)
+....                                                            382 / 382 (100%)
+
+Time: 01:47.072, Memory: 82.00 MB
+
+OK (382 tests, 3315 assertions)
+
+$ phpunit --filter='Report|Checkout|Laporan|Ekspedisi' (tail)
+...............................................................  63 / 120 ( 52%)
+.........................................................       120 / 120 (100%)
+
+Time: 00:30.134, Memory: 70.00 MB
+
+OK (120 tests, 1275 assertions)
+
+$ python qa-v1.7-http.py (login dev + GET/unduh, hanya status)
+POST /admin/login -> 200 akhir di http://127.0.0.1:8000/admin
+GET /admin/laporan?periode=bulan-ini -> 200 bytes=16469
+GET /admin/laporan?periode=kustom&dari=2026-11-01&sampai=2026-11-02 -> 200 bytes=16497
+GET /admin/laporan?periode=asing -> 200 bytes=16465
+GET /admin/laporan/unduh -> 200 bytes= 13317
+
+$ grep props filter dari laporan-asing.html (server menormalkan periode)
+"filter":{"periode":"bulan-ini","dari":"2026-11-01","sampai":"2026-11-30"}
+"periode":"bulan-ini"
+
+$ ls public/build/assets | grep -E 'Laporan|Checkout'
+Checkout-DAxNZvXL.js
+CheckoutPay-CUkoVOFi.js
+CheckoutSuccess-BpSH3oG5.js
+Laporan-DGQ8Z3nQ.js
+
+$ python qa-v1.7-ringkas.py (xlsx unduhan server)
+== C:/Users/LENOVO/AppData/Local/hermes/profiles/qatesting/cache/scratch/laporan.xlsx
+-- sheet1 [Ringkasan] pane=<pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/> autofilter=- merge=['A1:C1']
+   A1 s= 1 Laporan Penjualan Toko Daster Kulot
+   A2 s= - Periode
+   B2 s= - 1 November 2026 – 30 November 2026
+   A3 s= - Ringkasan
+   B3 s= - Nilai
+   A4 s= 2 Omzet (pesanan dibayar selesai)
+   B4 s= 3 469600
+   A5 s= 4 Jumlah pesanan
+   B5 s= 6 2
+   A6 s= 5 Rata-rata nilai pesanan
+   B6 s= 7 234800
+   A7 s= 4 Total ongkir
+   B7 s= 6 15500
+   A8 s= 5 Total diskon
+   B8 s= 8 <kosong>
+   A9 s= 4 Produk terlaris
+   B9 s= 6 Qty
+   C9 s= - Omzet
+   A10 s= - baju tidur pola kucing
+   B10 s= - 6
+   C10 s= - 454000
+   A11 s= 2 Setelan Kulot Linen Lengan Panjang
+   B11 s= 3 1
+   C11 s= 3 100
+-- sheet2 [Pesanan] pane=<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/> autofilter=A1:K4 merge=[]
+   A1 s= 2 No Order
+   B1 s= 2 Tanggal
+   C1 s= 2 Pembeli
+   D1 s= 2 Status
+   E1 s= 2 Metode Bayar
+   F1 s= 3 Subtotal
+   G1 s= 3 Diskon
+   H1 s= 3 Ongkir Asli
+   I1 s= 3 Ongkir Ditanggung Toko
+   J1 s= 3 Total
+   K1 s= 2 Resi
+   A2 s= 5 TK-20261102-0001
+   B2 s= 5 02/11/2026 15:28
+   C2 s= 5 Budi Santoso [CONTOH]
+   D2 s= 5 Dibayar
+   E2 s= 5 QRIS
+   F2 s= 8 454000
+   G2 s= 8 <kosong>
+   H2 s= 8 48000
+   I2 s= 8 48000
+   J2 s= 8 454000
+   K2 s= 5 <kosong>
+   A3 s= 4 TK-20261102-0002
+   B3 s= 4 02/11/2026 15:32
+   C3 s= 4 Budi Santoso [CONTOH]
+   D3 s= 4 Dibayar
+   E3 s= 4 Transfer Bank
+   F3 s= 6 100
+   G3 s= 6 <kosong>
+   H3 s= 6 15500
+   I3 s= 6 <kosong>
+   J3 s= 6 15600
+   K3 s= 4 <kosong>
+
+$ varian stok <= 0 (baca-saja)
+stok<=0: 1
+
+$ python qa-v1.7-ringkas.py (sheet Stok saja)
+-- sheet4 [Stok] pane=<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/> autofilter=A1:E39 merge=[]
+   A1 s= 2 SKU
+   B1 s= 2 Produk
+   C1 s= 2 Varian
+   D1 s= 3 Stok Akhir
+   E1 s= 2 Status
+   A2 s= 5 BJU-TDR-KCG-L-HJU
+   B2 s= 5 baju tidur pola kucing
+   C2 s= 5 L / Hijau
+   D2 s= 7 8
+   E2 s= 5 Aman
+   A3 s= 4 BJU-TDR-KCG-XL-HJU
+   B3 s= 4 baju tidur pola kucing
+   C3 s= 4 XL / Hijau
+
+$ python qa-v1.7-stok0.py (baris Stok dengan stok 0)
+baris 3: SKU='BJU-TDR-KCG-XL-HJU' stok_sel(D)='' status(E)='Habis'
+
+$ python qa-v1.7-ringkas.py (sheet Detail Item)
+-- sheet3 [Detail Item] pane=<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/> autofilter=A1:G6 merge=[]
+   A1 s= 2 No Order
+   B1 s= 2 Tanggal
+   C1 s= 2 Produk
+   D1 s= 2 Varian
+   E1 s= 3 Qty
+   F1 s= 3 Harga
+   G1 s= 3 Subtotal

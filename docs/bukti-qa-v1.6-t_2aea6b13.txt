@@ -1,0 +1,136 @@
+BUKTI QA v1.6 — kartu t_2aea6b13
+Tanggal: 2 Nov 2026. Repo: C:/Users/LENOVO/Downloads/toko-kulot
+Aplikasi: http://127.0.0.1:8000 (dev). PHP 8.3.32, PHPUnit 11.5.57.
+Catatan: `php artisan test` gagal di shell non-tty ("stdin is not a tty"); dipakai
+`php vendor/phpunit/phpunit/phpunit < /dev/null` dengan PHP_INI_SCAN_DIR ke scratch/phpini
+(berisi extension=pdo_sqlite, sqlite3, zip). phpunit.xml memakai sqlite :memory:; DB MySQL
+pemilik hanya dibaca, tidak diubah. Tidak ada kredensial/cookie di berkas ini.
+
+1) SUITE PENUH
+$ php vendor/phpunit/phpunit/phpunit < /dev/null
+...
+382 / 382 (100%)
+Time: 00:57.188, Memory: 84.00 MB
+OK (382 tests, 3315 assertions)
+
+2) SUITE TERARAH (fitur kartu ini)
+$ php vendor/phpunit/phpunit/phpunit --filter 'OversellingTest|OngkirV15OpsiTest|AdminReportTest' --testdox
+Admin Report (Tests\Feature\Admin\AdminReport)
+ ✔ Omzet hanya dari pesanan berstatus revenue
+ ✔ Filter kustom dan periode asing
+ ✔ Unduh menghasilkan empat sheet
+ ✔ Unduh periode kustom tanpa tanggal ditolak
+ ✔ Admin biasa tidak bisa akses tanpa login
+Ongkir V15Opsi (Tests\Feature\Checkout\OngkirV15Opsi)
+ ✔ Baris string lama dipakai bukan default
+ ✔ Baris array tetap diterima
+ ✔ Duplikat beda huruf dibuang
+ ✔ Hanya baris aktif tampil
+ ✔ Default dipakai bila tidak ada baris sah
+ ✔ Opsi urut nama kurir lalu layanan
+ ✔ Log layanan aktif tanpa tarif tanpa token
+Overselling (Tests\Feature\Checkout\Overselling)
+ ✔ Checkout kedua untuk stok terakhir gagal tanpa stok minus
+ ✔ Ringkasan checkout dan detail admin memuat ongkir asli
+ ✔ Checkout ringkasan gratis ongkir tetap kirim tarif asli
+ ✔ Gratis ongkir menyimpan tarif asli dan selisih ditanggung
+OK (16 tests, 173 assertions) — Time: 00:02.338
+
+3) XLSX UNDUHAN (dibaca via zipfile)
+$ python scratch/xlsx_sheets.py   (berkas: laporan-bulan-ini.xlsx hasil unduhan live)
+size: 44733
+sheets: ['Ringkasan', 'Pesanan', 'Detail Item', 'Stok']
+worksheets: xl/worksheets/sheet1.xml .. sheet4.xml (4 lembar, tanpa lembar tambahan)
+
+4) LAPORAN — PROPS INERTIA PER PERIODE (admin login, X-Inertia: true)
+GET /admin/laporan?periode=...
+hari-ini : 200 application/json 14982 B | filter {"periode":"hari-ini","dari":"2026-11-02","sampai":"2026-11-02"}
+           ringkasan {"omzet":469600,"jumlah_pesanan":2,"rata_rata":234800,"total_ongkir":15500,"total_diskon":0}
+7-hari   : 200 14978 B | filter {"periode":"7-hari","dari":"2026-10-27","sampai":"2026-11-02"} | omzet 469600 / 2 pesanan
+bulan-ini: 200 14984 B | filter {"periode":"bulan-ini","dari":"2026-11-01","sampai":"2026-11-30"} | omzet 469600 / 2 pesanan
+kustom   : 200 15211 B | filter {"periode":"kustom","dari":"2026-01-01","sampai":"2026-12-31"}
+           ringkasan {"omzet":3150100,"jumlah_pesanan":9,"rata_rata":350011,"total_ongkir":204000,"total_diskon":0}
+           produk_terlaris 5 baris, urut qty desc, omzet per produk memakai snapshot order_items.product_name
+asing    : 200 14980 B | filter {"periode":"bulan-ini","dari":"2026-11-01","sampai":"2026-11-30"}
+           (nilai asing diabaikan, jatuh ke bulan-ini — sesuai kontrak §14.1)
+
+5) LAPORAN — UNDUHAN
+GET /admin/laporan/unduh?periode=bulan-ini
+HTTP/1.1 200 OK
+Content-Disposition: attachment; filename=laporan-2026-11-01_sd_2026-11-30.xlsx
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+size=44733
+
+GET /admin/laporan/unduh?periode=kustom  (tanpa dari/sampai, dengan Referer /admin/laporan)
+HTTP/1.1 302 Found
+Location: http://127.0.0.1:8000/admin/laporan
+lalu GET /admin/laporan -> props.errors:
+{"dari":"Tanggal awal wajib diisi untuk periode kustom.",
+ "sampai":"Tanggal akhir wajib diisi untuk periode kustom."}
+(Tanpa header Referer, Laravel back() memakai URL sesi terakhir — bukan defect; browser mengirim Referer.)
+
+6) OMZET — SILANG CEK DB (baca saja)
+$ php artisan tinker --execute="..."
+{"revenue":["dibayar","diproses","dikirim","selesai"],
+ "sum":"469600",
+ "count":2}
+Cocok dengan props bulan-ini: omzet 469600, jumlah_pesanan 2.
+Konstanta model memakai nilai Indonesia; kontrak §14 menulis nama Inggris (paid, processing, ...).
+Perilaku benar; hanya penyebutan dokumen yang beda — catatan Low, bukan defect kode.
+
+7) INTEGRITAS DATA (baca saja)
+{"stok_minus":0,"kode_ganda":0,"total_order":21}
+Tidak ada varian stok negatif; tidak ada kode order ganda.
+
+8) PESANAN 32 — GRATIS ONGKIR (props /admin/pesanan/32, Inertia JSON)
+ringkasan keys lengkap: subtotal, diskon, ongkir_asli, ongkir_ditanggung_toko, ongkir, total,
+ekspedisi, metode_bayar, is_free, ...
+ringkasan {"ongkir_asli":48000,"ongkir":0,"ongkir_ditanggung_toko":48000,"total":454000,"ekspedisi":"TIKI REG","is_free":true}
+pesanan.status "dibayar"; items 1 baris: baju tidur pola kucing, varian "XL / Merah", qty 1,
+unit_price 79000, line_total 79000.
+Markup: resources/js/Pages/Admin/Orders/Show.jsx:200-211 (harga asli line-through bila
+ditanggung > 0, baris "Ditanggung toko", baris "Ongkir ditagih").
+
+9) CHECKOUT — PROPS /checkout (buyer login, Inertia JSON)
+top keys: auth, cart, errors, flash, keranjang, meta, midtrans, pembayaran, pengiriman,
+prefill, ringkasan, settings
+keranjang.items[0]: {"name":"baju tidur pola kucing","variant_label":"XL / Merah","qty":1,
+"unit_price":79000,"line_total":79000,"stock":3,"tersedia":true}
+pengiriman: {"mode":"api","key_terisi":true,"berat_gram":500,
+"gratis":{"aktif":true,"min":300000,"subtotal":79000,"terpenuhi":false},
+"asal":{"nama":"Liiora.id Semarang","kode_pos":"50148"},"galat":null}
+ringkasan.ekspedisi awal: 59 baris, semua tersedia/cost/etd null (state "menunggu", kartu disabled, harga —).
+pembayaran: objek (metode dipilih pada langkah berikutnya).
+
+10) CEK ONGKIR LIVE — GET /checkout/ongkir?postal_code=65143
+{"mode":"api","kode_pos":"65143","berat_gram":500,"subtotal":79000,
+ "gratis":{"aktif":true,"min":300000,"terpenuhi":false},"galat":null}
+opsi: 10 (semua tersedia true)
+semua: 59 (10 tersedia true, 49 false)
+contoh tersedia: JNE REG 18000 "1 - 2 hari"; TIKI REG 16000 "3 hari";
+                 SiCepat REG 19300 "2 - 3 hari"; AnterAja REG 18900 "2 - 4 hari"
+contoh disabled: Anteraja Same Day / Borzo Instant Bike / Borzo Instant Car ->
+                 cost null, etd null, tersedia false, alasan "Tidak tersedia di area anda."
+label unik; urut courier_name lalu service_name; opsi ⊆ semua.
+Markup: Checkout.jsx:858 type="radio", :863 disabled={!tersedia}, :884 alasan, :466 daftar
+memakai semua[] (fallback ringkasan.ekspedisi), :480-483 alasanKartu, :250/282/311/334 reset pilihan.
+
+11) KERANJANG — VARIAN HABIS DITOLAK (buyer)
+POST /keranjang product_id=13 variant_id=38 (stok 0) qty=1 -> 302
+flash error: "Stok tersisa 0."
+Item uji (cart item 40) dihapus setelah tes; GET /keranjang -> "is_empty":true.
+
+12) PRODUK — STOK PER VARIAN (props /produk/baju-tidur-pola-kucing)
+product.stock 17; variants: L/Hijau 8, L/Merah 6, XL/Hijau 0, XL/Merah 3
+Markup: Show.jsx:43-46 varianTersedia (stok 0 tidak tersedia), :57-62 labelStok
+(Tersedia (n) / Sisa n / Habis), :217 "Semua varian habis stok.", :420 & :439 chip
+disabled bila tak ada stok, :480 qty disabled saat habis, :492 tombol "Stok Habis".
+Cek browser sebelumnya (attempt 4, publik): label "Tersedia (10)", "Sisa 5", "Habis",
+kombinasi XL+Hijau tidak bisa dipilih, tombol tambah disabled.
+
+13) PINTASAN DASHBOARD
+resources/js/Pages/Admin/Dashboard.jsx:133 -> href="/admin/laporan/unduh?periode=bulan-ini",
+label "Unduh Excel". URL itu diuji live: 200 + MIME xlsx + 4 sheet (bagian 5).
+
+14) FILE YANG DIBUAT QA
+docs/qa-v1.6.md, docs/bukti-qa-v1.6-t_2aea6b13.txt (berkas ini). Tidak ada file aplikasi diubah.
